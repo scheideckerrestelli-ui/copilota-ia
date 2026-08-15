@@ -324,6 +324,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
        bottone Demo, tolto su richiesta di Tiago. -->
   <button class="rbtn" id="bMaps" title="Mappe" aria-label="Mappe" hidden>
     <svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"></path><path d="M9 4.5v12.7M15 6.8v12.7"></path></svg></button>
+  <button class="rbtn" id="b3d" title="Vista guida 3D" aria-label="Vista guida 3D">
+    <svg viewBox="0 0 24 24"><path d="M12 3 3.2 7.4 12 11.8l8.8-4.4z"></path><path d="M3.2 12.2 12 16.6l8.8-4.4"></path><path d="M3.2 16.9 12 21.3l8.8-4.4"></path></svg></button>
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
     <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
   <button class="rbtn" id="bCar" title="La mia auto" aria-label="La mia auto">
@@ -431,6 +433,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>Ogni tratto è colorato per <b>raggio di curva</b> misurato sulla geometria reale.</li>
     <li>Con l'audio attivo le curve vengono <b>annunciate</b> circa 4 secondi prima, alla tua
       velocità, con la <b>marcia</b> giusta per l'auto che hai scelto: più vai forte, più l'annuncio anticipa.</li>
+    <li>Il bottone <b>3D</b> corica la mappa in guida e regola lo zoom da solo. Non segue la
+      velocità come fanno i navigatori: comanda la <b>curva che arriva</b>. Sul veloce si corica e
+      allarga, perché serve vedere lontano; su una curva stretta e vicina <b>si rialza a piombo e
+      stringe</b>, perché lì serve vedere la forma della curva — coricata te la nasconderebbe
+      dietro il cofano. Se pizzichi per zoomare, lo zoom torna tuo.</li>
   </ul>
   <ul data-lang="en">
     <li>No route needed: the app <b>locks onto the road</b> you are on and reads the corners ahead,
@@ -439,6 +446,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>Every stretch is coloured by <b>corner radius</b> measured on the real geometry.</li>
     <li>With audio on, corners are <b>called</b> about 4 seconds ahead at your current speed, with
       the right <b>gear</b> for the car you picked: the faster you go, the earlier the call.</li>
+    <li>The <b>3D</b> button tilts the map while driving and sets the zoom on its own. It does not
+      follow speed the way satnavs do: the <b>corner ahead</b> is what rules. Fast and open, it
+      lies down and widens, because you need to see far; with a tight corner close by it
+      <b>stands back up and tightens</b>, because there you need the shape of the corner — tilted,
+      the nose of the car would hide it. Pinch to zoom and the zoom is yours again.</li>
   </ul>
   <h3><span data-lang="it">Portami là</span><span data-lang="en">Take me there</span></h3>
   <p data-lang="it">Cerca un paese e tocca <b>VAI</b>, oppure <b>tieni premuto</b> un punto qualsiasi
@@ -523,7 +535,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '69';
+const APPVER = '72';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -1191,6 +1203,7 @@ const T = {
     navRecalc:'Fuori percorso: ricalcolo…',
     navNoGps:'avvia il GPS per avere le indicazioni',
     navRot:'alla rotatoria,',
+    d3gps:'La vista 3D si accende quando guidi: avvia il GPS.',
     navWarn:'Nei dati non ci sono i divieti di svolta né gli accessi privati, e le autostrade non sono nella rete: la segnaletica vince sempre su di me.',
     navDest:'destinazione',
   },
@@ -1241,6 +1254,7 @@ const T = {
     navRecalc:'Off route: recalculating…',
     navNoGps:'start GPS to get the directions',
     navRot:'at the roundabout,',
+    d3gps:'The 3D view kicks in while driving: start GPS.',
     navWarn:'The data has no turn restrictions and no private access, and motorways are not in the network: road signs always beat me.',
     navDest:'destination',
   },
@@ -1249,6 +1263,9 @@ let L='it';
 const tr=()=>T[L];
 const S = {
   cx:0, cy:0, scale:0.02, rot:0,
+  pitch:0,            // inclinazione della camera: 0 = a piombo, ~1,05 rad = quasi radente
+  d3:false,           // vista guida 3D: inclinazione + zoom automatici
+  zoomLibero:false,   // l'utente ha pizzicato: da qui in poi lo zoom è suo, non mio
   mode:'free', audio:false, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
   dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
@@ -1267,10 +1284,11 @@ try{
   if(typeof st.cal==='number')S.cal=st.cal;
   if(typeof st.legal==='boolean')S.legal=st.legal;
   if(st.audio)S.audio=true;
+  if(st.d3)S.d3=true;
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,legal:S.legal,audio:S.audio,lang:L}))}catch(e){}};
+  {car:S.car,style:S.style,cal:S.cal,legal:S.legal,audio:S.audio,d3:S.d3,lang:L}))}catch(e){}};
 
 /* velocità (km/h) per 1000 giri, per marcia */
 function gearKmh(){ const c=CARS[S.car]; return c.g.map(r=>r*S.cal); }
@@ -1316,22 +1334,166 @@ function resize(){
 }
 addEventListener('resize',resize);resize();
 
+/* ============ camera ============
+   Canvas 2D sa fare solo trasformazioni AFFINI: la prospettiva è una divisione per
+   la profondità e con `setTransform` non si ottiene, punto. Quindi in vista inclinata
+   i punti si proiettano a mano, uno per uno. Costa poco perché in guida si inquadrano
+   poche centinaia di metri; la cache dei tracciati serve quando si guarda la regione
+   intera da fermo, ed è lì che resta.
+
+   Il modello è una camera che ORBITA attorno al centro dello schermo, non che ruota
+   su sé stessa: ruotandola sul posto il punto centrale scivola via, e a 60° finisce
+   fuori dallo schermo (f·tan 60° = più di mille pixel). Orbitando, il centro resta
+   fermo a qualunque inclinazione.
+
+   Con inclinazione 0 le formule tornano IDENTICHE a quelle piane di prima — è voluto:
+   così l'inclinazione può crescere da zero senza nessun salto, e c'è un solo modello
+   da tenere in testa. Con R = f/scala:
+       profondità = Y·sin p + R
+       sx = W/2 + f·X/profondità
+       sy = H/2 − f·Y·cos p/profondità
+   dove X è a destra e Y in avanti, in metri veri rispetto al centro. */
+const CAM = {c:1, s:0, cx:0, cy:0, f:800, R:800, sp:0, cp:1, on:false};
+const NEAR = 0.06;                       // si taglia sotto questa frazione di R
+function camAggiorna(){
+  CAM.c=Math.cos(S.rot); CAM.s=Math.sin(S.rot);
+  CAM.cx=S.cx; CAM.cy=S.cy;
+  CAM.f=Math.max(360,H);                 // focale in pixel: campo verticale ~53°
+  CAM.R=CAM.f/S.scale;                   // a inclinazione 0 la scala resta S.scale
+  CAM.sp=Math.sin(S.pitch); CAM.cp=Math.cos(S.pitch);
+  CAM.on=S.pitch>0.01;
+}
+function camXY(x,y){                     // mondo -> metri camera (X destra, Y avanti)
+  const ax=x-CAM.cx, ay=y-CAM.cy;
+  return [ax*CAM.c+ay*CAM.s, -ax*CAM.s+ay*CAM.c];
+}
+/* Ritorna null quando il punto è dietro la camera. I chiamanti in spazio schermo
+   devono saltarlo: senza il taglio la divisione cambia segno e sputa un punto
+   dall'altra parte dello schermo — è il modo classico di sbagliare la prospettiva. */
 function w2s(x,y){
-  const dx=(x-S.cx)*S.scale, dy=-(y-S.cy)*S.scale;
-  const c=Math.cos(S.rot), s=Math.sin(S.rot);
-  return [W/2+dx*c-dy*s, H/2+dx*s+dy*c];
+  if(!CAM.on){
+    const dx=(x-S.cx)*S.scale, dy=-(y-S.cy)*S.scale;
+    const c=Math.cos(S.rot), s=Math.sin(S.rot);
+    return [W/2+dx*c-dy*s, H/2+dx*s+dy*c];
+  }
+  const ax=x-CAM.cx, ay=y-CAM.cy;
+  const X=ax*CAM.c+ay*CAM.s, Y=-ax*CAM.s+ay*CAM.c;
+  const d=Y*CAM.sp+CAM.R;
+  if(d<CAM.R*NEAR) return null;
+  return [W/2+CAM.f*X/d, H/2-CAM.f*Y*CAM.cp/d];
 }
 function s2w(px,py){
-  const rx=px-W/2, ry=py-H/2, c=Math.cos(-S.rot), s=Math.sin(-S.rot);
-  return [S.cx+(rx*c-ry*s)/S.scale, S.cy-(rx*s+ry*c)/S.scale];
+  if(!CAM.on){
+    const rx=px-W/2, ry=py-H/2, c=Math.cos(-S.rot), s=Math.sin(-S.rot);
+    return [S.cx+(rx*c-ry*s)/S.scale, S.cy-(rx*s+ry*c)/S.scale];
+  }
+  // sopra l'orizzonte non c'è nessun punto a terra: si tiene il denominatore appena
+  // positivo invece di restituire null, così chi trascina la mappa non si rompe
+  const a=(py-H/2)/CAM.f;
+  const den=Math.max(0.02, CAM.cp+a*CAM.sp);
+  const Y=-a*CAM.R/den, d=Y*CAM.sp+CAM.R, X=(px-W/2)*d/CAM.f;
+  return [CAM.cx+X*CAM.c-Y*CAM.s, CAM.cy+X*CAM.s+Y*CAM.c];
 }
+/* In vista inclinata il terreno visibile è un trapezio che va fino all'orizzonte:
+   preso alla lettera darebbe decine di migliaia di celle. Si limita a quanto serve
+   davvero vedere, che è la stessa distanza su cui è tarato lo zoom. */
+function vista3d(){ return Math.max(700, Math.min(4000, S.v*16+500)); }
 function viewBounds(){
   let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12;
-  for(const [px,py] of [[0,0],[W,0],[0,H],[W,H]]){
+  const pren=(x,y)=>{ if(x<x0)x0=x; if(y<y0)y0=y; if(x>x1)x1=x; if(y>y1)y1=y };
+  if(!CAM.on){
+    for(const [px,py] of [[0,0],[W,0],[0,H],[W,H]]){ const [x,y]=s2w(px,py); pren(x,y) }
+    return [x0,y0,x1,y1];
+  }
+  const lim=vista3d();
+  for(const [px,py] of [[0,H],[W,H],[0,H*0.5],[W,H*0.5],[0,0],[W,0]]){
     const [x,y]=s2w(px,py);
-    if(x<x0)x0=x; if(y<y0)y0=y; if(x>x1)x1=x; if(y>y1)y1=y;
+    const [X,Y]=camXY(x,y);
+    if(Y>lim){                            // riporta il punto lontano al limite
+      const k=lim/Math.max(1,Y);
+      pren(CAM.cx+(X*k)*CAM.c-(Y*k)*CAM.s, CAM.cy+(X*k)*CAM.s+(Y*k)*CAM.c);
+    } else pren(x,y);
   }
   return [x0,y0,x1,y1];
+}
+
+/* ---- tracciati in prospettiva -------------------------------------------------
+   Qui i Path2D non si possono mettere in cache: cambiano a ogni fotogramma perché
+   cambia il punto di vista. Va bene lo stesso — in guida si inquadrano poche
+   centinaia di metri, e con la densità stradale vera sono qualche centinaio di punti.
+   La cache serve dall'altra parte, quando si guarda la regione intera da fermo, e
+   quella strada resta com'era.
+
+   Le larghezze si dividono in tre fasce di profondità: senza, il fondo dell'inquadratura
+   diventa un tappeto di colore pieno perché tutte le strade restano spesse uguali. */
+const FASCE=[1, 0.68, 0.44];
+function fasciaDi(d){ return d<CAM.R*1.7 ? 0 : d<CAM.R*3.4 ? 1 : 2 }
+/* Proietta una polilinea tagliandola sul piano vicino. Il taglio è la parte che tutti
+   sbagliano la prima volta: se un pezzo di strada passa DIETRO la camera e lo si
+   proietta lo stesso, la divisione cambia segno e disegna una riga enorme di traverso. */
+function traccia(P, xy, a, b){
+  const near=CAM.R*NEAR;
+  let px=0, py=0, pd=0, giu=true;
+  for(let i=a;i<=b;i++){
+    const ax=xy[2*i]-CAM.cx, ay=xy[2*i+1]-CAM.cy;
+    const X=ax*CAM.c+ay*CAM.s, Y=-ax*CAM.s+ay*CAM.c;
+    const d=Y*CAM.sp+CAM.R;
+    if(d<near){
+      if(!giu && pd>=near){                    // esce: taglia sul piano vicino
+        const t=(pd-near)/(pd-d);
+        const cx2=px+(X-px)*t, cy2=py+(Y-py)*t;
+        P.lineTo(W/2+CAM.f*cx2/near, H/2-CAM.f*cy2*CAM.cp/near);
+      }
+      px=X; py=Y; pd=d; giu=true; continue;
+    }
+    if(giu && pd<near && pd!==0){              // rientra: parti dal taglio
+      const t=(near-pd)/(d-pd);
+      const cx2=px+(X-px)*t, cy2=py+(Y-py)*t;
+      P.moveTo(W/2+CAM.f*cx2/near, H/2-CAM.f*cy2*CAM.cp/near);
+      giu=false;
+    }
+    const sx=W/2+CAM.f*X/d, sy=H/2-CAM.f*Y*CAM.cp/d;
+    if(giu){ P.moveTo(sx,sy); giu=false } else P.lineTo(sx,sy);
+    px=X; py=Y; pd=d;
+  }
+}
+/* Tutta la rete inquadrata, proiettata e divisa per classe di curva e fascia. */
+function tracciati3d(c0,c1,r0,r1){
+  const paths=[], grey=[new Path2D(),new Path2D(),new Path2D()];
+  for(let k=0;k<CLS.length;k++) paths.push([new Path2D(),new Path2D(),new Path2D()]);
+  const visti=new Set(), lim=vista3d();
+  for(let cx=c0;cx<=c1;cx++) for(let cy=r0;cy<=r1;cy++){
+    const kk=ckey(cx,cy);
+    const ids=GRID.get(kk);
+    if(ids) for(const id of ids){
+      if(visti.has(id)) continue;
+      visti.add(id);
+      const e=E[id], xy=e.xy;
+      // fascia dal punto di mezzo: basta, e costa una proiezione invece di np
+      const m=(e.np>>1)*2;
+      const ax=xy[m]-CAM.cx, ay=xy[m+1]-CAM.cy;
+      const Y=-ax*CAM.s+ay*CAM.c;
+      if(Y>lim*1.25) continue;                 // troppo lontano per contare qualcosa
+      const f=fasciaDi(Y*CAM.sp+CAM.R);
+      let a=0;
+      for(let n=0;n<e.runs.length;n+=2){
+        traccia(paths[e.runs[n+1]][f], xy, a, e.runs[n]);
+        a=e.runs[n];
+      }
+    }
+    const gids=GGRID.get(kk);
+    if(gids && S.scale>0.35) for(const gi of gids){
+      if(visti.has('g'+gi)) continue;
+      visti.add('g'+gi);
+      const g=GREY[gi], np=g.length>>1;
+      const m=(np>>1)*2;
+      const ax=g[m]-CAM.cx, ay=g[m+1]-CAM.cy;
+      const Y=-ax*CAM.s+ay*CAM.c;
+      if(Y>lim) continue;
+      traccia(grey[fasciaDi(Y*CAM.sp+CAM.R)], g, 0, np-1);
+    }
+  }
+  return {paths, grey};
 }
 
 /* cache di Path2D per cella */
@@ -1391,15 +1553,22 @@ function backbone(){
   BACKBONE=paths; return paths;
 }
 function draw(){
+  camAggiorna();
   ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+  const [bx0,by0,bx1,by1]=viewBounds();
+  const cc0=Math.floor(bx0/CELL), cc1=Math.floor(bx1/CELL);
+  const rr0=Math.floor(by0/CELL), rr1=Math.floor(by1/CELL);
+  if(CAM.on) disegna3d(cc0,cc1,rr0,rr1); else disegnaPiano(cc0,cc1,rr0,rr1);
+  disegnaSopra();
+}
+
+/* vista dall'alto: la strada di sempre, coi tracciati in cache per cella */
+function disegnaPiano(c0,c1,r0,r1){
   ctx.save();
   ctx.translate(W/2,H/2); ctx.rotate(S.rot); ctx.scale(S.scale,-S.scale); ctx.translate(-S.cx,-S.cy);
   ctx.lineCap='round'; ctx.lineJoin='round';
   const pw = p => p/S.scale;
-  const [x0,y0,x1,y1]=viewBounds();
-  const c0=Math.floor(x0/CELL), c1=Math.floor(x1/CELL);
-  const r0=Math.floor(y0/CELL), r1=Math.floor(y1/CELL);
   const nCells=(c1-c0+1)*(r1-r0+1);
 
   if(nCells<=420){
@@ -1457,13 +1626,65 @@ function draw(){
     ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
   }
   ctx.restore();
+}
 
-  // autovelox (spazio schermo)
+/* vista inclinata: tutto proiettato a mano, tutto in spazio schermo */
+function disegna3d(c0,c1,r0,r1){
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  const T=tracciati3d(c0,c1,r0,r1);
+  if(S.scale>0.35){
+    ctx.strokeStyle='#1b2229';
+    for(let f=2;f>=0;f--){ ctx.lineWidth=2.2*FASCE[f]; ctx.stroke(T.grey[f]) }
+  }
+  ctx.strokeStyle=CLS[7].col;
+  for(let f=2;f>=0;f--){ ctx.lineWidth=2.6*FASCE[f]; ctx.stroke(T.paths[7][f]) }
+  for(let k=6;k>=0;k--){
+    ctx.strokeStyle=CLS[k].col;
+    for(let f=2;f>=0;f--){ ctx.lineWidth=(k<=2?4.4:3.8)*FASCE[f]; ctx.stroke(T.paths[k][f]) }
+  }
+  // percorso: solo il pezzo inquadrato, non tutti gli 87 km a ogni fotogramma
+  if(S.nav){
+    const nv=S.nav, P=new Path2D(), lim=vista3d()*1.6, da=Math.max(0,nv.k-2);
+    for(let j=da;j<nv.archi.length;j++){
+      if(nv.c0[j]-nv.c0[da]>lim) break;
+      traccia(P, nv.archi[j].e.xy, 0, nv.archi[j].e.np-1);
+    }
+    ctx.strokeStyle='rgba(138,109,255,.30)'; ctx.lineWidth=13; ctx.stroke(P);
+    ctx.strokeStyle='#8a6dff';               ctx.lineWidth=4.6; ctx.stroke(P);
+  }
+  if(S.snap && S.mode!=='free'){
+    const P=new Path2D();
+    for(const seg of S.aheadSegs||[]) traccia(P, seg.e.xy, seg.i0, seg.i1);
+    ctx.strokeStyle='rgba(79,214,255,.20)'; ctx.lineWidth=10; ctx.stroke(P);
+  }
+  /* Il fondo dell'inquadratura sfuma nel colore di sfondo: senza, le strade lontane
+     si schiacciano una sull'altra e diventano un tappeto. */
+  const g=ctx.createLinearGradient(0,0,0,H*0.44);
+  g.addColorStop(0,BG); g.addColorStop(1,BG+'00');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H*0.44);
+  // posizione: proiettata, e l'orientamento si prende proiettando un punto davanti
+  if(S.pos && S.mode!=='free'){
+    const p0=S.dp||S.pos, hh=(S.dhd!=null?S.dhd:S.hd);
+    const p=w2s(p0[0],p0[1]);
+    if(p){
+      const q = hh!=null ? w2s(p0[0]+Math.cos(hh)*14, p0[1]+Math.sin(hh)*14) : null;
+      const ang = q ? Math.atan2(q[1]-p[1], q[0]-p[0]) : -Math.PI/2;
+      ctx.save(); ctx.translate(p[0],p[1]); ctx.rotate(ang+Math.PI/2);
+      ctx.fillStyle=ACCENT; ctx.strokeStyle='#0c1013'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(0,-13); ctx.lineTo(8,9); ctx.lineTo(0,4.5); ctx.lineTo(-8,9);
+      ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+  }
+}
+
+/* roba in spazio schermo, uguale nelle due viste */
+function disegnaSopra(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   if(S.scale>0.14){
     const r=S.scale>0.8?11:8;
     for(const c of CAMS){
-      const [sx,sy]=w2s(c.x,c.y);
+      const p=w2s(c.x,c.y); if(!p) continue;      // dietro la camera in vista inclinata
+      const [sx,sy]=p;
       if(sx<-20||sy<-20||sx>W+20||sy>H+20) continue;
       ctx.fillStyle='#ff8a1e'; ctx.strokeStyle='#0c1013'; ctx.lineWidth=2;
       ctx.beginPath(); ctx.arc(sx,sy,r,0,7); ctx.fill(); ctx.stroke();
@@ -1480,8 +1701,9 @@ function draw(){
 
   // bandierina della destinazione (spazio schermo: non deve rimpicciolire con lo zoom)
   if(S.nav){
-    const [sx,sy]=w2s(S.nav.dest.x,S.nav.dest.y);
-    if(sx>-40&&sy>-40&&sx<W+40&&sy<H+40){
+    const pd=w2s(S.nav.dest.x,S.nav.dest.y);
+    const [sx,sy]=pd||[-999,-999];
+    if(pd && sx>-40&&sy>-40&&sx<W+40&&sy<H+40){
       ctx.strokeStyle='#8a6dff'; ctx.lineWidth=2.4; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx,sy-19); ctx.stroke();
       ctx.fillStyle='#8a6dff';
@@ -1498,7 +1720,8 @@ function draw(){
   const maxRank = S.scale>0.9?3 : S.scale>0.35?2 : S.scale>0.1?1 : 0;
   for(const p of PLACES){
     if(p.r>maxRank) continue;
-    const [sx,sy]=w2s(p.x,p.y);
+    const q=w2s(p.x,p.y); if(!q) continue;
+    const [sx,sy]=q;
     if(sx<-90||sy<-20||sx>W+40||sy>H+20) continue;
     ctx.fillStyle=INK2; ctx.beginPath(); ctx.arc(sx,sy,2.2,0,7); ctx.fill();
     ctx.fillStyle='rgba(16,20,24,.7)';
@@ -1532,6 +1755,14 @@ function draw(){
    i limiti continuano a lavorare sul dato buono, non su quello ammorbidito. */
 let camT = 0;
 function cameraTick(now){
+  /* In vista mappa si torna sempre a piombo: una mappa inclinata da esplorare è
+     scomoda, e da piatta si ridisegna con la cache dei tracciati invece di
+     proiettare tutto a mano. */
+  if((S.mode==='free' || !S.d3) && S.pitch>0.001){
+    S.pitch=Math.max(0, S.pitch-0.06);
+    if(S.pitch<0.002) S.pitch=0;
+    S.need=true;
+  }
   if(S.mode==='free' || !S.pos) return false;
   if(!S.dp){ S.dp=[S.pos[0],S.pos[1]]; S.dhd=S.hd; camT=now; S.cx=S.dp[0]; S.cy=S.dp[1]; return true }
   const dt = Math.min(2.5, (now-(S.fixT||now))/1000);   // se il GPS tace, non estrapolare all'infinito
@@ -1558,9 +1789,42 @@ function cameraTick(now){
   S.cx = S.dp[0] + (S.dhd!=null ? Math.cos(S.dhd)*S.avanti : 0);
   S.cy = S.dp[1] + (S.dhd!=null ? Math.sin(S.dhd)*S.avanti : 0);
   if(S.mode==='follow' && S.dhd!=null && S.v>1.2) S.rot=S.dhd-Math.PI/2;
+
+  /* Zoom e inclinazione automatici. Google e Waze li legano alla sola VELOCITÀ: vai
+     forte, allarga. Per un copilota da rally è metà del ragionamento, e in curva è
+     proprio sbagliato — con una curva stretta vicina la vista coricata te la nasconde
+     dietro il cofano, mentre dall'alto il raggio si legge benissimo, che è tutto il
+     senso di quest'app. Quindi comanda la curva che arriva, non la velocità: più è
+     stretta e vicina, più la camera si rialza a piombo e stringe. È l'opposto di
+     quello che fanno i navigatori, ed è giusto qui.
+     Le due cose si muovono insieme perché rispondono alla stessa domanda: mi serve
+     vedere LONTANO o mi serve vedere la FORMA di quello che arriva. */
+  let cambiata=false;
+  if(S.d3){
+    const vista=Math.max(180, S.v*9);                       // ~9 secondi di strada
+    let scalaT=Math.max(0.30, Math.min(3.0, (H*0.55)/vista));
+    let stretta=0;
+    const a=S.ahead && S.ahead[0];
+    if(a){
+      const vicino=1-Math.min(1, a.dist/Math.max(110, S.v*6));
+      const dura=1-Math.min(1, a.c.r/200);                  // raggio piccolo = curva dura
+      stretta=Math.max(0, vicino*dura);
+    }
+    const pitchT=1.02*(1-stretta)*Math.min(1, S.v/6);       // da fermi piatta
+    if(stretta>0.35) scalaT*=1+stretta*0.5;                 // e sul tecnico stringe
+    const kk=Math.min(1, k*0.75);                           // più lenta della camera:
+    const dpi=(pitchT-S.pitch)*kk;                          // se no pompa a ogni curva
+    S.pitch+=dpi;
+    if(Math.abs(dpi)>1e-4) cambiata=true;
+    if(!S.zoomLibero){
+      const ds=(scalaT-S.scale)*kk*0.5;
+      S.scale+=ds;
+      if(Math.abs(ds)>1e-4) cambiata=true;
+    }
+  }
   // da fermi non c'è niente da animare: si smette di ridisegnare invece di
   // bruciare batteria a 60 fps col telefono in tasca
-  return Math.abs(ddx)+Math.abs(ddy) > 0.05 || Math.abs(dh) > 0.0004
+  return cambiata || Math.abs(ddx)+Math.abs(ddy) > 0.05 || Math.abs(dh) > 0.0004
       || Math.abs(avantiTarget-S.avanti) > 0.5;
 }
 /* Frequenza davvero raggiunta. `requestAnimationFrame` segue la frequenza dello
@@ -2129,7 +2393,7 @@ async function gpsWhy(){
 }
 function startGps(){
   if(!('geolocation' in navigator)){toast(tr().gpsNone);return}
-  setMode('follow'); S.said.clear(); S.scale=Math.max(S.scale,1.5); wakeOn();
+  setMode('follow'); S.said.clear(); S.scale=Math.max(S.scale,1.5); S.zoomLibero=false; wakeOn();
   toast(tr().gpsSearch,2500);
   S.watchId=navigator.geolocation.watchPosition(p=>{
     const [x,y]=toXY(p.coords.longitude,p.coords.latitude);
@@ -2223,6 +2487,13 @@ function setMode(m){
     nEl.classList.remove('show'); if(S.wake){S.wake.release().catch(()=>{});S.wake=null} }
   S.need=true;
 }
+const b3d=document.getElementById('b3d');
+b3d.onclick=()=>{
+  S.d3=!S.d3; S.zoomLibero=false;          // riaccendendola lo zoom torna automatico
+  b3d.classList.toggle('on',S.d3); save(); S.need=true;
+  if(S.d3 && S.mode==='free') toast(tr().d3gps,4000);
+};
+b3d.classList.toggle('on',S.d3);
 bGps.onclick=()=>S.mode==='follow'?setMode('free'):startGps();
 if(bDemo) bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
 bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
@@ -2553,6 +2824,7 @@ cv.addEventListener('pointermove',e=>{
   }else if(ptrs.size===2&&pinch){
     const[a,b]=[...ptrs.values()], mid=[(a[0]+b[0])/2,(a[1]+b[1])/2];
     const before=s2w(mid[0],mid[1]);
+    S.zoomLibero=true;                     // da qui lo zoom è suo: non glielo tolgo più
     S.scale=Math.max(0.004,Math.min(12,pinch.s*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch.d));
     const after=s2w(mid[0],mid[1]);
     S.cx+=before[0]-after[0]; S.cy+=before[1]-after[1]; S.need=true;
@@ -2563,6 +2835,7 @@ cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
 cv.addEventListener('wheel',e=>{
   e.preventDefault();
   const before=s2w(e.clientX,e.clientY);
+  S.zoomLibero=true;
   S.scale=Math.max(0.004,Math.min(12,S.scale*Math.exp(-e.deltaY*0.0016)));
   const after=s2w(e.clientX,e.clientY);
   S.cx+=before[0]-after[0]; S.cy+=before[1]-after[1]; S.need=true;
