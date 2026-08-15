@@ -314,7 +314,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <div id="gearBox">
     <h3><span data-lang="it">Rapporti</span><span data-lang="en">Ratios</span></h3>
     <div class="slider">
-      <input type="range" id="calSlider" min="25" max="70" step="0.5">
+      <input type="range" id="calSlider" min="25" max="85" step="0.5">
       <div class="val"><span id="calVal">40</span> <small style="font-size:9px;color:var(--ink2)">km/h ×1000g in <span id="calGear">6ª</span></small></div>
     </div>
     <div class="gears" id="gearTable"></div>
@@ -704,6 +704,31 @@ const CARS = {
             "diesel the sweet spot is 2,000-4,600 rpm, far lower than the MiTo's, and the suggested "+
             "gears are taller. Reference grip is lower than the MiTo's (tall, heavy estate on "+
             "everyday tyres), so the same radii come out slower."},
+  c43:{nm:'Mercedes-AMG C43', sub:'2019 · V6 biturbo · 9 marce · 4MATIC',
+       /* 9G-TRONIC 725.0: 5,35 · 3,24 · 2,25 · 1,64 · 1,21 · 1,00 · 0,865 · 0,717 · 0,601,
+          finale 3,06, normalizzati sulla 9ª. Con 255/35 R19 dietro (circonferenza 2,077 m)
+          la 9ª fa ~68 km/h ogni 1000 giri: è il valore di partenza del cursore.
+          Limitatore 6.700 come indicato da Tiago. Il fondo scala parte da 3.000 perché
+          il V6 biturbo ha coppia già a 2.000, ma in guida allegra sotto i 3.000 non
+          risponde come vuoi. Coi paddle la marcia la scegli tu, quindi si suggerisce. */
+       auto:false, n:9, ref:68, grip:1.05, boost:3000, rpmLim:6700,
+       g:[0.1123,0.1855,0.2671,0.3665,0.4967,0.6010,0.6948,0.8382,1.0],
+       d_it:"3.0 V6 biturbo M276, 4MATIC, cambio AMG a 9 rapporti coi paddle. Preparazione in "+
+            "corso: aspirazione Weistec High Flow, scarico Supersprint completo, downpipe 200 "+
+            "celle, intercooler Wagner maggiorato, iniezione acqua-metanolo Weistec, limitatore "+
+            "a 6.700 giri. Di serie sono 390 CV e 520 Nm; con questa lista, e con la mappatura "+
+            "che l'acqua-metanolo richiede, si sta indicativamente sui 470-500 CV e 650-700 Nm — "+
+            "numeri da confermare al banco, il copilota non li usa per le note. Quello che usa "+
+            "sono i rapporti e la fascia utile: trazione integrale e gomme larghe alzano la tenuta "+
+            "di riferimento sopra la MiTo, quindi gli stessi raggi escono con numeri più alti.",
+       d_en:"3.0 V6 biturbo M276, 4MATIC, 9-speed AMG gearbox with paddles. Build in progress: "+
+            "Weistec High Flow intake, full Supersprint exhaust, 200-cell downpipes, upgraded "+
+            "Wagner intercooler, Weistec water-methanol injection, 6,700 rpm limiter. Stock is "+
+            "390 hp and 520 Nm; with that list, and the calibration water-meth requires, you are "+
+            "roughly at 470-500 hp and 650-700 Nm — dyno figures to confirm, and the co-driver "+
+            "does not use them for the calls. What it does use are the ratios and the usable band: "+
+            "all-wheel drive and wide tyres put reference grip above the MiTo's, so the same radii "+
+            "come out faster."},
   m6: {nm:'Altra auto', sub:'cambio manuale 6 marce',
        auto:false, n:6, g:[0.190,0.3325,0.490,0.6425,0.810,1.0], ref:40,
        boost:3000, rpmLim:6500, grip:0.92,
@@ -748,7 +773,7 @@ const T = {
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale'},
     roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo',
     localCall:'Strada locale', localSub:'strada urbana: nessuna nota di curva, limite dedotto',
-    gWords:['prima','seconda','terza','quarta','quinta','sesta','settima'],
+    gWords:['prima','seconda','terza','quarta','quinta','sesta','settima','ottava','nona'],
     cWords:['tornante','uno','due','tre','quattro','cinque','sei'],
     sideW:['destra','sinistra'], hairW:'tornante a ',
     gpsSearch:'Cerco il GPS…',
@@ -779,7 +804,7 @@ const T = {
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road'},
     roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active',
     localCall:'Local road', localSub:'urban street: no corner calls, limit inferred',
-    gWords:['first','second','third','fourth','fifth','sixth','seventh'],
+    gWords:['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth'],
     cWords:['hairpin','one','two','three','four','five','six'],
     sideW:['right','left'], hairW:'hairpin ',
     gpsSearch:'Looking for GPS…',
@@ -807,7 +832,7 @@ const S = {
   cx:0, cy:0, scale:0.02, rot:0,
   mode:'free', audio:false, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
-  dp:null, dhd:null,  // posizione e direzione *mostrate*: inseguono pos/hd senza scatti
+  dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
   car:'m5', cal:36, style:'strada', legal:true,
   snap:null,          // {e, i, t, dir, dist}
@@ -1070,13 +1095,17 @@ function cameraTick(now){
      marcia, così il veicolo finisce nel terzo basso e lo schermo mostra la strada
      che deve ancora arrivare invece di quella già fatta. È quello che fanno tutti
      i navigatori, e con le note di curva conta il doppio. Da fermi si ricentra. */
-  const avanti = (S.mode!=='free' && S.dhd!=null && S.v>2) ? (H*0.20)/S.scale : 0;
-  S.cx = S.dp[0] + (avanti ? Math.cos(S.dhd)*avanti : 0);
-  S.cy = S.dp[1] + (avanti ? Math.sin(S.dhd)*avanti : 0);
+  const avantiTarget = (S.mode!=='free' && S.dhd!=null && S.v>2) ? (H*0.20)/S.scale : 0;
+  // anche questo va attenuato: passando di colpo da 200 m a zero, la mappa
+  // sobbalzerebbe ogni volta che ci si ferma a un semaforo
+  S.avanti += (avantiTarget - S.avanti) * k;
+  S.cx = S.dp[0] + (S.dhd!=null ? Math.cos(S.dhd)*S.avanti : 0);
+  S.cy = S.dp[1] + (S.dhd!=null ? Math.sin(S.dhd)*S.avanti : 0);
   if(S.mode==='follow' && S.dhd!=null && S.v>1.2) S.rot=S.dhd-Math.PI/2;
   // da fermi non c'è niente da animare: si smette di ridisegnare invece di
   // bruciare batteria a 60 fps col telefono in tasca
-  return Math.abs(ddx)+Math.abs(ddy) > 0.05 || Math.abs(dh) > 0.0004;
+  return Math.abs(ddx)+Math.abs(ddy) > 0.05 || Math.abs(dh) > 0.0004
+      || Math.abs(avantiTarget-S.avanti) > 0.5;
 }
 function loop(now){
   if(cameraTick(now||performance.now())) S.need=true;
@@ -1350,7 +1379,7 @@ function updateNote(){
   nGear.hidden = isAuto();
   if(!isAuto()){
     const g=bestGear(kmh);
-    gearV.textContent = L==='it' ? g+'ª' : g+['st','nd','rd','th','th','th','th'][g-1];
+    gearV.textContent = L==='it' ? g+'ª' : g+['st','nd','rd','th','th','th','th','th','th'][g-1];
     nGear.style.borderColor = flat ? CLS[6].col : 'var(--line)';
   }
   if(a.inside){nDist.textContent=t0.inC;nLab.textContent=t0.inC2}
@@ -1372,7 +1401,9 @@ function updateNote(){
       say(t);
     }
   }
-  if(S.said.size>400) S.said.clear();
+  // stessa logica della cache dei tracciati: svuotare tutto vorrebbe dire che una
+  // curva ancora davanti puo' essere riannunciata. Si buttano solo le piu' vecchie.
+  if(S.said.size>400){ let n=200; for(const k of S.said){ if(n--<=0) break; S.said.delete(k) } }
 }
 
 /* ============ posizione ============ */
@@ -1716,7 +1747,10 @@ function renderCar(){
   if(!isAuto()){
     calSlider.value=S.cal; calVal.textContent=S.cal.toFixed(0);
     calGear.textContent=CARS[S.car].n+'ª';
-    gearTable.style.gridTemplateColumns='repeat('+CARS[S.car].n+',1fr)';
+    // con 9 rapporti su un telefono nove colonne sarebbero 35 px l'una e non si
+    // legge niente: da 7 in su si lascia decidere alla griglia quante ce ne stanno
+    gearTable.style.gridTemplateColumns = CARS[S.car].n > 6
+      ? 'repeat(auto-fit,minmax(62px,1fr))' : 'repeat('+CARS[S.car].n+',1fr)';
     gearTable.innerHTML=gearTableHtml();
   }
   legalChk.checked=S.legal;
