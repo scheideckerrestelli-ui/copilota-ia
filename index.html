@@ -71,6 +71,16 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .results button:last-child{border-bottom:none}
   .results button:hover,.results button:focus{background:var(--panel2)}
   .results .k{font-size:10px;color:var(--ink2);text-transform:uppercase;letter-spacing:.08em;margin-left:6px}
+  /* ogni risultato ha due azioni: guardarlo (il nome) e andarci (la freccia). Un
+     tocco solo che facesse partire la navigazione sarebbe una trappola: cercare un
+     posto sulla mappa e volerci andare sono due intenzioni diverse. */
+  .results .rr{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
+  .results .rr:last-child{border-bottom:none}
+  .results .rr button{border-bottom:none}
+  .results .rr .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .results .rr .go{width:46px;flex:none;padding:0;text-align:center;color:var(--accent);
+    border-left:1px solid var(--line);font-family:var(--font-d);font-size:11px;
+    letter-spacing:.06em}
 
   /* ---- rail ---- */
   .rail{position:fixed;right:8px;top:50%;transform:translateY(-50%);display:flex;
@@ -89,6 +99,30 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     font-size:10.5px;color:var(--ink2);text-align:right;font-variant-numeric:tabular-nums;
     pointer-events:none}
   .scalebar .bar{height:3px;background:var(--ink2);border-radius:2px;margin-top:3px;margin-left:auto}
+
+  /* ---- striscia navigatore ---- */
+  /* Sta in ALTO, sotto la barra di ricerca. Il fondo è della nota di curva, che è il
+     cuore dell'app: l'istruzione di svolta è un altro canale e non deve rubarle il
+     posto né alternarsi con lei nello stesso riquadro. È anche dove la mettono tutti
+     i navigatori, quindi non c'è niente da imparare. */
+  .nav{position:fixed;left:8px;right:8px;top:calc(max(8px,env(safe-area-inset-top)) + 54px);
+    max-width:660px;margin:0 auto;display:none;align-items:center;gap:10px;z-index:7;
+    background:rgba(20,26,32,.98);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
+  .nav.show{display:flex}
+  .nav canvas{width:46px;height:46px;flex:none}
+  .nav .txt{min-width:0;flex:1}
+  .nav .d{font-family:var(--font-d);font-weight:600;font-size:25px;line-height:1;
+    letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .nav .via{margin-top:3px;font-size:11.5px;color:var(--ink2);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .nav .eta{flex:none;text-align:right;font-variant-numeric:tabular-nums;
+    border-left:1px solid var(--line);padding-left:10px}
+  .nav .eta b{display:block;font-family:var(--font-d);font-size:15px;font-weight:600;line-height:1.2}
+  .nav .eta small{font-size:9.5px;letter-spacing:.1em;color:var(--ink2)}
+  .nav .x{flex:none;width:32px;height:32px;border-radius:9px;border:1px solid var(--line);
+    background:none;color:var(--ink2);font-size:15px;line-height:1;cursor:pointer}
+  /* con la striscia aperta il brindello scenderebbe sopra: lo si sposta sotto */
+  body.navon .toast{top:calc(max(8px,env(safe-area-inset-top)) + 118px)}
 
   /* ---- banner nota ---- */
   .note{position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom));
@@ -223,6 +257,10 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     .search{order:3;flex:1 1 100%;max-width:none}
     /* il brindello sotto la barra deve scendere sotto DUE righe, non una */
     .toast{top:calc(env(safe-area-inset-top) + 108px)}
+    /* e la striscia del navigatore pure: la barra qui è a due righe */
+    .nav{top:calc(env(safe-area-inset-top) + 106px)}
+    .nav .d{font-size:21px} .nav canvas{width:40px;height:40px}
+    body.navon .toast{top:calc(env(safe-area-inset-top) + 172px)}
   }
   /* schermi molto stretti: il sottotitolo è la prima cosa sacrificabile */
   @media (max-width:360px){
@@ -294,6 +332,13 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <svg viewBox="0 0 24 24"><path d="M4 6h4M4 12h4M4 18h4"></path><path d="M11 6h9M11 12h9M11 18h9" opacity=".45"></path></svg></button>
   <button class="rbtn" id="bInfo" title="Informazioni" aria-label="Informazioni">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.6v.4"></path></svg></button>
+</div>
+
+<div class="nav" id="nav">
+  <canvas id="navIcon" width="128" height="128"></canvas>
+  <div class="txt"><div class="d" id="navD">—</div><div class="via" id="navVia"></div></div>
+  <div class="eta"><b id="navKm">—</b><small id="navMin"></small></div>
+  <button class="x" id="navX" title="Annulla" aria-label="Annulla">✕</button>
 </div>
 
 <div class="note" id="note">
@@ -381,18 +426,42 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span></h3>
   <ul data-lang="it">
     <li>Nessun percorso da impostare: l'app <b>ti aggancia alla strada</b> su cui sei e legge le
-      curve davanti a te, anche attraverso gli incroci (segue la strada più dritta).</li>
+      curve davanti a te, anche attraverso gli incroci — segue la strada più dritta, oppure il
+      <b>percorso</b> se ne hai impostato uno.</li>
     <li>Ogni tratto è colorato per <b>raggio di curva</b> misurato sulla geometria reale.</li>
     <li>Con l'audio attivo le curve vengono <b>annunciate</b> circa 4 secondi prima, alla tua
       velocità, con la <b>marcia</b> giusta per l'auto che hai scelto: più vai forte, più l'annuncio anticipa.</li>
   </ul>
   <ul data-lang="en">
-    <li>No route to set: the app <b>locks onto the road</b> you are on and reads the corners ahead,
-      through junctions too (it follows the straightest continuation).</li>
+    <li>No route needed: the app <b>locks onto the road</b> you are on and reads the corners ahead,
+      through junctions too — it follows the straightest continuation, or your <b>route</b> if you
+      set one.</li>
     <li>Every stretch is coloured by <b>corner radius</b> measured on the real geometry.</li>
     <li>With audio on, corners are <b>called</b> about 4 seconds ahead at your current speed, with
       the right <b>gear</b> for the car you picked: the faster you go, the earlier the call.</li>
   </ul>
+  <h3><span data-lang="it">Portami là</span><span data-lang="en">Take me there</span></h3>
+  <p data-lang="it">Cerca un paese e tocca <b>VAI</b>, oppure <b>tieni premuto</b> un punto qualsiasi
+     della mappa: il percorso appare in viola e la striscia in alto dice quanto manca alla prossima
+     svolta e in che via si entra. Se sbagli strada, ricalcola da solo dopo qualche secondo. Il
+     percorso è scelto sul <b>tempo</b>, non sui chilometri: preferisce la statale a 90 alla
+     stradina a 50, come faresti tu. I sensi unici sono rispettati.</p>
+  <p data-lang="en">Search for a town and tap <b>GO</b>, or <b>press and hold</b> anywhere on the map:
+     the route shows up in purple and the strip at the top tells you how far the next turn is and
+     which road you are turning into. Take a wrong turn and it recalculates by itself after a few
+     seconds. The route is chosen on <b>time</b>, not distance: it prefers the 90 km/h main road to
+     the 50 km/h lane, exactly as you would. One-way streets are respected.</p>
+  <div class="disc" data-lang="it">Quello che il navigatore <b>non</b> sa: i <b>divieti di svolta</b>
+     e gli <b>accessi privati</b> non sono nei dati (sono relazioni di OpenStreetMap che non
+     vengono estratte), quindi può proporti una svolta vietata o una strada chiusa. Le
+     <b>autostrade non sono nella rete</b>: per un trasferimento lungo resta più veloce un
+     navigatore normale. Qui il percorso serve a portarti sulle strade belle sapendo dove girare,
+     non a battere Google sui tempi.</div>
+  <div class="disc" data-lang="en">What the navigator does <b>not</b> know: <b>turn restrictions</b>
+     and <b>private access</b> are not in the data (they are OpenStreetMap relations that are not
+     extracted), so it may hand you an illegal turn or a closed road. <b>Motorways are not in the
+     network</b>: for a long transfer an ordinary satnav is still faster. The point here is to get
+     you onto the good roads knowing where to turn, not to beat Google on time.</div>
   <h3><span data-lang="it">Installala sul telefono</span><span data-lang="en">Install on your phone</span></h3>
   <p data-lang="it"><b>iPhone</b>: apri in Safari → tasto Condividi → <b>Aggiungi a schermata
      Home</b>. <b>Android</b>: menu ⋮ → <b>Installa app</b>. Parte a tutto schermo, tiene lo
@@ -454,7 +523,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '58';
+const APPVER = '69';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -654,6 +723,180 @@ function calcolaRotta(jDa, jA, limite=400000){
   return {archi, metri, secondi: Math.round(g.get(jA)||0), visti};
 }
 
+/* ---- da dove si parte, dove si arriva ----------------------------------------
+   La rete non è un pezzo solo: accanto alla componente grande ci sono frammenti
+   che l'estratto ha tagliato al bordo o che in OSM non si toccano davvero. `E[0]`
+   in Umbria sta in un frammento da 14 giunzioni mentre la rete vera ne ha 28.386:
+   partire da lì dà "percorso non trovato" senza che sia rotto niente. Non si
+   indovina dal grado — un vicolo cieco della rete buona ha grado 1 come un
+   frammento — si cammina: se da una giunzione si arriva a `soglia` nodi, è la rete
+   grande. Il risultato vale per tutti i nodi visitati, quindi si paga una volta. */
+const COMP_OK = new Set(), COMP_NO = new Set();
+function componenteGrande(j, soglia=300){
+  if(COMP_OK.has(j)) return true;
+  if(COMP_NO.has(j)) return false;
+  const visti=new Set([j]), coda=[j];
+  while(coda.length && visti.size<soglia){
+    const c=coda.pop();
+    for(const id of (JUN.get(c)||[])){
+      const e=E[id], alt = e.j0===c ? e.j1 : e.j0;   // qui il senso unico non conta:
+      if(!visti.has(alt)){ visti.add(alt); coda.push(alt) }   // conta se la strada esiste
+    }
+  }
+  const ok = visti.size>=soglia;
+  for(const v of visti) (ok?COMP_OK:COMP_NO).add(v);
+  return ok;
+}
+/* La giunzione più vicina che stia nella rete principale. */
+function giunzioneVicina(x,y,rad=1500){
+  let best=null;
+  for(const id of nearEdges(x,y,rad)){
+    const e=E[id];
+    for(const j of (e.j0===e.j1?[e.j0]:[e.j0,e.j1])){
+      const p=posGiun(j); if(!p) continue;
+      const d=Math.hypot(p[0]-x,p[1]-y);
+      if(d>rad || (best && d>=best.d)) continue;
+      if(!componenteGrande(j)) continue;
+      best={j,d};
+    }
+  }
+  if(!best && rad<12000) return giunzioneVicina(x,y,rad*3);   // in montagna 1,5 km non bastano
+  return best ? best.j : null;
+}
+/* Si parte dalla giunzione che si ha DAVANTI sulla strada dove si sta viaggiando,
+   non dalla più vicina in assoluto: quella dietro le spalle farebbe nascere il
+   percorso con un'inversione che nessuno ha chiesto. */
+function giunzionePartenza(){
+  if(S.snap){
+    const e=S.snap.e, da = S.snap.dir>0 ? e.j0 : e.j1, j = S.snap.dir>0 ? e.j1 : e.j0;
+    /* Se la strada non si può percorrere nel verso in cui siamo messi — senso unico,
+       oppure direzione dedotta male da fermo, che capita — non si può nemmeno
+       partire di lì: il percorso comincerebbe con un tratto contromano. Si ricade
+       sulla giunzione più vicina. */
+    if(percorribile(e,da) && componenteGrande(j)) return {j, e, verso:S.snap.dir};
+  }
+  const p=S.pos||[S.cx,S.cy];
+  const j=giunzioneVicina(p[0],p[1]);
+  return j==null ? null : {j, e:null, verso:0};
+}
+
+/* ---- manovre ----------------------------------------------------------------
+   L'angolo fra la direzione con cui si esce da un arco e quella con cui si entra
+   nel successivo. Positivo = sinistra (x a est, y a nord, atan2 cresce in senso
+   antiorario). Sotto i ~22° la strada prosegue e non c'è niente da dire — tranne
+   quando alla giunzione c'è un'altra strada che esce quasi uguale: lì serve
+   "tieni la destra", ed è dove si sbaglia davvero, non nelle svolte nette. */
+/* La direzione con cui si imbocca o si lascia un arco, mediata su ~20 m invece che
+   presa dal primo segmento della polilinea. Misurato: col singolo segmento uscivano
+   117 manovre su 87 km, una ogni 750 m, perché all'incrocio OSM mette spesso un
+   segmento di pochi metri e quel pezzetto da solo inventa svolte che non esistono. */
+function hdTratto(e, daInizio, span=20){
+  const L=e.len;
+  const p0=posAt(e, daInizio?0:Math.max(0,L-span));
+  const p1=posAt(e, daInizio?Math.min(L,span):L);
+  const dx=p1[0]-p0[0], dy=p1[1]-p0[1];
+  if(Math.abs(dx)+Math.abs(dy)<1e-6) return segHeading(e, daInizio?0:e.np-2);
+  return Math.atan2(dy,dx);
+}
+function hdUscita(a){ return a.verso>0 ? hdTratto(a.e,false) : hdTratto(a.e,true)+Math.PI }
+function hdIngresso(a){ return a.verso>0 ? hdTratto(a.e,true) : hdTratto(a.e,false)+Math.PI }
+function tipoDaAngolo(ang){
+  const A=Math.abs(ang);
+  if(A>2.55) return 'inv';
+  if(A>1.75) return ang>0?'sxs':'dxs';
+  if(A>0.38) return ang>0?'sx':'dx';
+  return ang>0?'sxk':'dxk';
+}
+function costruisciManovre(archi){
+  const c0=[]; let cum=0;
+  for(let k=0;k<archi.length;k++){ c0[k]=cum; cum+=archi[k].e.len }
+  const grezze=[];
+  for(let k=0;k+1<archi.length;k++){
+    const a=archi[k], b=archi[k+1];
+    const jn = a.verso>0 ? a.e.j1 : a.e.j0;
+    const usc=hdUscita(a), ang=angDiff(hdIngresso(b), usc);
+    const A=Math.abs(ang);
+    /* Stessa strada che prosegue: è la strada che curva, non un incrocio da dire.
+       In paese una via mantiene il nome anche svoltando ad angolo retto, quindi
+       sopra i ~50° si annuncia lo stesso. */
+    if(a.e.via && b.e.via===a.e.via && A<0.9) continue;
+    let tipo=null;
+    if(A>0.38) tipo=tipoDaAngolo(ang);
+    else {
+      /* Quasi dritto: conta solo se alla giunzione c'è un'altra strada che esce
+         quasi uguale. È lì che si sbaglia — non nelle svolte nette. Il lato si
+         decide rispetto all'ALTRO ramo, non rispetto a dritto: se sono tutti e due
+         a destra, "tieni la destra" sarebbe falso. */
+      let alt=null;
+      for(const id of (JUN.get(jn)||[])){
+        if(id===a.e.id||id===b.e.id) continue;
+        const o=E[id]; let oh;
+        if(o.j0===jn)      oh=hdTratto(o,true);
+        else if(o.j1===jn) oh=hdTratto(o,false)+Math.PI;
+        else continue;
+        if(!percorribile(o,jn)) continue;          // se non ci si può entrare non è un bivio
+        const oa=angDiff(oh,usc);
+        if(Math.abs(oa)>0.95) continue;
+        if(alt===null || Math.abs(oa)<Math.abs(alt)) alt=oa;
+      }
+      if(alt!==null) tipo = ang>alt ? 'sxk' : 'dxk';
+    }
+    if(!tipo) continue;
+    grezze.push({k:k+1, cum:c0[k+1], ang, tipo, via:b.e.via||''});
+  }
+  /* Manovre attaccate e nello STESSO verso = un gesto solo: la rotatoria (entra,
+     gira, esce) dava tre istruzioni in 34 metri. Si sommano gli angoli, e la somma
+     per una rotatoria è proprio la direzione d'uscita. Il vincolo dello stesso
+     verso lascia invece separati gli incroci sfalsati, dove sinistra-poi-destra
+     sono davvero due manovre e la somma sarebbe zero. */
+  const man=[];
+  for(const x of grezze){
+    const u=man[man.length-1];
+    if(u && x.cum-u.cum<45){
+      /* Stesso verso: è un gesto solo spezzato in due archi. */
+      let unisci = u.ang*x.ang>0, rot=false;
+      if(!unisci){
+        /* Verso opposto a pochi metri: o è una rotatoria — si entra girando da una
+           parte, si gira dall'altra attorno all'isola, si esce ancora dall'altra —
+           oppure è un incrocio sfalsato, dove sinistra-poi-destra sono davvero due
+           manovre. Le distingue quello che c'è in mezzo: nella rotatoria gli archi
+           sono a senso unico (OSM le marca così), nell'incrocio sfalsato no. */
+        rot = true;
+        for(let k=u.k;k<x.k;k++) if(!archi[k].e.ow){ rot=false; break }
+        unisci = rot;
+      }
+      if(unisci){
+        // la somma degli angoli È la variazione netta di direzione: per una
+        // rotatoria, esattamente da che parte se ne esce
+        u.ang=Math.max(-3, Math.min(3, u.ang+x.ang));
+        u.tipo=tipoDaAngolo(u.ang);
+        u.via=x.via||u.via;               // il nome è quello della strada in cui si finisce
+        u.rot=u.rot||rot;
+        u.k=x.k;
+        continue;
+      }
+    }
+    man.push(x);
+  }
+  return {man, c0, tot:cum};
+}
+function indiceArchi(archi){
+  const m=new Map();
+  for(let k=0;k<archi.length;k++){
+    const id=archi[k].e.id; let a=m.get(id);
+    if(!a){a=[];m.set(id,a)} a.push(k);
+  }
+  return m;
+}
+function pathRotta(archi){
+  const p=new Path2D();
+  for(const a of archi){
+    const e=a.e; p.moveTo(e.xy[0],e.xy[1]);
+    for(let i=1;i<e.np;i++) p.lineTo(e.xy[2*i],e.xy[2*i+1]);
+  }
+  return p;
+}
+
 function decodePoly(str){                       // -> Float32Array [x,y,...] in metri locali
   const n=str.length; let i=0, lat=0, lon=0; const out=[];
   while(i<n){
@@ -735,9 +978,26 @@ function buildEdges(rid, map){
     for (let i=0;i<np;i++){
       const x=xy[2*i], y=xy[2*i+1];
       if(x<BB[0])BB[0]=x; if(y<BB[1])BB[1]=y; if(x>BB[2])BB[2]=x; if(y>BB[3])BB[3]=y;
-      const kk = ckey(Math.floor(x/CELL), Math.floor(y/CELL));
-      let a = GRID.get(kk); if(!a){a=[];GRID.set(kk,a)}
-      if (a[a.length-1] !== e.id) a.push(e.id);
+    }
+    /* La griglia indicizza i SEGMENTI, non i vertici. Una strada dritta ha
+       geometria rada — misurata: 1.570 m in 5 punti — e attraversa celle da 1.500 m
+       in cui non cade nessun suo vertice: lì `nearEdges` non la trovava e l'app
+       diceva "fuori strada mappata" stando in mezzo alla carreggiata, proprio sui
+       rettilinei dove si va più forte. Si campiona ogni 140 m: meno del raggio di
+       ricerca (80 m) per il fattore due, così il campione più vicino a un punto
+       qualsiasi cade sempre in una cella che quel punto guarda. */
+    let pk=null;
+    for (let i=0;i<np-1;i++){
+      const ax=xy[2*i], ay=xy[2*i+1], bx=xy[2*i+2], by=xy[2*i+3];
+      const n=Math.max(1, Math.ceil(Math.hypot(bx-ax,by-ay)/140));
+      for (let s=0;s<=n;s++){
+        const t=s/n, px=ax+(bx-ax)*t, py=ay+(by-ay)*t;
+        const kk = ckey(Math.floor(px/CELL), Math.floor(py/CELL));
+        if (kk===pk) continue;
+        pk=kk;
+        let a = GRID.get(kk); if(!a){a=[];GRID.set(kk,a)}
+        if (a[a.length-1] !== e.id) a.push(e.id);
+      }
     }
   }
 }
@@ -919,6 +1179,20 @@ const T = {
     inUse:'in uso', boost:'km/h in boost', at:'a', byLimit:'limite',
     legalOn:'La velocità di riferimento non supera mai il limite della strada: sulle curve larghe è il limite a comandare.',
     legalOff:'La velocità di riferimento ignora il limite: mostra solo quello che la curva permette. Da usare a fondo chiuso.',
+    navGo:'VAI', navIn:'fra', navM:'metri', navNow:'ORA', navInto:'in', navMin:'MIN',
+    navTurn:{dx:'a destra', sx:'a sinistra', dxs:'secca a destra', sxs:'secca a sinistra',
+             dxk:'tieni la destra', sxk:'tieni la sinistra', inv:'inverti la marcia',
+             arr:'sei arrivato'},
+    navCalc:'Calcolo il percorso…',
+    navNone:'Non trovo una strada percorribile fino a lì. Prova un punto più vicino a una strada principale.',
+    navOut:'Quel punto è fuori dalle mappe attive: attiva la regione dal pannello Mappe.',
+    navStart:n=>'Percorso verso '+n,
+    navArr:'Sei arrivato a destinazione.',
+    navRecalc:'Fuori percorso: ricalcolo…',
+    navNoGps:'avvia il GPS per avere le indicazioni',
+    navRot:'alla rotatoria,',
+    navWarn:'Nei dati non ci sono i divieti di svolta né gli accessi privati, e le autostrade non sono nella rete: la segnaletica vince sempre su di me.',
+    navDest:'destinazione',
   },
   en: {
     search:'Search town or road…', fav:'favourite', kinds:['city','town','village','hamlet'],
@@ -955,6 +1229,20 @@ const T = {
     inUse:'in use', boost:'km/h on boost', at:'at', byLimit:'limit',
     legalOn:'The reference speed never exceeds the road limit: on open corners the limit is what rules.',
     legalOff:'The reference speed ignores the limit and shows only what the corner allows. For closed roads.',
+    navGo:'GO', navIn:'in', navM:'meters', navNow:'NOW', navInto:'onto', navMin:'MIN',
+    navTurn:{dx:'turn right', sx:'turn left', dxs:'sharp right', sxs:'sharp left',
+             dxk:'keep right', sxk:'keep left', inv:'make a U-turn',
+             arr:'you have arrived'},
+    navCalc:'Working out the route…',
+    navNone:'No drivable road found all the way there. Try a point closer to a main road.',
+    navOut:'That point is outside the active maps: activate the region from the Maps panel.',
+    navStart:n=>'Route to '+n,
+    navArr:'You have arrived.',
+    navRecalc:'Off route: recalculating…',
+    navNoGps:'start GPS to get the directions',
+    navRot:'at the roundabout,',
+    navWarn:'The data has no turn restrictions and no private access, and motorways are not in the network: road signs always beat me.',
+    navDest:'destination',
   },
 };
 let L='it';
@@ -967,6 +1255,7 @@ const S = {
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
   car:'m5', cal:36, style:'strada', legal:true,
   snap:null,          // {e, i, t, dir, dist}
+  nav:null,           // percorso attivo: {archi, c0, tot, man, mi, k, idx, dest, jA, path}
   local:false,        // agganciato a una via residenziale (solo posizione e limite)
   ahead:[], said:new Set(), lastSaid:0,
   demo:null, need:true,
@@ -1134,6 +1423,14 @@ function draw(){
     for(let k=6;k>=0;k--){ ctx.strokeStyle=CLS[k].col; ctx.lineWidth=pw(2.6); ctx.stroke(bp[k]); }
   }
 
+  /* percorso del navigatore: sopra la rete, sotto le curve evidenziate e la freccia.
+     Il viola non è in uso da nessuna classe di curva (che vanno dal rosa al verde)
+     né dall'azzurro della posizione: si distingue anche di sfuggita. */
+  if(S.nav){
+    ctx.strokeStyle='rgba(138,109,255,.30)'; ctx.lineWidth=pw(14); ctx.stroke(S.nav.path);
+    ctx.strokeStyle='#8a6dff';               ctx.lineWidth=pw(4.6); ctx.stroke(S.nav.path);
+  }
+
   // tratto agganciato + curve davanti evidenziate
   if(S.snap && S.mode!=='free'){
     ctx.strokeStyle='rgba(79,214,255,.20)'; ctx.lineWidth=pw(10);
@@ -1178,6 +1475,20 @@ function draw(){
         ctx.fillStyle='#e8edf2'; ctx.fillText(String(c.ms),sx,sy+r+9);
         ctx.textAlign='left';
       }
+    }
+  }
+
+  // bandierina della destinazione (spazio schermo: non deve rimpicciolire con lo zoom)
+  if(S.nav){
+    const [sx,sy]=w2s(S.nav.dest.x,S.nav.dest.y);
+    if(sx>-40&&sy>-40&&sx<W+40&&sy<H+40){
+      ctx.strokeStyle='#8a6dff'; ctx.lineWidth=2.4; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx,sy-19); ctx.stroke();
+      ctx.fillStyle='#8a6dff';
+      ctx.beginPath(); ctx.moveTo(sx,sy-19); ctx.lineTo(sx+13,sy-15.5); ctx.lineTo(sx,sy-12);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#0c1013'; ctx.beginPath(); ctx.arc(sx,sy,3,0,7); ctx.fill();
+      ctx.strokeStyle='#8a6dff'; ctx.lineWidth=2; ctx.stroke();
     }
   }
 
@@ -1343,6 +1654,10 @@ function matchRoad(x,y,hd){
       score += Math.min(dv,db)*26;                 // ~26 m di penalità per radiante
     }
     if(S.snap && S.snap.e.id===id) score -= 22;    // isteresi: resta sulla strada corrente
+    // a parità di distanza, la strada del percorso è quella giusta: sulle
+    // carreggiate separate l'aggancio saltava sull'altra corsia e faceva credere
+    // di essere fuori percorso
+    if(S.nav && S.nav.idx.has(id)) score -= 16;
     score -= (4-Math.min(4,e.rank))*1.5;           // preferisci strade di rango alto
     if(!best||score<best.score) best={e,i:pr.i,t:pr.t,d:pr.d,dir,score};
   }
@@ -1388,6 +1703,11 @@ function buildAhead(){
   const sn=S.snap; if(!sn) return;
   const HORIZON = Math.max(420, Math.min(1100, S.v*11 + 260));
   let e=sn.e, dir=sn.dir, d0=distAlong(e,sn.i,sn.t), acc=0, hops=0;
+  /* Con un percorso attivo il lookahead lo segue invece di prendere la
+     prosecuzione più dritta: le note di curva restano quelle di sempre, ma lungo
+     la strada giusta. Se il percorso si stacca (siamo fuori, o l'arco non
+     combacia) si torna al comportamento normale. */
+  let kk = (S.nav && S.nav.archi[S.nav.k] && S.nav.archi[S.nav.k].e.id===e.id) ? S.nav.k : -1;
   while(acc<HORIZON && hops<9){
     const camList=E2CAM.get(e.id);
     if(camList) for(const c of camList){
@@ -1412,7 +1732,16 @@ function buildAhead(){
       S.aheadSegs.push({e,i0,i1});
     }
     acc += dir>0 ? (e.len-d0) : d0;
-    const nx=nextEdge(e,dir); if(!nx) break;
+    let nx=null;
+    if(kk>=0 && S.nav && S.nav.archi[kk+1]){
+      const nb=S.nav.archi[kk+1], jn = dir>0?e.j1:e.j0;
+      // l'arco successivo del percorso deve attaccarsi davvero alla giunzione da
+      // cui stiamo uscendo, e nel verso in cui il percorso lo attraversa
+      if((nb.verso>0 ? nb.e.j0 : nb.e.j1) === jn){ nx={e:nb.e, dir:nb.verso}; kk++ }
+      else kk=-1;
+    } else kk=-1;
+    if(!nx) nx=nextEdge(e,dir);
+    if(!nx) break;
     e=nx.e; dir=nx.dir; d0 = dir>0?0:e.len; hops++;
   }
   S.ahead.sort((a,b)=>(a.inside?-1:0)-(b.inside?-1:0) || a.dist-b.dist);
@@ -1562,6 +1891,179 @@ function updateNote(){
   if(S.said.size>400){ let n=200; for(const k of S.said){ if(n--<=0) break; S.said.delete(k) } }
 }
 
+/* ============ navigatore: striscia, voce, ricalcolo ============ */
+const navEl=document.getElementById('nav'), navD=document.getElementById('navD'),
+      navVia=document.getElementById('navVia'), navKm=document.getElementById('navKm'),
+      navMin=document.getElementById('navMin'), navX=document.getElementById('navX'),
+      niv=document.getElementById('navIcon').getContext('2d');
+let NAVSN=0;                                  // serie del percorso: le chiavi della voce
+                                              // non devono sopravvivere a un ricalcolo
+const dec = n => L==='it' ? n.replace('.',',') : n;
+const kmTxt = m => m<950 ? Math.round(m/10)*10+' m'
+                         : dec((m/1000).toFixed(m<9500?1:0))+' km';
+function minTxt(s){
+  const m=Math.round(s/60);
+  if(m<60) return m+' '+tr().navMin;
+  return Math.floor(m/60)+' h '+String(m%60).padStart(2,'0');
+}
+/* La freccia si disegna dall'angolo vero della manovra invece di scegliere fra tre
+   icone fisse: "tieni la destra" e "secca a destra" così si vedono diverse senza
+   dover leggere. */
+function disegnaNavIcona(ang){
+  niv.setTransform(2,0,0,2,0,0); niv.clearRect(0,0,64,64);
+  let a=Math.max(-2.9,Math.min(2.9,ang||0));
+  // "tieni la destra" sono pochi gradi veri: disegnati come sono, sono identici a
+  // dritto. Si esagerano fino a mezzo radiante — l'icona dice il gesto, non l'angolo
+  if(Math.abs(a)>0.05 && Math.abs(a)<0.5) a=Math.sign(a)*0.5;
+  /* Tre pezzi: stelo dritto, arco della svolta, e poi un TRATTO DRITTO con la punta
+     in fondo. È il tratto dritto che mancava: senza, sulle svolte dolci la punta
+     restava appiccicata allo stelo e il disegno sembrava una bandierina invece che
+     una freccia (provato a schermo, tre giri). */
+  const R=13, bx=32, by=44, s=a>0?-1:1, A=Math.abs(a), CODA=13;
+  const ox=bx+s*R, oy=by;
+  const pt = t => [ox - s*R*Math.cos(t), oy - R*Math.sin(t)];
+  /* Direzione d'uscita = TANGENTE alla fine dell'arco, non la corda: sulla corda una
+     svolta di 29° ne mostrava 14 e sembrava quasi dritta. Tangente: (s·sin t, −cos t). */
+  const dir=Math.atan2(-Math.cos(A), s*Math.sin(A));            // A=0 -> dritto in su
+  const fine=pt(A);
+  const tip=[fine[0]+Math.cos(dir)*CODA, fine[1]+Math.sin(dir)*CODA];
+  const stop=[tip[0]-Math.cos(dir)*9, tip[1]-Math.sin(dir)*9];  // il tratto si ferma
+  niv.strokeStyle='#e8edf2'; niv.fillStyle='#e8edf2';           // sotto la punta piena
+  niv.lineWidth=5; niv.lineCap='round'; niv.lineJoin='round';
+  niv.beginPath(); niv.moveTo(bx,58); niv.lineTo(bx,by);
+  for(let i=1;i<=12;i++){ const p=pt(A*i/12); niv.lineTo(p[0],p[1]) }
+  niv.lineTo(stop[0],stop[1]);
+  niv.stroke();
+  /* Alette a ±2,8 rad: punta lunga 11 e larga 8. A ±2,45 veniva larga 17 e lunga 10,
+     cioè un imbuto. */
+  niv.beginPath();
+  niv.moveTo(tip[0],tip[1]);
+  niv.lineTo(tip[0]+Math.cos(dir+2.8)*13, tip[1]+Math.sin(dir+2.8)*13);
+  niv.lineTo(tip[0]+Math.cos(dir-2.8)*13, tip[1]+Math.sin(dir-2.8)*13);
+  niv.closePath(); niv.fill();
+}
+function fermaNav(msg){
+  S.nav=null; document.body.classList.remove('navon');
+  navEl.classList.remove('show'); S.need=true;
+  if(msg) toast(msg,4500);
+}
+function installaRotta(part, r, dest, jA){
+  let archi=r.archi;
+  /* La strada su cui si sta viaggiando fa parte del percorso: senza, la linea
+     comincia davanti al muso e la prima manovra non avrebbe un arco da cui uscire.
+     Va aggiunta anche quando A* riparte proprio da lei ma NEL VERSO OPPOSTO — è il
+     caso dell'inversione: si è imboccata una strada sbagliata e bisogna arrivare
+     all'incrocio davanti e tornare indietro. Senza questo pezzo il percorso comincia
+     con noi già girati, e la distanza alla manovra cresce invece di calare mentre ci
+     si avvicina (visto in prova: 1,5 → 1,8 km guidando verso la manovra). */
+  if(part.e && (!archi.length || archi[0].e.id!==part.e.id || archi[0].verso!==part.verso))
+    archi=[{e:part.e, verso:part.verso||1}, ...archi];
+  const m=costruisciManovre(archi);
+  S.nav={archi, c0:m.c0, tot:m.tot, man:m.man, mi:0, k:0,
+         idx:indiceArchi(archi), dest, jA, path:pathRotta(archi),
+         fuori:0, secondi:r.secondi, sn:++NAVSN};
+  document.body.classList.add('navon');
+  S.need=true;
+}
+function avviaNav(x,y,nome){
+  if(!E.length) return;
+  const t0=tr();
+  if(x<BB[0]-4000||x>BB[2]+4000||y<BB[1]-4000||y>BB[3]+4000){ toast(t0.navOut,5500); return }
+  const part=giunzionePartenza(), jA=giunzioneVicina(x,y);
+  if(!part || jA==null){ toast(t0.navNone,5500); return }
+  const r=calcolaRotta(part.j, jA);
+  if(!r || !r.archi.length){ toast(t0.navNone,5500); return }
+  installaRotta(part, r, {x,y,n:nome||t0.navDest}, jA);
+  /* I limiti si dicono all'avvio, non si nascondono in un pannello: il percorso può
+     proporre una svolta vietata perché le relazioni `restriction` di OSM non sono
+     nei dati, e le autostrade non sono nella rete. */
+  toast(t0.navStart(S.nav.dest.n)+' · '+kmTxt(S.nav.tot)+' · '+t0.navWarn, 8000);
+  tickNav();
+}
+function ricalcolaNav(){
+  const nv=S.nav; if(!nv) return;
+  const part=giunzionePartenza(); if(!part) return;
+  const r=calcolaRotta(part.j, nv.jA);
+  if(!r || !r.archi.length){ fermaNav(tr().navNone); return }
+  const dest=nv.dest, jA=nv.jA;
+  installaRotta(part, r, dest, jA);
+}
+function progressoNav(){
+  const nv=S.nav; if(!nv || !S.snap) return null;
+  const cand=nv.idx.get(S.snap.e.id); if(!cand) return null;
+  /* Lo stesso arco può comparire due volte nel percorso — l'inversione lo percorre
+     avanti e indietro. A distinguerli è il verso di marcia, non la vicinanza: senza
+     questo, dopo aver girato si continuerebbe a contare il progresso sul passaggio
+     di andata. Poi, a parità, vince il passaggio più vicino a dove eravamo. */
+  let scelti=cand.filter(c=>nv.archi[c].verso===S.snap.dir);
+  if(!scelti.length) scelti=cand;
+  let k=scelti[0];
+  for(const c of scelti) if(Math.abs(c-nv.k)<Math.abs(k-nv.k)) k=c;
+  nv.k=k;
+  const a=nv.archi[k], d=distAlong(a.e,S.snap.i,S.snap.t);
+  const fatto = nv.c0[k] + (a.verso>0 ? d : a.e.len-d);
+  return {fatto, restano:Math.max(0, nv.tot-fatto)};
+}
+function tempoRestante(fatto){
+  const nv=S.nav; let s=0;
+  for(let k=nv.k;k<nv.archi.length;k++) s+=costo(nv.archi[k].e);
+  const a=nv.archi[nv.k];
+  s -= costo(a.e)*Math.min(1,Math.max(0,(fatto-nv.c0[nv.k])/Math.max(1,a.e.len)));
+  return Math.max(0,s);
+}
+function tickNav(){
+  const nv=S.nav; if(!nv) return;
+  const t0=tr();
+  navEl.classList.add('show');
+  const pr=progressoNav();
+
+  if(!pr){
+    navD.textContent=kmTxt(nv.tot); navKm.textContent=kmTxt(nv.tot);
+    navMin.textContent=minTxt(nv.secondi); disegnaNavIcona(0);
+    if(S.mode==='free' || !S.pos){ navVia.textContent=t0.navNoGps; return }
+    navVia.textContent=t0.navRecalc;
+    /* Non si ricalcola al primo fix fuori: un aggancio ballerino a bordo strada
+       rifarebbe il percorso di continuo. Tre fix di fila, cioè ~3 secondi. */
+    if(++nv.fuori>=3){ nv.fuori=0; ricalcolaNav() }
+    return;
+  }
+  nv.fuori=0;
+
+  /* Arrivo. La soglia è larga apposta: a 90 km/h fra un fix e l'altro si fanno 25 m,
+     e una finestra stretta si salta. Il percorso finisce sulla giunzione più vicina
+     alla destinazione, che può restare a qualche centinaio di metri — il centro di
+     Orvieto è su strade che nella rete annotata non ci sono — quindi si controlla
+     anche la distanza dal punto vero. */
+  if(pr.restano<70 || (S.pos && Math.hypot(S.pos[0]-nv.dest.x, S.pos[1]-nv.dest.y)<70)){
+    say(t0.navTurn.arr); fermaNav(t0.navArr); return;
+  }
+
+  while(nv.mi<nv.man.length && nv.man[nv.mi].cum - pr.fatto < -20) nv.mi++;
+  const mn = nv.man[nv.mi] || null;
+  const dm = mn ? Math.max(0, mn.cum - pr.fatto) : pr.restano;
+  const frase = mn ? (mn.rot ? t0.navRot+' ' : '') + t0.navTurn[mn.tipo]
+                     + (mn.via ? ' '+t0.navInto+' '+mn.via : '') : '';
+
+  navD.textContent = dm<30 ? t0.navNow : kmTxt(dm);
+  navVia.textContent = mn ? frase : t0.navTurn.arr + ' · ' + nv.dest.n;
+  navKm.textContent = kmTxt(pr.restano);
+  navMin.textContent = minTxt(tempoRestante(pr.fatto));
+  disegnaNavIcona(mn ? mn.ang : 0);
+
+  if(mn){
+    const lontano=Math.max(260, S.v*13), vicino=Math.max(50, S.v*3);
+    const kf='nf'+nv.sn+':'+nv.mi, kv='nv'+nv.sn+':'+nv.mi;
+    const now=performance.now();
+    if(dm<=vicino && !S.said.has(kv)){
+      S.said.add(kv); S.said.add(kf); S.lastSaid=now; say(frase);
+    } else if(dm<=lontano && !S.said.has(kf) && now-S.lastSaid>900){
+      S.said.add(kf); S.lastSaid=now;
+      say(t0.navIn+' '+Math.round(dm/50)*50+' '+t0.navM+' '+frase);
+    }
+  }
+}
+navX.onclick=()=>fermaNav();
+
 /* ============ posizione ============ */
 const hud=document.getElementById('hud'), speedV=document.getElementById('speedV'),
       roadName=document.getElementById('roadName');
@@ -1575,6 +2077,9 @@ function feed(x,y,hd,v,acc){
   const m=matchRoad(x,y,S.hd);
   S.snap = (m && m.d<70) ? m : null;
   S.local = !S.snap && distToGrey(x,y,45) < 45;    // strada locale, fuori dalla rete annotata
+  // prima del lookahead: aggiorna a che punto del percorso siamo, perché è da lì
+  // che `buildAhead` decide quale strada seguire agli incroci
+  if(S.nav) tickNav();
   buildAhead();
   // la camera non salta qui: insegue in cameraTick, frame per frame
   S.fixT = performance.now();
@@ -1728,7 +2233,9 @@ function applyLang(){
   document.body.classList.toggle('en', L==='en');
   qEl.placeholder = tr().search;
   document.getElementById('gearLab').textContent = tr().gear;
-  renderCar(); updateNote(); renderMaps(); showStore(); setBrandSub(); S.need=true;
+  renderCar(); updateNote(); renderMaps(); showStore(); setBrandSub();
+  if(S.nav) tickNav();          // la striscia è tutta testo tradotto
+  S.need=true;
 }
 bLang.onclick=()=>{ L = L==='it'?'en':'it'; save(); applyLang(); renderLegend(); };
 bAudio.classList.toggle('on',S.audio);
@@ -1987,11 +2494,15 @@ function renderResults(term){
         .slice(0,18);
   resEl.innerHTML='';
   for(const p of list){
-    const b=document.createElement('button');
+    const row=document.createElement('div'); row.className='rr';
+    const b=document.createElement('button'); b.className='nm';
     b.innerHTML=p.n+(p.bm?'<span class="k">'+tr().fav+'</span>':
       '<span class="k">'+tr().kinds[p.r]+'</span>');
     b.onclick=()=>{flyTo(p.x,p.y,p.z||1.4);resEl.classList.remove('show');qEl.value='';qEl.blur()};
-    resEl.appendChild(b);
+    const g=document.createElement('button'); g.className='go';
+    g.textContent=tr().navGo; g.title=tr().navGo;
+    g.onclick=()=>{resEl.classList.remove('show');qEl.value='';qEl.blur();avviaNav(p.x,p.y,p.n)};
+    row.appendChild(b); row.appendChild(g); resEl.appendChild(row);
   }
   resEl.classList.toggle('show',list.length>0);
 }
@@ -2001,14 +2512,39 @@ qEl.onblur=()=>setTimeout(()=>resEl.classList.remove('show'),180);
 
 /* gesti mappa */
 const ptrs=new Map(); let pinch=null;
+/* Pressione lunga = "portami qui". Sulle strade di montagna la destinazione non ha
+   quasi mai un nome da cercare: è un tornante, un valico, un posto sulla mappa. Il
+   nome si prende dalla via più vicina, se ce l'ha. */
+let press=null;
+function nomePunto(x,y){
+  let best=null;
+  for(const id of nearEdges(x,y,300)){
+    const e=E[id]; if(!e.via) continue;
+    const pr=projectOn(e,x,y);
+    if(!best||pr.d<best.d) best={d:pr.d,n:e.via};
+  }
+  return best ? best.n : tr().navDest;
+}
+const stopPress=()=>{ if(press){clearTimeout(press.t); press=null} };
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
   if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),s:S.scale}}
+  stopPress();
+  if(ptrs.size===1 && E.length){
+    const sx=e.clientX, sy=e.clientY;
+    press={sx, sy, t:setTimeout(()=>{
+      press=null;
+      const [x,y]=s2w(sx,sy);
+      if(navigator.vibrate) navigator.vibrate(28);
+      avviaNav(x,y,nomePunto(x,y));
+    },560)};
+  }
   cv.classList.add('drag');
 });
 cv.addEventListener('pointermove',e=>{
   if(!ptrs.has(e.pointerId))return;
   const prev=ptrs.get(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+  if(press && Math.hypot(e.clientX-press.sx, e.clientY-press.sy)>9) stopPress();
   if(ptrs.size===1){
     const dx=e.clientX-prev[0], dy=e.clientY-prev[1];
     if(Math.hypot(dx,dy)>1.5 && S.mode!=='free') setMode('free');
@@ -2022,7 +2558,7 @@ cv.addEventListener('pointermove',e=>{
     S.cx+=before[0]-after[0]; S.cy+=before[1]-after[1]; S.need=true;
   }
 });
-const up=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size)cv.classList.remove('drag')};
+const up=e=>{stopPress();ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size)cv.classList.remove('drag')};
 cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
 cv.addEventListener('wheel',e=>{
   e.preventDefault();
