@@ -40,15 +40,15 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .top{position:fixed;top:max(8px,env(safe-area-inset-top));left:8px;
        right:60px;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
   .top > *{pointer-events:auto}
-  .brand{background:rgba(23,29,35,.93);border:1px solid var(--line);border-radius:11px;
-         padding:7px 11px;backdrop-filter:blur(8px);flex:none}
+  .brand{background:rgba(20,26,32,.97);border:1px solid var(--line);border-radius:11px;
+         padding:7px 11px;flex:none}
   .brand h1{font-family:var(--font-d);font-size:15px;letter-spacing:.06em;text-transform:uppercase;
             font-weight:600;line-height:1;white-space:nowrap}
   .brand h1 span{color:var(--accent)}
   .brand .sub{font-size:10px;color:var(--ink2);margin-top:3px;font-variant-numeric:tabular-nums}
   .search{position:relative;flex:1;min-width:0;max-width:280px}
-  .search input{width:100%;background:rgba(23,29,35,.93);border:1px solid var(--line);
-    border-radius:11px;padding:10px 12px;color:var(--ink);font-size:13.5px;backdrop-filter:blur(8px)}
+  .search input{width:100%;background:rgba(20,26,32,.97);border:1px solid var(--line);
+    border-radius:11px;padding:10px 12px;color:var(--ink);font-size:13.5px}
   .search input::placeholder{color:var(--ink2)}
   .results{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel);
     border:1px solid var(--line);border-radius:11px;overflow:hidden;display:none;max-height:52vh;
@@ -64,13 +64,13 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .rail{position:fixed;right:8px;top:50%;transform:translateY(-50%);display:flex;
         flex-direction:column;gap:7px;z-index:5}
   .rbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);
-        background:rgba(23,29,35,.93);cursor:pointer;display:grid;place-items:center;
-        backdrop-filter:blur(8px)}
+        background:rgba(20,26,32,.97);cursor:pointer;display:grid;place-items:center;
+        }
   .rbtn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;
             stroke-linecap:round;stroke-linejoin:round}
   .rbtn.on{background:var(--accent);border-color:var(--accent);color:#0c1013}
   .compass{position:fixed;top:max(8px,env(safe-area-inset-top));right:8px;width:44px;height:44px;
-    border-radius:50%;border:1px solid var(--line);background:rgba(23,29,35,.93);
+    border-radius:50%;border:1px solid var(--line);background:rgba(20,26,32,.97);
     display:grid;place-items:center;cursor:pointer;z-index:5}
   .compass svg{width:23px;height:23px}
   .scalebar{position:fixed;right:10px;bottom:max(10px,env(safe-area-inset-bottom));
@@ -81,8 +81,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* ---- banner nota ---- */
   .note{position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom));
     transform:translateX(-50%);display:none;align-items:center;gap:12px;
-    background:rgba(23,29,35,.95);border:1px solid var(--line);border-radius:16px;
-    padding:9px 14px 9px 10px;backdrop-filter:blur(10px);max-width:min(96vw,660px);z-index:6}
+    background:rgba(20,26,32,.98);border:1px solid var(--line);border-radius:16px;
+    padding:9px 14px 9px 10px;max-width:min(96vw,660px);z-index:6}
   .note.show{display:flex}
   .note canvas{width:58px;height:58px;flex:none}
   .note .txt{min-width:0}
@@ -119,12 +119,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .hud{position:fixed;left:8px;bottom:max(10px,env(safe-area-inset-bottom));display:none;
        flex-direction:column;gap:6px;z-index:5}
   .hud.show{display:flex}
-  .tile{background:rgba(23,29,35,.93);border:1px solid var(--line);border-radius:11px;
-        padding:6px 10px;text-align:center;backdrop-filter:blur(8px)}
+  .tile{background:rgba(20,26,32,.97);border:1px solid var(--line);border-radius:11px;
+        padding:6px 10px;text-align:center}
   .tile .v{font-family:var(--font-d);font-weight:600;font-size:23px;line-height:1;
            font-variant-numeric:tabular-nums}
   .tile small{font-size:8.5px;letter-spacing:.12em;color:var(--ink2)}
-  .road{background:rgba(23,29,35,.93);border:1px solid var(--line);border-radius:11px;
+  .road{background:rgba(20,26,32,.97);border:1px solid var(--line);border-radius:11px;
         padding:5px 10px;font-size:11px;color:var(--ink2);max-width:44vw;overflow:hidden;
         text-overflow:ellipsis;white-space:nowrap}
 
