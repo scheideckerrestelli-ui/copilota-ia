@@ -51,7 +51,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      dello schermo. Qui non si combatte: si scende sotto.
      In Safari e sul desktop non succede, e infatti lì lo scarto resta zero. */
   @media (display-mode: standalone){
-    :root{ --gapalto:38px }
+    :root{ --gapalto:30px }        /* quanto basta a stare a filo sotto la fascia */
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;overflow:hidden}
@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '74';
+const APPVER = '75';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -1119,13 +1119,23 @@ function buildGrey(){
     GSEEN.add(gk);
     const id = GREY.length;
     GREY.push(g);
+    /* Stesso difetto già corretto in `buildEdges`: indicizzando i VERTICI e non i
+       segmenti, una via dritta con geometria rada (queste sono pure semplificate in
+       fase di elaborazione) attraversa celle in cui non cade nessun suo punto, e lì
+       `distToGrey` non la trova: l'app dice "fuori strada mappata" stando in mezzo
+       alla carreggiata. È proprio il caso delle stradine di paese. */
     let pk = null;
-    for (let i=0;i<np;i++){
-      const kk = ckey(Math.floor(g[2*i]/CELL), Math.floor(g[2*i+1]/CELL));
-      if (kk === pk) continue;
-      pk = kk;
-      let a = GGRID.get(kk); if(!a){a=[];GGRID.set(kk,a)}
-      if (a[a.length-1] !== id) a.push(id);
+    for (let i=0;i<np-1;i++){
+      const ax=g[2*i], ay=g[2*i+1], bx=g[2*i+2], by=g[2*i+3];
+      const n=Math.max(1, Math.ceil(Math.hypot(bx-ax,by-ay)/140));
+      for (let s=0;s<=n;s++){
+        const t=s/n, px=ax+(bx-ax)*t, py=ay+(by-ay)*t;
+        const kk = ckey(Math.floor(px/CELL), Math.floor(py/CELL));
+        if (kk === pk) continue;
+        pk = kk;
+        let a = GGRID.get(kk); if(!a){a=[];GGRID.set(kk,a)}
+        if (a[a.length-1] !== id) a.push(id);
+      }
     }
   }
 }
@@ -1667,6 +1677,15 @@ function disegnaPiano(c0,c1,r0,r1){
   const pw = p => p/S.scale;
   const nCells=(c1-c0+1)*(r1-r0+1);
 
+  /* Il percorso va SOTTO la rete, non sopra: disegnato sopra copriva i colori delle
+     curve proprio lungo la strada che stai facendo, cioè cancellava la cosa per cui
+     esiste l'app. Sotto, e più largo delle strade, resta una fascia viola ai lati e
+     il colore della curva si legge tutto. */
+  if(S.nav){
+    ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=pw(20); ctx.stroke(S.nav.path);
+    ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=pw(12); ctx.stroke(S.nav.path);
+  }
+
   if(nCells<=420){
     const cells=[];
     for(let cx=c0;cx<=c1;cx++) for(let cy=r0;cy<=r1;cy++){
@@ -1686,14 +1705,6 @@ function disegnaPiano(c0,c1,r0,r1){
     const bp=backbone();
     ctx.strokeStyle=CLS[7].col; ctx.lineWidth=pw(1.8); ctx.stroke(bp[7]);
     for(let k=6;k>=0;k--){ ctx.strokeStyle=CLS[k].col; ctx.lineWidth=pw(2.6); ctx.stroke(bp[k]); }
-  }
-
-  /* percorso del navigatore: sopra la rete, sotto le curve evidenziate e la freccia.
-     Il viola non è in uso da nessuna classe di curva (che vanno dal rosa al verde)
-     né dall'azzurro della posizione: si distingue anche di sfuggita. */
-  if(S.nav){
-    ctx.strokeStyle='rgba(138,109,255,.30)'; ctx.lineWidth=pw(14); ctx.stroke(S.nav.path);
-    ctx.strokeStyle='#8a6dff';               ctx.lineWidth=pw(4.6); ctx.stroke(S.nav.path);
   }
 
   // tratto agganciato + curve davanti evidenziate
@@ -1728,6 +1739,16 @@ function disegnaPiano(c0,c1,r0,r1){
 function disegna3d(c0,c1,r0,r1){
   ctx.lineCap='round'; ctx.lineJoin='round';
   const T=tracciati3d(c0,c1,r0,r1);
+  // il percorso sotto la rete, come nella vista piana: se no copre le curve
+  if(S.nav){
+    const nv=S.nav, P=new Path2D(), lim=vista3d()*1.6, da=Math.max(0,nv.k-2);
+    for(let j=da;j<nv.archi.length;j++){
+      if(nv.c0[j]-nv.c0[da]>lim) break;
+      traccia(P, nv.archi[j].e.xy, 0, nv.archi[j].e.np-1);
+    }
+    ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=20; ctx.stroke(P);
+    ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=12; ctx.stroke(P);
+  }
   if(S.scale>0.35){
     ctx.strokeStyle='#1b2229';
     for(let f=2;f>=0;f--){ ctx.lineWidth=2.2*FASCE[f]; ctx.stroke(T.grey[f]) }
@@ -1737,16 +1758,6 @@ function disegna3d(c0,c1,r0,r1){
   for(let k=6;k>=0;k--){
     ctx.strokeStyle=CLS[k].col;
     for(let f=2;f>=0;f--){ ctx.lineWidth=(k<=2?4.4:3.8)*FASCE[f]; ctx.stroke(T.paths[k][f]) }
-  }
-  // percorso: solo il pezzo inquadrato, non tutti gli 87 km a ogni fotogramma
-  if(S.nav){
-    const nv=S.nav, P=new Path2D(), lim=vista3d()*1.6, da=Math.max(0,nv.k-2);
-    for(let j=da;j<nv.archi.length;j++){
-      if(nv.c0[j]-nv.c0[da]>lim) break;
-      traccia(P, nv.archi[j].e.xy, 0, nv.archi[j].e.np-1);
-    }
-    ctx.strokeStyle='rgba(138,109,255,.30)'; ctx.lineWidth=13; ctx.stroke(P);
-    ctx.strokeStyle='#8a6dff';               ctx.lineWidth=4.6; ctx.stroke(P);
   }
   if(S.snap && S.mode!=='free'){
     const P=new Path2D();
