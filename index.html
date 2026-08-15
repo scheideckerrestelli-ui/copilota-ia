@@ -276,7 +276,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"></path><path d="M9 4.5v12.7M15 6.8v12.7"></path></svg></button>
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
     <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
-  <button class="rbtn" id="bCar" title="La mia MiTo" aria-label="La mia MiTo">
+  <button class="rbtn" id="bCar" title="La mia auto" aria-label="La mia auto">
     <svg viewBox="0 0 24 24"><path d="M3 14.5h18M4.6 14.5l1.6-5.2a2 2 0 0 1 1.9-1.4h7.8a2 2 0 0 1 1.9 1.4l1.6 5.2"></path><path d="M3 14.5v3h3v-3M18 14.5v3h3v-3"></path><circle cx="7.5" cy="14.5" r="1.4"></circle><circle cx="16.5" cy="14.5" r="1.4"></circle></svg></button>
   <button class="rbtn" id="bLegend" title="Legenda" aria-label="Legenda">
     <svg viewBox="0 0 24 24"><path d="M4 6h4M4 12h4M4 18h4"></path><path d="M11 6h9M11 12h9M11 18h9" opacity=".45"></path></svg></button>
@@ -370,14 +370,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
       curve davanti a te, anche attraverso gli incroci (segue la strada più dritta).</li>
     <li>Ogni tratto è colorato per <b>raggio di curva</b> misurato sulla geometria reale.</li>
     <li>Con l'audio attivo le curve vengono <b>annunciate</b> circa 4 secondi prima, alla tua
-      velocità, con la <b>marcia</b> giusta per la tua MiTo: più vai forte, più l'annuncio anticipa.</li>
+      velocità, con la <b>marcia</b> giusta per l'auto che hai scelto: più vai forte, più l'annuncio anticipa.</li>
   </ul>
   <ul data-lang="en">
     <li>No route to set: the app <b>locks onto the road</b> you are on and reads the corners ahead,
       through junctions too (it follows the straightest continuation).</li>
     <li>Every stretch is coloured by <b>corner radius</b> measured on the real geometry.</li>
     <li>With audio on, corners are <b>called</b> about 4 seconds ahead at your current speed, with
-      the right <b>gear</b> for your MiTo: the faster you go, the earlier the call.</li>
+      the right <b>gear</b> for the car you picked: the faster you go, the earlier the call.</li>
   </ul>
   <h3><span data-lang="it">Installala sul telefono</span><span data-lang="en">Install on your phone</span></h3>
   <p data-lang="it"><b>iPhone</b>: apri in Safari → tasto Condividi → <b>Aggiungi a schermata
@@ -2008,13 +2008,13 @@ async function boot(){
   document.getElementById('infoData').innerHTML =
     'Geometrie © collaboratori <b>OpenStreetMap</b> (ODbL), estratte il '+gen+'. Il raggio di ogni '+
     'curva è stimato dal cerchio circoscritto a triplette di punti ogni 10 m; la velocità di '+
-    'riferimento da √(a·R) e la marcia dai rapporti della MiTo (350 Nm, boost 3.700–7.500 giri, '+
-    'ancoraggio 120 km/h a 3.000 giri in 6ª di serie).';
+    'riferimento da √(a·R) e la marcia dai rapporti e dalla fascia utile dell\'auto scelta nel '+
+    'pannello <b>La mia auto</b>, dove puoi anche tarare i km/h per 1000 giri.';
   document.getElementById('infoDataEn').innerHTML =
     'Geometry © <b>OpenStreetMap</b> contributors (ODbL), extracted '+gen+'. Each corner radius '+
     'comes from the circumcircle of point triplets every 10 m; the reference speed from √(a·R) and '+
-    'the gear from the MiTo\'s ratios (350 Nm, boost 3,700–7,500 rpm, anchored at 120 km/h @ '+
-    '3,000 rpm in stock 6th).';
+    'the gear from the ratios and usable rev band of the car picked in the <b>My car</b> panel, '+
+    'where you can also calibrate km/h per 1000 rpm.';
   applyLang(); renderLegend();
   /* Vista iniziale: il primo preferito della prima regione attiva.
      Lo zoom si ricava dal viewport, non è un numero fisso: `scale` è in pixel per
