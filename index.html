@@ -95,6 +95,12 @@ if ('serviceWorker' in navigator)
     color:var(--ink2);font-weight:400;margin-top:4px}
   .note.off .call{font-size:17px;color:var(--ink2)}
   .note.off .gear,.note.off canvas{display:none}
+  @media (max-width:560px){
+    /* il banner occupa tutta la larghezza: l'HUD sale sopra invece di finirci sotto */
+    .hud{bottom:calc(env(safe-area-inset-bottom) + 92px)}
+    .hud .road{max-width:62vw}
+    .scalebar{bottom:calc(env(safe-area-inset-bottom) + 92px)}
+  }
   @media (max-width:520px){
     .note{gap:9px;padding:8px 11px 8px 8px}
     .note canvas{width:46px;height:46px}

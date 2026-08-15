@@ -1,5 +1,5 @@
 /* Copilota Ciociaria - cache offline */
-const CACHE = 'copilota-v6';
+const CACHE = 'copilota-v7';
 const FILES = ['./', './index.html', './manifest.webmanifest',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
