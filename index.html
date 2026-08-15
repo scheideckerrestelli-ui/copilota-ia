@@ -457,7 +457,13 @@ const dataUrl = r => r.file+'?v='+r.v;
 const cacheName = id => 'copilota-data-'+id;
 function rload(){ try{ const j=JSON.parse(localStorage.getItem(RKEY)||'null');
   if(j) RSTATE={inst:j.inst||[], att:j.att||[]} }catch(e){} }
-function rsave(){ try{ localStorage.setItem(RKEY, JSON.stringify(RSTATE)) }catch(e){} }
+/* Ritorna false se non è riuscito a salvare (spazio esaurito, navigazione privata):
+   chi sta per fare location.reload() deve saperlo, se no la pagina torna com'era e
+   sembra che il tocco non abbia fatto niente. */
+function rsave(){
+  try{ localStorage.setItem(RKEY, JSON.stringify(RSTATE)); return true }
+  catch(e){ return false }
+}
 const inBox = (b,la,lo) => la>=b[0] && la<=b[2] && lo>=b[1] && lo<=b[3];
 
 /* Legge una regione: prima dalla Cache API, poi dalla rete. Andare in cache
@@ -485,6 +491,18 @@ async function loadRegion(r, onProgress){
   const url = dataUrl(r);
   let res = null;
   try{ res = await caches.match(url) }catch(e){}
+  /* Se l'URL esatto non c'è, si prende comunque QUALSIASI versione di questa
+     regione già in cache. Quando rigenero un dataset l'hash cambia, e cercando solo
+     l'URL nuovo la mappa scaricata diventava invisibile: online si riscaricava in
+     silenzio, offline l'app semplicemente non partiva più. Una mappa vecchia di un
+     mese è infinitamente meglio di nessuna mappa in mezzo alle montagne. */
+  if(!res){
+    try{
+      const c = await caches.open(cacheName(r.id));
+      const ks = await c.keys();
+      if(ks.length) res = await c.match(ks[ks.length-1]);
+    }catch(e){}
+  }
   if(!res) res = await fetch(url);
   const buf = await readStream(res, onProgress);
   return JSON.parse(new TextDecoder().decode(buf));
@@ -492,6 +510,13 @@ async function loadRegion(r, onProgress){
 async function installRegion(r, onProgress){
   const url = dataUrl(r);
   const buf = await readStream(await fetch(url), onProgress);
+  // controllare PRIMA di mettere in cache: una risposta 200 che non è il dataset
+  // (una pagina d'errore, una redirezione del captive portal di un hotel) verrebbe
+  // conservata per sempre e la regione non si aprirebbe mai più
+  const testo = new TextDecoder().decode(buf);
+  let dati;
+  try{ dati = JSON.parse(testo) }catch(e){ throw new Error('risposta non valida') }
+  if(!dati || !Array.isArray(dati.edges) || !dati.meta) throw new Error('dataset incompleto');
   const c = await caches.open(cacheName(r.id));
   for(const k of await c.keys()) await c.delete(k);      // via le versioni vecchie
   await c.put(url, new Response(buf, {headers:{'Content-Type':'application/json'}}));
@@ -787,6 +812,7 @@ const T = {
     outZone:'Sei fuori dalle mappe caricate.',
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', load:'Attiva ora', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
+    noSave:'Non riesco a salvare la scelta: spazio esaurito o navigazione privata. Libera spazio e riprova.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
     dlFail:'Scaricamento fallito: ',
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
@@ -819,6 +845,7 @@ const T = {
     outZone:'You are outside the loaded maps.',
     pickMap:'pick a map', maps:'Maps', dl:'Download', load:'Activate', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
+    noSave:'Cannot save your choice: storage full or private browsing. Free some space and try again.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
     dlFail:'Download failed: ',
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
@@ -1667,7 +1694,11 @@ function renderMaps(){
              pensando di aver finito si ritrovava la mappa vuota. Se non c'è ancora
              nessuna regione attiva, la prima che si scarica si accende da sola:
              non c'è niente da preservare e nessuna scelta da chiedere. */
-          if(!RSTATE.att.length){ RSTATE.att=[r.id]; rsave(); return location.reload() }
+          if(!RSTATE.att.length){
+            RSTATE.att=[r.id];
+            if(!rsave()) return toast(tr().noSave, 9000);
+            return location.reload();
+          }
           renderMaps(); showStore();
         }catch(err){
           bt.disabled=false; bt.textContent=tr().dl;
@@ -1678,7 +1709,8 @@ function renderMaps(){
       // attivare o disattivare cambia gli indici della rete da cima a fondo:
       // ricostruirli a caldo è più fragile che ripartire, e i dati sono già in cache
       RSTATE.att = att ? RSTATE.att.filter(x=>x!==r.id) : RSTATE.att.concat(r.id);
-      rsave(); location.reload();
+      if(!rsave()) return toast(tr().noSave, 9000);
+      location.reload();
     };
     row.appendChild(bt);
 
@@ -1742,8 +1774,12 @@ function suggestRegion(la,lo){
 document.getElementById('bCar').onclick=()=>openSheet('car');
 document.getElementById('bLegend').onclick=()=>openSheet('legend');
 document.getElementById('bInfo').onclick=()=>openSheet('info');
+/* "già vista l'introduzione" lo decide SOLO il bottone del pannello Info: era su
+   tutti i [data-close], quindi chiudere Mappe al primo avvio bruciava l'intro che
+   l'utente non aveva ancora letto. */
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{
-  closeSheets(); try{localStorage.setItem('copilota2seen','1')}catch(e){} });
+  if(b.closest('#sheetInfo')) try{localStorage.setItem('copilota2seen','1')}catch(e){}
+  closeSheets(); });
 
 /* pannello auto */
 const carChips=document.getElementById('carChips'), styleChips=document.getElementById('styleChips'),
@@ -1879,6 +1915,7 @@ async function boot(){
   const mb = n => (n/1e6).toFixed(1).replace('.',',')+' MB';
   try{
     REG = await (await fetch('regions.json')).json();
+    if(!Array.isArray(REG) || !REG.length || !REG[0].id) throw new Error('elenco vuoto o illeggibile');
   }catch(err){
     splashMsg.textContent = 'elenco mappe non caricato ('+err.message+') — ricarica la pagina';
     return;
@@ -1911,7 +1948,15 @@ async function boot(){
           : 'mappa · '+mb(got)+' di '+mb(r.bytes)+' · '+Math.min(99,Math.round(got/r.bytes*100))+'%';
       });
     }catch(err){
-      splashMsg.textContent = r.nm+' non caricata ('+err.message+') — ricarica la pagina';
+      /* Prima si restava murati: lo splash copriva tutto e non c'era modo di aprire
+         Mappe per rimediare. Ora si spegne la regione che non parte, si toglie lo
+         splash e si apre il pannello, così l'app resta usabile e si può riscaricare. */
+      RSTATE.att = RSTATE.att.filter(x=>x!==r.id); rsave();
+      M = M || {lat0:43, lon0:12, span:0}; if(!KX||KX===1) KX = 111320*Math.cos(43*Math.PI/180);
+      applyLang(); renderLegend(); renderMaps(); showStore(); setBrandSub();
+      splash.classList.add('hide'); loop(); openSheet('maps');
+      toast((L==='it' ? r.nm+' non si è caricata: riscaricala.'
+                      : r.nm+' failed to load: download it again.'), 9000);
       return;
     }
     done += r.bytes;
