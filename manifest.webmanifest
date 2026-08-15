@@ -1,7 +1,7 @@
 {
- "name": "Copilota IA",
+ "name": "Copilota IA · Frosinone",
  "short_name": "Copilota",
- "description": "Copilota rally: curve, velocità di riferimento e marcia, sulle strade della provincia di Frosinone.",
+ "description": "Copilota rally: curve, velocita' di riferimento e marcia, sulle strade del Frosinone.",
  "start_url": "./index.html",
  "scope": "./",
  "display": "standalone",
