@@ -364,6 +364,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <h2>Copilota <i class="ac">IA</i> · v0.7</h2>
   <p id="infoStats" data-lang="it"></p>
   <p id="infoStatsEn" data-lang="en"></p>
+  <p class="disc" id="infoPerf"></p>
   <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span></h3>
   <ul data-lang="it">
     <li>Nessun percorso da impostare: l'app <b>ti aggancia alla strada</b> su cui sei e legge le
@@ -813,6 +814,7 @@ const T = {
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', load:'Attiva ora', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
     noSave:'Non riesco a salvare la scelta: spazio esaurito o navigazione privata. Libera spazio e riprova.',
+    perf:(f,a)=>'Sta girando a '+f+' fotogrammi al secondo su '+a+' tratti caricati. Segue lo schermo: 120 su iPhone Pro con ProMotion, 60 sugli altri, meno da fermo o in risparmio energetico.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
     dlFail:'Scaricamento fallito: ',
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
@@ -846,6 +848,7 @@ const T = {
     pickMap:'pick a map', maps:'Maps', dl:'Download', load:'Activate', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
     noSave:'Cannot save your choice: storage full or private browsing. Free some space and try again.',
+    perf:(f,a)=>'Running at '+f+' frames per second over '+a+' loaded segments. It follows the display: 120 on ProMotion iPhones, 60 elsewhere, less when parked or in low power mode.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
     dlFail:'Download failed: ',
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
@@ -1152,8 +1155,19 @@ function cameraTick(now){
   return Math.abs(ddx)+Math.abs(ddy) > 0.05 || Math.abs(dh) > 0.0004
       || Math.abs(avantiTarget-S.avanti) > 0.5;
 }
+/* Frequenza davvero raggiunta. `requestAnimationFrame` segue la frequenza dello
+   schermo: su un iPhone Pro con ProMotion sono 120 al secondo, altrove 60, e in
+   risparmio energetico scende comunque. Non c'è niente da chiedere e niente da
+   impostare — ma senza misurarlo nessuno sa cosa sta ottenendo davvero, quindi il
+   pannello Info lo mostra. L'attenuazione della camera lavora sul tempo trascorso,
+   non sul numero di fotogrammi: a 120 il movimento è lo stesso, solo più fitto
+   (verificato: passo 0,417 m a 60 e 0,209 a 120, stessa traiettoria). */
+let fpsN = 0, fpsT = 0, fpsVisto = 0;
 function loop(now){
-  if(cameraTick(now||performance.now())) S.need=true;
+  now = now || performance.now();
+  if(fpsT){ fpsN++; if(now-fpsT >= 1000){ fpsVisto = Math.round(fpsN*1000/(now-fpsT)); fpsN=0; fpsT=now } }
+  else fpsT = now;
+  if(cameraTick(now)) S.need=true;
   if(S.need){S.need=false;draw()}
   requestAnimationFrame(loop);
 }
@@ -1626,7 +1640,19 @@ const sheets={car:document.getElementById('sheetCar'),legend:document.getElement
 const sheetMaps=document.getElementById('sheetMaps'); if(sheetMaps) sheets.maps=sheetMaps;
 const bMaps=document.getElementById('bMaps');
 if(bMaps && sheetMaps){ bMaps.hidden=false; bMaps.onclick=()=>openSheet('maps'); }
-function openSheet(k){ for(const n in sheets) sheets[n].classList.toggle('show',n===k) }
+function openSheet(k){
+  for(const n in sheets) sheets[n].classList.toggle('show',n===k);
+  if(k==='info') mostraPerf();
+}
+/* Aggiorna il dato mentre il pannello è aperto: da fermi il sistema rallenta i
+   fotogrammi apposta, quindi il numero che conta è quello che si legge muovendosi. */
+function mostraPerf(){
+  const el=document.getElementById('infoPerf'); if(!el) return;
+  const scrivi=()=>{ if(!sheets.info.classList.contains('show')) return;
+    el.textContent = tr().perf(fpsVisto||'—', E.length.toLocaleString('it-IT'));
+    setTimeout(scrivi, 1000); };
+  scrivi();
+}
 function closeSheets(){ for(const n in sheets) sheets[n].classList.remove('show') }
 /* su iOS Safari `position:fixed;bottom:0` finisce sotto la barra del browser: riservo lo
    spazio solo quando NON siamo nella PWA installata (lì la barra non c'è). */
