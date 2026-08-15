@@ -1,8 +1,8 @@
 /* Copilota IA - cache offline.
    Due cache: la shell cambia a ogni build, i dati solo quando cambia il dataset,
    cosi' un fix di codice non fa riscaricare la mappa della regione. */
-const APP = 'copilota-app-v12';
-const DATA = 'copilota-data-a3df9c0508';
+const APP = 'copilota-app-v13';
+const DATA = 'copilota-data-9f5737f647';
 const SHELL = ['./', './index.html', './manifest.webmanifest',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
