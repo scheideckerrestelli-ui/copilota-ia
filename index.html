@@ -95,12 +95,6 @@ if ('serviceWorker' in navigator)
     color:var(--ink2);font-weight:400;margin-top:4px}
   .note.off .call{font-size:17px;color:var(--ink2)}
   .note.off .gear,.note.off canvas{display:none}
-  @media (max-width:560px){
-    /* il banner occupa tutta la larghezza: l'HUD sale sopra invece di finirci sotto */
-    .hud{bottom:calc(env(safe-area-inset-bottom) + 92px)}
-    .hud .road{max-width:62vw}
-    .scalebar{bottom:calc(env(safe-area-inset-bottom) + 92px)}
-  }
   @media (max-width:520px){
     .note{gap:9px;padding:8px 11px 8px 8px}
     .note canvas{width:46px;height:46px}
@@ -174,6 +168,13 @@ if ('serviceWorker' in navigator)
     font-weight:600}
   .splash h1 span{color:var(--accent)}
   .splash p{font-size:12px;color:var(--ink2);margin-top:8px;font-variant-numeric:tabular-nums}
+  /* mobile: il banner nota è a tutta larghezza, HUD e scala salgono sopra
+     (in fondo al foglio: deve vincere sulle regole base di .hud/.scalebar) */
+  @media (max-width:560px){
+    .hud{bottom:calc(env(safe-area-inset-bottom) + 96px)}
+    .hud .road{max-width:62vw}
+    .scalebar{bottom:calc(env(safe-area-inset-bottom) + 96px)}
+  }
   [data-lang]{display:none}
   body:not(.en) [data-lang="it"]{display:revert}
   body.en [data-lang="en"]{display:revert}
