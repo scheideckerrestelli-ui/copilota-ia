@@ -1,7 +1,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- NON "black-translucent": con quello il contenuto va sotto la barra di stato e iOS
+     ci stende sopra una sfumatura sfocata per tenere leggibili ora e batteria, che
+     impasta il marchio e la barra di ricerca. In Safari non si vede (li' la barra e'
+     del browser), solo nella app installata. Con "black" iOS riserva la sua striscia
+     e il nostro contenuto comincia sotto, nitido. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#101418">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -449,7 +454,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '56';
+const APPVER = '58';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -574,6 +579,81 @@ function setOrigin(list){
   KX = 111320*Math.cos(M.lat0*Math.PI/180);
 }
 
+/* ============ navigatore ============
+   Il grafo per il calcolo del percorso è già quello che l'app usa per le note:
+   le giunzioni sono i nodi, gli archi i collegamenti, il costo è la lunghezza
+   vera in metri. Non serve nessuna struttura in più, solo rispettare i sensi
+   unici — in Umbria sono il 20,5% delle strade, ignorarli vuol dire mandare
+   contromano su una strada su cinque.
+   Misurato prima di scriverlo: 110 km attraverso due regioni in 189 ms con una
+   ricerca del minimo ingenua; con la coda binaria qui sotto si sta molto sotto. */
+
+/* Coda a priorità minima: senza, A* passa il tempo a cercare il minimo in una
+   lista invece che a esplorare. */
+class Coda {
+  constructor(){ this.a=[]; }
+  get size(){ return this.a.length }
+  push(v, p){ const a=this.a; a.push({v,p}); let i=a.length-1;
+    while(i>0){ const g=(i-1)>>1; if(a[g].p<=a[i].p) break; [a[g],a[i]]=[a[i],a[g]]; i=g } }
+  pop(){ const a=this.a, top=a[0], last=a.pop();
+    if(a.length){ a[0]=last; let i=0;
+      for(;;){ const l=2*i+1, r=l+1; let m=i;
+        if(l<a.length && a[l].p<a[m].p) m=l;
+        if(r<a.length && a[r].p<a[m].p) m=r;
+        if(m===i) break; [a[m],a[i]]=[a[i],a[m]]; i=m } }
+    return top.v }
+}
+
+/* Un arco è percorribile da `da` verso l'altro capo? `ow` vale 1 se si può solo
+   nel verso j0→j1, -1 solo al contrario, 0 in tutti e due. */
+function percorribile(e, da){
+  if(!e.ow) return true;
+  return e.ow>0 ? e.j0===da : e.j1===da;
+}
+function posGiun(j){
+  const lista=JUN.get(j); if(!lista||!lista.length) return null;
+  const e=E[lista[0]];
+  return e.j0===j ? [e.xy[0],e.xy[1]] : [e.xy[2*e.np-2], e.xy[2*e.np-1]];
+}
+/* Costo in secondi, non in metri: una statale a 90 batte una stradina a 50 anche
+   se è più lunga, che è come sceglie un guidatore vero. */
+function costo(e){ return e.len / Math.max(20, edgeLimit(e).v) * 3.6; }
+
+function calcolaRotta(jDa, jA, limite=400000){
+  const meta = posGiun(jA); if(!meta) return null;
+  const g=new Map([[jDa,0]]), prev=new Map(), chiuso=new Set();
+  const q=new Coda();
+  // euristica: tempo minimo in linea d'aria a 110 km/h, mai sovrastimato
+  const h=j=>{ const p=posGiun(j); return p ? Math.hypot(p[0]-meta[0],p[1]-meta[1])/30.5 : 0 };
+  q.push(jDa, h(jDa));
+  let visti=0;
+  while(q.size){
+    const cur=q.pop();
+    if(chiuso.has(cur)) continue;
+    if(cur===jA) break;
+    chiuso.add(cur);
+    if(++visti>limite) return null;
+    const gc=g.get(cur);
+    for(const id of (JUN.get(cur)||[])){
+      const e=E[id];
+      if(!percorribile(e,cur)) continue;
+      const alt = e.j0===cur ? e.j1 : e.j0;
+      if(alt===cur || chiuso.has(alt)) continue;
+      const ng = gc + costo(e);
+      if(ng < (g.get(alt)??Infinity)){ g.set(alt,ng); prev.set(alt,id); q.push(alt, ng+h(alt)) }
+    }
+  }
+  if(!prev.has(jA) && jDa!==jA) return null;
+  const archi=[]; let n=jA;
+  while(prev.has(n)){ const id=prev.get(n), e=E[id];
+    archi.push({e, verso: e.j1===n ? 1 : -1});
+    n = e.j0===n ? e.j1 : e.j0;
+    if(archi.length>20000) break }
+  archi.reverse();
+  const metri=archi.reduce((a,x)=>a+x.e.len,0);
+  return {archi, metri, secondi: Math.round(g.get(jA)||0), visti};
+}
+
 function decodePoly(str){                       // -> Float32Array [x,y,...] in metri locali
   const n=str.length; let i=0, lat=0, lon=0; const out=[];
   while(i<n){
@@ -610,12 +690,14 @@ function gjun(osm){ let g=JKEY.get(osm); if(g===undefined){ g=JKEY.size; JKEY.se
    intera, e se nessuno ce l'ha intera si tiene la monca — meglio di un buco. */
 const WOWN = new Map();       // id via OSM -> {rid, intera}
 const GSEEN = new Set(), CSEEN = new Set(), PSEEN = new Set();
+const VIE = {};   // regione -> dizionario dei nomi di via
 
 function buildEdges(rid, map){
+  VIE[rid] = RAW.vie || [];
   const jn = RAW.jn || null;
   const J = jn ? (i => gjun(jn[i])) : (i => gjun(rid+':'+i));   // dataset v0.6: chiavi locali
   for (let k=0;k<RAW.edges.length;k++){
-    const [poly, runs, cflat, rank, len, j0, j1, ms, wid] = RAW.edges[k];
+    const [poly, runs, cflat, rank, len, j0, j1, ms, wid, ow, nomeIdx] = RAW.edges[k];
     map[k] = -1;
     if (wid!==undefined){
       // La proprietà è PER REGIONE, non per arco: una via lunga si spezza in molti
@@ -643,7 +725,9 @@ function buildEdges(rid, map){
       curves.push({d0:cflat[i], d1:cflat[i+1], dir:cflat[i+2], c:cflat[i+3], r:cflat[i+4]});
     const gj0=J(j0), gj1=J(j1);
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
-               id:E.length, rg:rid};
+               id:E.length, rg:rid, ow:ow||0,
+               // il nome sta nel dizionario della sua regione, non in un campo per arco
+               via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : ''};
     map[k] = e.id;                       // indice locale -> globale, serve agli autovelox
     E.push(e);
     if (!JUN.has(gj0)) JUN.set(gj0,[]); JUN.get(gj0).push(e.id);
@@ -825,7 +909,7 @@ const T = {
     noSave:'Non riesco a salvare la scelta: spazio esaurito o navigazione privata. Libera spazio e riprova.',
     perf:(f,a)=>'Sta girando a '+f+' fotogrammi al secondo su '+a+' tratti caricati. Segue lo schermo: 120 su iPhone Pro con ProMotion, 60 sugli altri, meno da fermo o in risparmio energetico.',
     ver:(v,pwa)=>'Versione '+v+(pwa?' · app installata':' · dal browser')+'. Se qui il numero non sale dopo un aggiornamento, la copia vecchia e\' rimasta in cache: chiudi del tutto l\'app dal selettore e riaprila.',
-    gpsPwa:'L\'app aggiunta alla schermata Home ha permessi PROPRI, separati da Safari: il "Consenti" dato al sito non vale qui. Vai in Impostazioni → Privacy e sicurezza → Localizzazione e cerca «Copilota» nell\'elenco. Se non c\'e\', togli l\'icona dalla schermata Home, riaggiungila e tocca Consenti quando te lo chiede la prima volta.',
+    gpsPwa:'L\'app aggiunta alla schermata Home ha permessi PROPRI, separati da Safari, e NON compare fra le app in Impostazioni → Localizzazione: non cercarla li\'. L\'unico modo e\' rifarle chiedere il permesso: tieni premuta l\'icona → Rimuovi, riapri il sito in Safari, Condividi → Aggiungi a schermata Home, e alla prima richiesta tocca Consenti.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
     dlFail:'Scaricamento fallito: ',
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
@@ -861,7 +945,7 @@ const T = {
     noSave:'Cannot save your choice: storage full or private browsing. Free some space and try again.',
     perf:(f,a)=>'Running at '+f+' frames per second over '+a+' loaded segments. It follows the display: 120 on ProMotion iPhones, 60 elsewhere, less when parked or in low power mode.',
     ver:(v,pwa)=>'Version '+v+(pwa?' · installed app':' · from the browser')+'. If this number does not go up after an update, the old copy is still cached: close the app from the switcher and reopen it.',
-    gpsPwa:'The app added to your Home Screen has its OWN permissions, separate from Safari: allowing the website does not apply here. Go to Settings → Privacy & Security → Location Services and look for “Copilota”. If it is not there, remove the icon from the Home Screen, add it again and tap Allow the first time it asks.',
+    gpsPwa:'The app added to your Home Screen has its OWN permissions, separate from Safari, and does NOT appear among the apps in Settings → Location Services: do not look for it there. The only way is to make it ask again: hold the icon → Remove, reopen the site in Safari, Share → Add to Home Screen, and tap Allow the first time it asks.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
     dlFail:'Download failed: ',
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
