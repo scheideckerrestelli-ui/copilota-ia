@@ -7,11 +7,11 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>
 if ('serviceWorker' in navigator) addEventListener('load', () => {
-  const had = !!navigator.serviceWorker.controller;
+  const had = !!navigator.serviceWorker.controller;   // gia' controllata = e' un aggiornamento
   navigator.serviceWorker.register('sw.js').catch(()=>{});
   let done = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!had || done) return;
+    if (!had || done) return;                        // al primo giro non ricaricare
     done = true; location.reload();
   });
 });
@@ -194,6 +194,22 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     .hud{bottom:calc(env(safe-area-inset-bottom) + 96px)}
     .hud .road{max-width:62vw}
     .scalebar{bottom:calc(env(safe-area-inset-bottom) + 96px)}
+    /* Su telefono marchio e ricerca non ci stanno affiancati: il sottotitolo è
+       cresciuto col multi-regione ("3 regioni · 57.704 km · 310.625 curve") e
+       schiacciava il campo di ricerca a zero, con il testo tagliato a metà.
+       Prima riga marchio + lingua, la ricerca va a capo a tutta larghezza. */
+    .top{flex-wrap:wrap;row-gap:7px;align-items:center}
+    .brand{flex:1 1 auto;min-width:0;order:1}
+    .brand h1{font-size:14px}
+    .brand .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #bLang{order:2;flex:none}
+    .search{order:3;flex:1 1 100%;max-width:none}
+    /* il brindello sotto la barra deve scendere sotto DUE righe, non una */
+    .toast{top:calc(env(safe-area-inset-top) + 108px)}
+  }
+  /* schermi molto stretti: il sottotitolo è la prima cosa sacrificabile */
+  @media (max-width:360px){
+    .brand .sub{display:none}
   }
   /* Le liste avevano bisogno di una regola loro: `.sheet ul{display:flex}` ha
      specificità (0,1,1) e batteva `[data-lang]{display:none}` (0,1,0), così nei
@@ -204,6 +220,22 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   body:not(.en) .sheet ul[data-lang="it"]{display:flex}
   body.en [data-lang="en"]{display:revert}
   body.en .sheet ul[data-lang="en"]{display:flex}
+  /* pannello Mappe. Niente <ul> qui dentro apposta: le liste hanno la regola di
+     specificità di cui sopra, le righe sono <div> e non ci ricascano. */
+  .rrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1e262e}
+  .rrow:last-of-type{border-bottom:0}
+  .rrow .rnm{flex:1;min-width:0}
+  .rrow .rnm b{display:block;font-size:15px;line-height:1.25}
+  .rrow .rnm span{font-size:11.5px;color:var(--ink2);letter-spacing:.02em}
+  .rrow .rbt{flex:none;border:1px solid #2b3640;border-radius:9px;padding:8px 12px;
+    font:inherit;font-size:12.5px;background:#151b22;color:var(--ink);cursor:pointer;
+    min-width:92px;text-align:center;font-variant-numeric:tabular-nums}
+  .rrow .rbt.on{background:var(--accent);color:#08121a;border-color:var(--accent);font-weight:600}
+  .rrow .rbt:disabled{opacity:.6;cursor:default}
+  .rrow .rdel{flex:none;width:34px;height:34px;border:0;background:none;color:var(--ink2);
+    cursor:pointer;font-size:17px;line-height:1;border-radius:8px}
+  .rrow .rdel:hover{color:#ff5a5a;background:#1a2129}
+  .rrow.here .rnm b::after{content:' ●';color:var(--accent);font-size:11px;vertical-align:2px}
 </style>
 
 <canvas id="map"></canvas>
@@ -277,7 +309,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <div id="gearBox">
     <h3><span data-lang="it">Rapporti</span><span data-lang="en">Ratios</span></h3>
     <div class="slider">
-      <input type="range" id="calSlider" min="30" max="52" step="0.5">
+      <input type="range" id="calSlider" min="25" max="70" step="0.5">
       <div class="val"><span id="calVal">40</span> <small style="font-size:9px;color:var(--ink2)">km/h ×1000g in <span id="calGear">6ª</span></small></div>
     </div>
     <div class="gears" id="gearTable"></div>
@@ -322,7 +354,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 <!-- info -->
 <div class="sheet" id="sheetInfo"><div class="inner">
   <div class="grip"></div>
-  <h2>Copilota <i class="ac">IA</i> · v0.6</h2>
+  <h2>Copilota <i class="ac">IA</i> · v0.7</h2>
   <p id="infoStats" data-lang="it"></p>
   <p id="infoStatsEn" data-lang="en"></p>
   <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span></h3>
@@ -376,6 +408,20 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <button class="btn" data-close><span data-lang="it">Si parte</span><span data-lang="en">Let's go</span></button>
 </div></div>
 
+<div class="sheet" id="sheetMaps"><div class="inner">
+  <div class="grab"></div>
+  <h2><span data-lang="it">Mappe</span><span data-lang="en">Maps</span></h2>
+  <p data-lang="it">Scarica le regioni che ti servono: restano sul telefono e funzionano
+    <b>senza rete</b>. Quelle <b>attive</b> vengono caricate all'avvio — tienine poche,
+    ognuna occupa memoria. Il pallino segna la regione dove ti vede il GPS.</p>
+  <p data-lang="en">Download the regions you need: they stay on your phone and work
+    <b>offline</b>. <b>Active</b> ones get loaded at startup — keep only a few, each one
+    takes memory. The dot marks the region the GPS puts you in.</p>
+  <div id="mapList"></div>
+  <p class="disc" id="mapStore"></p>
+  <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span></button>
+</div></div>
+
 <div class="splash" id="splash"><div class="in">
   <h1>Copilota <span>IA</span></h1>
   <p id="splashMsg">preparazione mappa…</p>
@@ -387,13 +433,33 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const DATA_URL = 'data.json', DATA_BYTES = 11455379;
 let RAW = null;
-async function loadData(onProgress){
-  const r = await fetch(DATA_URL);
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  if(!r.body) return JSON.parse(await r.text());
-  const rd = r.body.getReader(), chunks = [];
+
+/* ============ regioni installate ============
+   Le mappe non sono più un unico file: c'è un regions.json di manifesto e un
+   data-<regione>.json per regione. L'utente scarica quelle che gli servono
+   (restano offline) e tiene *attive* solo quelle dove guida — ognuna costa
+   memoria, e caricare mezza Italia in un telefono non finisce bene. */
+const RKEY = 'copilota-regioni';       // {inst:[id...], att:[id...]}
+let REG = [];
+let RSTATE = {inst:[], att:[]};
+const rById = id => REG.find(r=>r.id===id);
+/* `file` arriva dal manifesto: relativo se i dataset stanno accanto all'app,
+   assoluto se stanno su una seconda origine (opzione --base di mkpwa.py). */
+const dataUrl = r => r.file+'?v='+r.v;
+const cacheName = id => 'copilota-data-'+id;
+function rload(){ try{ const j=JSON.parse(localStorage.getItem(RKEY)||'null');
+  if(j) RSTATE={inst:j.inst||[], att:j.att||[]} }catch(e){} }
+function rsave(){ try{ localStorage.setItem(RKEY, JSON.stringify(RSTATE)) }catch(e){} }
+const inBox = (b,la,lo) => la>=b[0] && la<=b[2] && lo>=b[1] && lo<=b[3];
+
+/* Legge una regione: prima dalla Cache API, poi dalla rete. Andare in cache
+   direttamente invece di aspettarsi il service worker vuol dire che la mappa
+   scaricata si apre anche quando il SW non ha ancora preso il controllo. */
+async function readStream(res, onProgress){
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  if(!res.body) return new TextEncoder().encode(await res.text());
+  const rd = res.body.getReader(), chunks = [];
   let got = 0, last = 0;
   for(;;){
     const {done, value} = await rd.read();
@@ -405,8 +471,31 @@ async function loadData(onProgress){
   const buf = new Uint8Array(got);
   let o = 0;
   for(const c of chunks){ buf.set(c, o); o += c.length }
-  chunks.length = 0;
+  onProgress(got);
+  return buf;
+}
+async function loadRegion(r, onProgress){
+  const url = dataUrl(r);
+  let res = null;
+  try{ res = await caches.match(url) }catch(e){}
+  if(!res) res = await fetch(url);
+  const buf = await readStream(res, onProgress);
   return JSON.parse(new TextDecoder().decode(buf));
+}
+async function installRegion(r, onProgress){
+  const url = dataUrl(r);
+  const buf = await readStream(await fetch(url), onProgress);
+  const c = await caches.open(cacheName(r.id));
+  for(const k of await c.keys()) await c.delete(k);      // via le versioni vecchie
+  await c.put(url, new Response(buf, {headers:{'Content-Type':'application/json'}}));
+  if(!RSTATE.inst.includes(r.id)) RSTATE.inst.push(r.id);
+  rsave();
+}
+async function removeRegion(id){
+  try{ await caches.delete(cacheName(id)) }catch(e){}
+  RSTATE.inst = RSTATE.inst.filter(x=>x!==id);
+  RSTATE.att  = RSTATE.att.filter(x=>x!==id);
+  rsave();
 }
 
 /* ============ classi ============ */
@@ -429,6 +518,20 @@ let KX = 1; const KY = 110540;      // KX dipende dalla latitudine: assegnata al
 const toXY = (lon,lat) => [(lon-M.lon0)*KX, (lat-M.lat0)*KY];
 const toLL = (x,y) => [x/KX+M.lon0, y/KY+M.lat0];
 
+/* Un'unica origine di proiezione per tutte le regioni caricate. decodePoly
+   converte lat/lon in metri locali *al momento della decodifica*, quindi basta
+   fissarla prima di caricare: il formato dei file non cambia.
+   Le distanze vere (len, curve, autovelox) sono metri calcolati in fase di
+   elaborazione con la proiezione locale giusta, e l'app riscala la geometria con
+   sc=len/L: l'errore dell'equirettangolare resta nel disegno, non nelle note. */
+function setOrigin(list){
+  let la0=90, lo0=180, la1=-90, lo1=-180;
+  for(const r of list){ const b=r.bbox;
+    if(b[0]<la0)la0=b[0]; if(b[1]<lo0)lo0=b[1]; if(b[2]>la1)la1=b[2]; if(b[3]>lo1)lo1=b[3]; }
+  M = {lat0:(la0+la1)/2, lon0:(lo0+lo1)/2, span:la1-la0};
+  KX = 111320*Math.cos(M.lat0*Math.PI/180);
+}
+
 function decodePoly(str){                       // -> Float32Array [x,y,...] in metri locali
   const n=str.length; let i=0, lat=0, lon=0; const out=[];
   while(i<n){
@@ -450,9 +553,41 @@ const CELL = 1500;
 const ckey = (cx,cy) => cx*100000+cy;
 let BB = [1e12,1e12,-1e12,-1e12];
 
-function buildEdges(){
+/* Le giunzioni arrivano dai file come indici locali alla regione; l'array `jn`
+   traduce indice locale -> id del nodo OSM, che è globale e stabile. È così che
+   la strada che esce dall'Umbria e prosegue nel Lazio si ricuce da sola: i due
+   estratti chiamano quel nodo con lo stesso id (33.076 nodi in comune, misurati
+   sui due estratti veri). */
+const JKEY = new Map();       // id nodo OSM -> indice giunzione globale
+function gjun(osm){ let g=JKEY.get(osm); if(g===undefined){ g=JKEY.size; JKEY.set(osm,g) } return g }
+
+/* Anti-doppioni al confine. Gli estratti sono complete-ways: la via che sconfina
+   sta *intera* in tutti e due i file (1.537 su 1.568 identiche, misurate), quindi
+   vince la prima regione che la carica. L'id via negativo marca invece una copia
+   troncata al bordo dell'estratto: quella cede sempre il posto alla versione
+   intera, e se nessuno ce l'ha intera si tiene la monca — meglio di un buco. */
+const WOWN = new Map();       // id via OSM -> {rid, intera}
+const GSEEN = new Set(), CSEEN = new Set(), PSEEN = new Set();
+
+function buildEdges(rid, map){
+  const jn = RAW.jn || null;
+  const J = jn ? (i => gjun(jn[i])) : (i => gjun(rid+':'+i));   // dataset v0.6: chiavi locali
   for (let k=0;k<RAW.edges.length;k++){
-    const [poly, runs, cflat, rank, len, j0, j1, ms] = RAW.edges[k];
+    const [poly, runs, cflat, rank, len, j0, j1, ms, wid] = RAW.edges[k];
+    map[k] = -1;
+    if (wid!==undefined){
+      // La proprietà è PER REGIONE, non per arco: una via lunga si spezza in molti
+      // archi agli incroci e sono tutti suoi. Confrontare arco per arco buttava via
+      // un quarto della rete (misurato: 27.819 tratti su 36.151 in Umbria).
+      const w = Math.abs(wid), intera = wid > 0;
+      const own = WOWN.get(w);
+      if (own && own.rid !== rid){
+        // ce l'ha già un'altra regione: cedo, a meno che la mia sia intera e la sua
+        // fosse troncata al bordo dell'estratto — lì due copie battono un buco
+        if (own.intera || !intera) continue;
+      }
+      if (!own || own.rid !== rid) WOWN.set(w, {rid, intera});
+    }
     const xy = decodePoly(poly);
     const np = xy.length>>1;
     if (np<2) continue;
@@ -464,10 +599,13 @@ function buildEdges(){
     const curves=[];
     for (let i=0;i<cflat.length;i+=5)
       curves.push({d0:cflat[i], d1:cflat[i+1], dir:cflat[i+2], c:cflat[i+3], r:cflat[i+4]});
-    const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0, j1, ms:ms||0, id:E.length};
+    const gj0=J(j0), gj1=J(j1);
+    const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
+               id:E.length, rg:rid};
+    map[k] = e.id;                       // indice locale -> globale, serve agli autovelox
     E.push(e);
-    if (!JUN.has(j0)) JUN.set(j0,[]); JUN.get(j0).push(e.id);
-    if (!JUN.has(j1)) JUN.set(j1,[]); JUN.get(j1).push(e.id);
+    if (!JUN.has(gj0)) JUN.set(gj0,[]); JUN.get(gj0).push(e.id);
+    if (!JUN.has(gj1)) JUN.set(gj1,[]); JUN.get(gj1).push(e.id);
     for (let i=0;i<np;i++){
       const x=xy[2*i], y=xy[2*i+1];
       if(x<BB[0])BB[0]=x; if(y<BB[1])BB[1]=y; if(x>BB[2])BB[2]=x; if(y>BB[3])BB[3]=y;
@@ -483,9 +621,16 @@ function buildEdges(){
 const GREY = [], GGRID = new Map();
 function buildGrey(){
   for (const s of RAW.grey){
-    const g = decodePoly(s), id = GREY.length;
-    GREY.push(g);
+    const g = decodePoly(s);
     const np = g.length>>1;
+    if (np<2) continue;
+    // le residenziali non portano l'id della via: al confine si riconoscono dagli estremi
+    const gk = Math.round(g[0])+','+Math.round(g[1])+','+
+               Math.round(g[2*np-2])+','+Math.round(g[2*np-1]);
+    if (GSEEN.has(gk)) continue;
+    GSEEN.add(gk);
+    const id = GREY.length;
+    GREY.push(g);
     let pk = null;
     for (let i=0;i<np;i++){
       const kk = ckey(Math.floor(g[2*i]/CELL), Math.floor(g[2*i+1]/CELL));
@@ -498,12 +643,19 @@ function buildGrey(){
 }
 const CAMS = [];                        // {x,y,ms,e,d}
 const E2CAM = new Map();                // edgeId -> [cam]
-function buildCams(){
+function buildCams(map){
   for (const [lon,lat,ms,ei,d] of (RAW.cams||[])){
+    const ck = lon+','+lat;
+    if (CSEEN.has(ck)) continue;          // stesso autovelox in due regioni confinanti
+    CSEEN.add(ck);
     const [x,y]=toXY(lon,lat);
-    const c={x,y,ms,e:ei,d};
+    // l'indice dell'arco è locale alla regione: `map` lo porta a quello globale.
+    // -1 se quell'arco non è stato caricato (doppione): l'autovelox resta sulla
+    // mappa, perde solo l'avviso anticipato.
+    const g = ei>=0 ? (map[ei]!==undefined ? map[ei] : -1) : -1;
+    const c={x,y,ms,e:g,d};
     CAMS.push(c);
-    if(ei>=0){ if(!E2CAM.has(ei))E2CAM.set(ei,[]); E2CAM.get(ei).push(c); }
+    if(g>=0){ if(!E2CAM.has(g))E2CAM.set(g,[]); E2CAM.get(g).push(c); }
   }
 }
 /* limite della strada: ms>0 = segnalato in OSM, ms<0 = inferito (catena wiki OSM:
@@ -531,16 +683,22 @@ const CARS = {
             "torque with no mid-corner shift. In hairpins it prefers 2nd over 1st whenever the revs "+
             "hold — with 350 Nm through the front wheels, 1st on exit is just wheelspin."},
   cla:{nm:'Mercedes CLA 200 d', sub:'Shooting Brake 2017 · 136 CV · 300 Nm · 7G-DCT',
-       auto:true, n:7, grip:0.85,
+       /* 7G-DCT 724.0: 3,857 · 2,429 · 1,536 · 1,049 · 0,776 · 0,604 · 0,480, finale 4,130,
+          normalizzati sulla 7ª. Coi paddle la marcia la sceglie chi guida, quindi si suggerisce.
+          Fascia utile da diesel OM651 (2.000-4.600), non da turbo benzina. */
+       auto:false, n:7, ref:59, grip:0.85, boost:2000, rpmLim:4600,
+       g:[0.1244,0.1976,0.3125,0.4576,0.6186,0.7947,1.0],
        d_it:"Di serie: 2.143 cm³ diesel, 136 CV, 300 Nm già pieni a 1.400 giri, doppia frizione "+
-            "7G-DCT, 1.555 kg. Il cambio lo fa lei, quindi qui il copilota non suggerisce la marcia: "+
-            "ti dà la velocità con cui la curva si percorre pulita. Rispetto alla MiTo la tenuta di "+
-            "riferimento è più bassa (station wagon alta e pesante, gomme da tutti i giorni), quindi "+
-            "gli stessi raggi escono con numeri più bassi.",
-       d_en:"Stock: 2,143 cc diesel, 136 hp, 300 Nm from 1,400 rpm, 7G-DCT dual clutch, 1,555 kg. "+
-            "The car picks the gear, so the co-driver does not call one here: it gives you the speed "+
-            "that takes the corner cleanly. Reference grip is lower than the MiTo's (tall, heavy "+
-            "estate on everyday tyres), so the same radii come out slower."},
+            "7G-DCT a 7 rapporti, 1.555 kg. Con i paddle al volante la marcia la scegli tu, quindi "+
+            "il copilota te la dice: essendo un diesel la fascia buona è 2.000-4.600 giri, molto più "+
+            "in basso della MiTo, e le marce consigliate sono più alte. Rispetto alla MiTo la tenuta "+
+            "di riferimento è più bassa (station wagon alta e pesante, gomme da tutti i giorni), "+
+            "quindi gli stessi raggi escono con numeri più bassi.",
+       d_en:"Stock: 2,143 cc diesel, 136 hp, 300 Nm from 1,400 rpm, 7-speed 7G-DCT dual clutch, "+
+            "1,555 kg. With the wheel paddles you pick the gear, so the co-driver calls it: being a "+
+            "diesel the sweet spot is 2,000-4,600 rpm, far lower than the MiTo's, and the suggested "+
+            "gears are taller. Reference grip is lower than the MiTo's (tall, heavy estate on "+
+            "everyday tyres), so the same radii come out slower."},
   m6: {nm:'Altra auto', sub:'cambio manuale 6 marce',
        auto:false, n:6, g:[0.190,0.3325,0.490,0.6425,0.810,1.0], ref:40,
        boost:3000, rpmLim:6500, grip:0.92,
@@ -585,7 +743,7 @@ const T = {
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale'},
     roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo',
     localCall:'Strada locale', localSub:'strada urbana: nessuna nota di curva, limite dedotto',
-    gWords:['prima','seconda','terza','quarta','quinta','sesta'],
+    gWords:['prima','seconda','terza','quarta','quinta','sesta','settima'],
     cWords:['tornante','uno','due','tre','quattro','cinque','sei'],
     sideW:['destra','sinistra'], hairW:'tornante a ',
     gpsSearch:'Cerco il GPS…',
@@ -594,7 +752,13 @@ const T = {
     gpsBlocked:'Posizione bloccata per questo sito. iPhone: Impostazioni → Privacy → Localizzazione → Safari = "Durante l\'uso" + Posizione esatta; poi in Safari aA → Impostazioni sito → Posizione → Consenti. Mac: Impostazioni di Sistema → Privacy → Localizzazione.',
     gpsDenied:'Permesso GPS negato. Se il browser non lo chiede nemmeno, controlla la localizzazione nelle impostazioni di sistema.',
     gpsErr:'GPS non disponibile: ', gpsNone:'Questo browser non espone il GPS.',
-    outZone:'Sei fuori dalla zona caricata (Lazio).',
+    outZone:'Sei fuori dalle mappe caricate.',
+    pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', load:'Carica', active:'Attiva',
+    onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
+    dlFail:'Scaricamento fallito: ',
+    hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
+    hereOn:n=>'Sei in '+n+': attiva la mappa dal pannello Mappe.',
+    farApart:'Regioni molto lontane fra loro: le note restano corrette, il disegno si deforma un po\'. Meglio tenere attive solo quelle dove guidi.',
     inUse:'in uso', boost:'km/h in boost', at:'a', byLimit:'limite',
     legalOn:'La velocità di riferimento non supera mai il limite della strada: sulle curve larghe è il limite a comandare.',
     legalOff:'La velocità di riferimento ignora il limite: mostra solo quello che la curva permette. Da usare a fondo chiuso.',
@@ -609,7 +773,7 @@ const T = {
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road'},
     roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active',
     localCall:'Local road', localSub:'urban street: no corner calls, limit inferred',
-    gWords:['first','second','third','fourth','fifth','sixth'],
+    gWords:['first','second','third','fourth','fifth','sixth','seventh'],
     cWords:['hairpin','one','two','three','four','five','six'],
     sideW:['right','left'], hairW:'hairpin ',
     gpsSearch:'Looking for GPS…',
@@ -618,7 +782,13 @@ const T = {
     gpsBlocked:'Location is blocked for this site. iPhone: Settings → Privacy → Location Services → Safari = "While Using" + Precise Location; then in Safari aA → Website Settings → Location → Allow. Mac: System Settings → Privacy → Location Services.',
     gpsDenied:'GPS permission denied. If the browser never asks, check location in your system settings.',
     gpsErr:'GPS unavailable: ', gpsNone:'This browser does not expose GPS.',
-    outZone:'You are outside the loaded area (Lazio).',
+    outZone:'You are outside the loaded maps.',
+    pickMap:'pick a map', maps:'Maps', dl:'Download', load:'Load', active:'Active',
+    onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
+    dlFail:'Download failed: ',
+    hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
+    hereOn:n=>'You are in '+n+': activate the map from the Maps panel.',
+    farApart:'Regions far apart: pacenotes stay correct, drawing gets slightly distorted. Better to keep active only the ones you drive in.',
     inUse:'in use', boost:'km/h on boost', at:'at', byLimit:'limit',
     legalOn:'The reference speed never exceeds the road limit: on open corners the limit is what rules.',
     legalOff:'The reference speed ignores the limit and shows only what the corner allows. For closed roads.',
@@ -1121,7 +1291,7 @@ function updateNote(){
   nGear.hidden = isAuto();
   if(!isAuto()){
     const g=bestGear(kmh);
-    gearV.textContent = L==='it' ? g+'ª' : g+['st','nd','rd','th','th','th'][g-1];
+    gearV.textContent = L==='it' ? g+'ª' : g+['st','nd','rd','th','th','th','th'][g-1];
     nGear.style.borderColor = flat ? CLS[6].col : 'var(--line)';
   }
   if(a.inside){nDist.textContent=t0.inC;nLab.textContent=t0.inC2}
@@ -1208,9 +1378,11 @@ function startGps(){
     let hd=null;
     if(p.coords.heading!=null&&!isNaN(p.coords.heading)&&(p.coords.speed||0)>1)
       hd=Math.PI/2-p.coords.heading*Math.PI/180;
+    // fuori dalle mappe caricate: se una regione scaricabile ti copre, proponila
     if(x<BB[0]-30000||x>BB[2]+30000||y<BB[1]-30000||y>BB[3]+30000){
       toast(tr().outZone,6000);
     }
+    suggestRegion(p.coords.latitude, p.coords.longitude);
     feed(x,y,hd,p.coords.speed||0,p.coords.accuracy||0);
   },err=>{
     setMode('free');
@@ -1300,7 +1472,7 @@ function applyLang(){
   document.body.classList.toggle('en', L==='en');
   qEl.placeholder = tr().search;
   document.getElementById('gearLab').textContent = tr().gear;
-  renderCar(); updateNote(); S.need=true;
+  renderCar(); updateNote(); renderMaps(); showStore(); setBrandSub(); S.need=true;
 }
 bLang.onclick=()=>{ L = L==='it'?'en':'it'; save(); applyLang(); renderLegend(); };
 bAudio.classList.toggle('on',S.audio);
@@ -1329,6 +1501,103 @@ addEventListener('pointerdown',e=>{
   closeSheets();
 },true);
 addEventListener('keydown',e=>{ if(e.key==='Escape') closeSheets() });
+
+/* ---- pannello Mappe ---- */
+/* Il sottotitolo del marchio dice quante regioni sono attive: va riscritto anche
+   quando cambia la lingua, non solo al boot. */
+let BRAND = null;
+function setBrandSub(){
+  const el=document.getElementById('brandSub'); if(!el) return;
+  if(!BRAND){ el.textContent = tr().pickMap; return }
+  el.textContent = (BRAND.n>1 ? BRAND.n+(L==='it'?' regioni · ':' regions · ') : BRAND.nome+' · ')
+    + BRAND.km+' km · '+BRAND.nc+(L==='it'?' curve':' corners');
+}
+const mapList=document.getElementById('mapList'), mapStore=document.getElementById('mapStore');
+const MB = n => (n/1e6).toFixed(1).replace('.',',')+' MB';
+let hereId = null;                 // regione in cui il GPS dice che siamo
+
+function renderMaps(){
+  if(!mapList) return;
+  mapList.innerHTML='';
+  for(const r of REG){
+    const inst=RSTATE.inst.includes(r.id), att=RSTATE.att.includes(r.id);
+    const row=document.createElement('div');
+    row.className='rrow'+(r.id===hereId?' here':'');
+    const nm=document.createElement('div');
+    nm.className='rnm';
+    nm.innerHTML='<b>'+r.nm+'</b><span>'+MB(r.bytes)+' · '+r.km.toLocaleString('it-IT')+' km · '+
+      r.curve.toLocaleString('it-IT')+(L==='it'?' curve':' corners')+'</span>';
+    row.appendChild(nm);
+
+    const bt=document.createElement('button');
+    bt.className='rbt'+(att?' on':'');
+    bt.textContent = inst ? (att?tr().active:tr().load) : tr().dl;
+    bt.onclick=async()=>{
+      if(bt.disabled) return;
+      if(!inst){
+        bt.disabled=true;
+        try{
+          await installRegion(r, got=>{ bt.textContent=Math.round(got/r.bytes*100)+'%' });
+          renderMaps(); showStore();
+        }catch(err){
+          bt.disabled=false; bt.textContent=tr().dl;
+          toast(tr().dlFail+err.message, 4500);
+        }
+        return;
+      }
+      // attivare o disattivare cambia gli indici della rete da cima a fondo:
+      // ricostruirli a caldo è più fragile che ripartire, e i dati sono già in cache
+      RSTATE.att = att ? RSTATE.att.filter(x=>x!==r.id) : RSTATE.att.concat(r.id);
+      rsave(); location.reload();
+    };
+    row.appendChild(bt);
+
+    if(inst){
+      const del=document.createElement('button');
+      del.className='rdel'; del.textContent='🗑'; del.title=tr().delMap;
+      del.onclick=async()=>{
+        const eraAttiva=RSTATE.att.includes(r.id);
+        await removeRegion(r.id);
+        if(eraAttiva) return location.reload();
+        renderMaps(); showStore();
+      };
+      row.appendChild(del);
+    }
+    mapList.appendChild(row);
+  }
+  // avviso onesto: con regioni lontane le note restano giuste, il disegno si deforma
+  const att=RSTATE.att.map(rById).filter(Boolean);
+  if(att.length>1){
+    const la0=Math.min(...att.map(r=>r.bbox[0])), la1=Math.max(...att.map(r=>r.bbox[2]));
+    if(la1-la0>4.5){
+      const w=document.createElement('p'); w.className='disc'; w.textContent=tr().farApart;
+      mapList.appendChild(w);
+    }
+  }
+}
+
+async function showStore(){
+  if(!mapStore) return;
+  const inst=RSTATE.inst.map(rById).filter(Boolean);
+  let txt=inst.length+' '+(inst.length===1?tr().onDevice1:tr().onDevice)+' · '+
+          MB(inst.reduce((a,r)=>a+r.bytes,0));
+  try{
+    const est=await navigator.storage.estimate();
+    if(est&&est.quota) txt+=' · '+tr().freeSpace+' '+MB(est.quota-(est.usage||0));
+  }catch(e){}
+  mapStore.textContent=txt;
+}
+
+/* Se il GPS ci mette in una regione che non è caricata, dillo una volta sola. */
+let suggerita=false;
+function suggestRegion(la,lo){
+  const hit=REG.find(r=>inBox(r.bbox,la,lo));
+  if(!hit) return;
+  if(hit.id!==hereId){ hereId=hit.id; if(sheets.maps&&sheets.maps.classList.contains('show')) renderMaps() }
+  if(suggerita||RSTATE.att.includes(hit.id)) return;
+  suggerita=true;
+  toast(RSTATE.inst.includes(hit.id)?tr().hereOn(hit.nm):tr().hereDl(hit.nm), 6500);
+}
 document.getElementById('bCar').onclick=()=>openSheet('car');
 document.getElementById('bLegend').onclick=()=>openSheet('legend');
 document.getElementById('bInfo').onclick=()=>openSheet('info');
@@ -1465,62 +1734,107 @@ async function boot(){
   const t0=performance.now();
   const mb = n => (n/1e6).toFixed(1).replace('.',',')+' MB';
   try{
-    RAW = await loadData(got=>{
-      splashMsg.textContent = DATA_BYTES
-        ? 'mappa · '+mb(got)+' di '+mb(DATA_BYTES)+' · '+Math.min(99,Math.round(got/DATA_BYTES*100))+'%'
-        : 'mappa · '+mb(got);
-    });
+    REG = await (await fetch('regions.json')).json();
   }catch(err){
-    splashMsg.textContent = 'mappa non caricata ('+err.message+') — ricarica la pagina';
+    splashMsg.textContent = 'elenco mappe non caricato ('+err.message+') — ricarica la pagina';
     return;
   }
-  splashMsg.textContent = 'costruisco la rete…';
-  // lascia ridipingere lo splash prima di bloccare il thread; con un timer di
-  // riserva, perché a scheda nascosta requestAnimationFrame non scatta mai
-  await new Promise(r=>{
-    let done=false; const fin=()=>{ if(!done){ done=true; r() } };
-    requestAnimationFrame(()=>setTimeout(fin,0));
-    setTimeout(fin,400);
-  });
-  M = RAW.meta;
-  KX = 111320*Math.cos(M.lat0*Math.PI/180);
-  buildEdges(); buildGrey(); buildCams();
-  PLACES=RAW.places.map(p=>{const [x,y]=toXY(p[2],p[1]);return {n:p[0],x,y,r:p[3]}});
-  BM=RAW.bookmarks.map(b=>{const [x,y]=toXY(b[1][0],b[1][1]);return {n:b[0],x,y,z:b[2],bm:true}});
-  RAW = null;                        // il JSON grezzo non serve piu': lascialo al GC
-  const km=M.kmNote.toLocaleString('it-IT'), nc=M.nCurve.toLocaleString('it-IT'),
-        ne=E.length.toLocaleString('it-IT'), area=M.area||'Frosinone';
-  const areaIt = area==='Lazio' ? 'Tutto il <b>Lazio</b>' : 'Tutta la <b>provincia di '+area+'</b>',
-        areaEn = area==='Lazio' ? 'The whole of <b>Lazio</b>' : 'The whole <b>province of '+area+'</b>';
-  document.getElementById('brandSub').textContent = km+' km · '+nc+' curve';
+  rload();
+  // tiene solo le regioni che esistono davvero e sono state scaricate
+  RSTATE.inst = RSTATE.inst.filter(id=>rById(id));
+  RSTATE.att  = RSTATE.att.filter(id=>rById(id) && RSTATE.inst.includes(id));
+  rsave();
+  const att = RSTATE.att.map(rById);
+
+  if(!att.length){
+    // prima apertura (o tutte eliminate): niente mappa, si sceglie da Mappe
+    M = {lat0:43, lon0:12, span:0}; KX = 111320*Math.cos(43*Math.PI/180);
+    applyLang(); renderLegend(); renderMaps(); showStore();
+    setBrandSub();
+    splash.classList.add('hide');
+    loop(); openSheet('maps');
+    return;
+  }
+
+  setOrigin(att);                    // origine comune: PRIMA di decodificare qualsiasi cosa
+  const totBytes = att.reduce((a,r)=>a+r.bytes,0);
+  let done = 0;
+  for(const r of att){
+    try{
+      RAW = await loadRegion(r, got=>{
+        splashMsg.textContent = att.length>1
+          ? r.nm+' · '+mb(done+got)+' di '+mb(totBytes)
+          : 'mappa · '+mb(got)+' di '+mb(r.bytes)+' · '+Math.min(99,Math.round(got/r.bytes*100))+'%';
+      });
+    }catch(err){
+      splashMsg.textContent = r.nm+' non caricata ('+err.message+') — ricarica la pagina';
+      return;
+    }
+    done += r.bytes;
+    splashMsg.textContent = att.length>1 ? r.nm+' · costruisco la rete…' : 'costruisco la rete…';
+    // lascia ridipingere lo splash prima di bloccare il thread; con un timer di
+    // riserva, perché a scheda nascosta requestAnimationFrame non scatta mai
+    await new Promise(res=>{
+      let fired=false; const fin=()=>{ if(!fired){ fired=true; res() } };
+      requestAnimationFrame(()=>setTimeout(fin,0));
+      setTimeout(fin,400);
+    });
+    const map = new Int32Array(RAW.edges.length);   // indice arco locale -> globale
+    buildEdges(r.id, map); buildGrey(); buildCams(map);
+    for(const p of RAW.places){
+      const pk = p[0]+'|'+Math.round(p[1]*100)+','+Math.round(p[2]*100);
+      if(PSEEN.has(pk)) continue;
+      PSEEN.add(pk);
+      const [x,y]=toXY(p[2],p[1]); PLACES.push({n:p[0],x,y,r:p[3]});
+    }
+    for(const b of RAW.bookmarks){
+      if(BM.some(o=>o.n===b[0])) continue;
+      const [x,y]=toXY(b[1][0],b[1][1]); BM.push({n:b[0],x,y,z:b[2],bm:true});
+    }
+    RAW = null;                      // il JSON grezzo non serve piu': lascialo al GC
+  }
+
+  const kmN = att.reduce((a,r)=>a+r.km,0), ncN = att.reduce((a,r)=>a+r.curve,0);
+  const km=kmN.toLocaleString('it-IT'), nc=ncN.toLocaleString('it-IT'),
+        ne=E.length.toLocaleString('it-IT');
+  const nomi = att.map(r=>r.nm), gen = att.map(r=>r.gen).sort().pop();
+  const lista = n => n.length===1 ? '<b>'+n[0]+'</b>'
+    : n.slice(0,-1).map(x=>'<b>'+x+'</b>').join(', ')+(L==='it'?' e ':' and ')+'<b>'+n[n.length-1]+'</b>';
+  BRAND = {n:att.length, nome:nomi[0], km, nc};
+  setBrandSub();
   document.getElementById('infoStats').innerHTML =
-    areaIt+' (più l\'angolo del Parco d\'Abruzzo fino a Opi): '+
-    '<b>'+km+' km</b> di strade classificate curva per curva, <b>'+nc+'</b> curve annotate su '+
-    ne+' tratti.';
+    'Mappe attive: '+lista(nomi)+' — <b>'+km+' km</b> di strade classificate curva per curva, <b>'+
+    nc+'</b> curve annotate su '+ne+' tratti. Altre regioni si scaricano dal pannello <b>Mappe</b>.';
   document.getElementById('infoStatsEn').innerHTML =
-    areaEn+' (plus the Abruzzo Park corner up to Opi): '+
-    '<b>'+km+' km</b> of roads classified corner by corner, <b>'+nc+'</b> annotated corners across '+
-    ne+' segments.';
-  if(M.msExp!=null){
-    const pct=Math.round(M.msExp/(M.msExp+M.msInf)*100);
+    'Active maps: '+lista(nomi)+' — <b>'+km+' km</b> of roads classified corner by corner, <b>'+
+    nc+'</b> annotated corners across '+ne+' segments. More regions from the <b>Maps</b> panel.';
+  const msExp = att.reduce((a,r)=>a+(r.msExp||0),0), msInf = att.reduce((a,r)=>a+(r.msInf||0),0);
+  if(msExp+msInf){
+    const pct=Math.round(msExp/(msExp+msInf)*100);
     for(const [id,txt] of [['limPct','Solo il <b>'+pct+'%</b> dei tratti porta il limite scritto in OpenStreetMap, quindi il cartello tratteggiato comparirà spesso: fidati della segnaletica vera.'],
                            ['limPctEn','Only <b>'+pct+'%</b> of segments carry an explicit limit in OpenStreetMap, so the dashed sign will show up often: trust the real road signs.']]){
       const el=document.getElementById(id); if(el) el.innerHTML=txt;
     }
   }
   document.getElementById('infoData').innerHTML =
-    'Geometrie © collaboratori <b>OpenStreetMap</b> (ODbL), estratte il '+M.gen+'. Il raggio di ogni '+
+    'Geometrie © collaboratori <b>OpenStreetMap</b> (ODbL), estratte il '+gen+'. Il raggio di ogni '+
     'curva è stimato dal cerchio circoscritto a triplette di punti ogni 10 m; la velocità di '+
     'riferimento da √(a·R) e la marcia dai rapporti della MiTo (350 Nm, boost 3.700–7.500 giri, '+
     'ancoraggio 120 km/h a 3.000 giri in 6ª di serie).';
   document.getElementById('infoDataEn').innerHTML =
-    'Geometry © <b>OpenStreetMap</b> contributors (ODbL), extracted '+M.gen+'. Each corner radius '+
+    'Geometry © <b>OpenStreetMap</b> contributors (ODbL), extracted '+gen+'. Each corner radius '+
     'comes from the circumcircle of point triplets every 10 m; the reference speed from √(a·R) and '+
     'the gear from the MiTo\'s ratios (350 Nm, boost 3,700–7,500 rpm, anchored at 120 km/h @ '+
     '3,000 rpm in stock 6th).';
   applyLang(); renderLegend();
-  // vista iniziale: Campocatino
-  const b=BM[0]; S.cx=b.x; S.cy=b.y; S.scale=0.16;
+  /* Vista iniziale: il primo preferito della prima regione attiva.
+     Lo zoom si ricava dal viewport, non è un numero fisso: `scale` è in pixel per
+     metro, quindi lo 0,16 di prima inquadrava 8 km su un desktop e appena 2,3 su
+     un telefono — sullo schermo piccolo, cioè quello che si usa davvero in auto,
+     si vedevano quattro strade in croce. Ora sono ~6 km sul lato corto ovunque. */
+  const zoomIniziale = m => Math.min(W,H)/m;
+  if(BM.length){ S.cx=BM[0].x; S.cy=BM[0].y; S.scale=zoomIniziale(6000) }
+  else { S.cx=(BB[0]+BB[2])/2; S.cy=(BB[1]+BB[3])/2; S.scale=zoomIniziale(20000) }
   splash.classList.add('hide');
   loop();
   let seen=false; try{seen=!!localStorage.getItem('copilota2seen')}catch(e){}
