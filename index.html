@@ -37,6 +37,21 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     --ink:#e8edf2; --ink2:#8b98a5; --accent:#4fd6ff;
     --font-d:'Oswald','Arial Narrow',system-ui,sans-serif;
     --font-b:system-ui,-apple-system,'Segoe UI',sans-serif;
+    /* Da dove comincia tutto quello che sta in alto. Un posto solo: qui.
+       `--gapalto` è lo scarto in più oltre l'area sicura, e vale ZERO ovunque
+       tranne nella app installata (vedi sotto). */
+    --gapalto:0px;
+    --alto:calc(max(8px, env(safe-area-inset-top)) + var(--gapalto));
+  }
+  /* Nella app aggiunta alla schermata Home, sull'iPhone, la striscia subito sotto
+     l'isola dinamica spegne quello che ci finisce dentro: marchio, EN e bussola
+     uscivano slavati mentre le strade alla stessa altezza e la ricerca appena sotto
+     restavano nitide (foto di Tiago, 2026-08-16). Non è la mappa e non è un filtro
+     nostro — nel foglio non è rimasto nessun `backdrop-filter` — è il bordo alto
+     dello schermo. Qui non si combatte: si scende sotto.
+     In Safari e sul desktop non succede, e infatti lì lo scarto resta zero. */
+  @media (display-mode: standalone){
+    :root{ --gapalto:38px }
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;overflow:hidden}
@@ -49,7 +64,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
   /* ---- barra alta ---- */
-  .top{position:fixed;top:max(8px,env(safe-area-inset-top));left:8px;
+  .top{position:fixed;top:var(--alto);left:8px;
        right:60px;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
   .top > *{pointer-events:auto}
   .brand{background:rgba(20,26,32,.97);border:1px solid var(--line);border-radius:11px;
@@ -78,6 +93,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .results .rr:last-child{border-bottom:none}
   .results .rr button{border-bottom:none}
   .results .rr .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* Due righe per risultato, come su qualsiasi navigatore vero: il nome della via
+     non basta a distinguerla — di "Rue de l'Église" in Vallonia ce ne sono 180.
+     Sotto ci va dove sta: CAP, comune, frazione. */
+  .results .rr .nm .via{display:block;overflow:hidden;text-overflow:ellipsis}
+  .results .rr .nm .dove{display:block;font-size:11px;color:var(--ink2);margin-top:2px;
+    overflow:hidden;text-overflow:ellipsis}
+  .results .rr .nm em{font-style:normal;color:var(--accent)}
+  .results .info{padding:9px 12px;font-size:12px;color:var(--ink2)}
   .results .rr .go{width:46px;flex:none;padding:0;text-align:center;color:var(--accent);
     border-left:1px solid var(--line);font-family:var(--font-d);font-size:11px;
     letter-spacing:.06em}
@@ -91,10 +114,21 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .rbtn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;
             stroke-linecap:round;stroke-linejoin:round}
   .rbtn.on{background:var(--accent);border-color:var(--accent);color:#0c1013}
-  .compass{position:fixed;top:max(8px,env(safe-area-inset-top));right:8px;width:44px;height:44px;
+  /* Bussola e 3D stanno insieme in alto a destra, come su Google Maps: l'ago
+     rimette a nord, il gettone sotto inclina la vista. Erano due comandi in due
+     posti diversi (l'ago qui, il 3D in fondo alla colonna a destra) e per accendere
+     la vista guida bisognava sapere dov'era il bottone. */
+  .cwrap{position:fixed;top:var(--alto);right:8px;z-index:5;
+    display:flex;flex-direction:column;align-items:center;gap:4px}
+  .compass{width:44px;height:44px;
     border-radius:50%;border:1px solid var(--line);background:rgba(20,26,32,.97);
-    display:grid;place-items:center;cursor:pointer;z-index:5}
+    display:grid;place-items:center;cursor:pointer}
   .compass svg{width:23px;height:23px}
+  .c3d{width:44px;height:21px;border-radius:11px;border:1px solid var(--line);
+    background:rgba(20,26,32,.97);color:var(--ink2);cursor:pointer;
+    font-family:var(--font-d);font-size:10px;letter-spacing:.09em;line-height:1;
+    display:grid;place-items:center;padding:0}
+  .c3d.on{background:var(--accent);border-color:var(--accent);color:#0c1013}
   .scalebar{position:fixed;right:10px;bottom:max(10px,env(safe-area-inset-bottom));
     font-size:10.5px;color:var(--ink2);text-align:right;font-variant-numeric:tabular-nums;
     pointer-events:none}
@@ -105,7 +139,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      cuore dell'app: l'istruzione di svolta è un altro canale e non deve rubarle il
      posto né alternarsi con lei nello stesso riquadro. È anche dove la mettono tutti
      i navigatori, quindi non c'è niente da imparare. */
-  .nav{position:fixed;left:8px;right:8px;top:calc(max(8px,env(safe-area-inset-top)) + 54px);
+  .nav{position:fixed;left:8px;right:8px;top:calc(var(--alto) + 54px);
     max-width:660px;margin:0 auto;display:none;align-items:center;gap:10px;z-index:7;
     background:rgba(20,26,32,.98);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
   .nav.show{display:flex}
@@ -122,7 +156,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .nav .x{flex:none;width:32px;height:32px;border-radius:9px;border:1px solid var(--line);
     background:none;color:var(--ink2);font-size:15px;line-height:1;cursor:pointer}
   /* con la striscia aperta il brindello scenderebbe sopra: lo si sposta sotto */
-  body.navon .toast{top:calc(max(8px,env(safe-area-inset-top)) + 118px)}
+  body.navon .toast{top:calc(var(--alto) + 118px)}
 
   /* ---- banner nota ---- */
   .note{position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom));
@@ -227,7 +261,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .legend .lrow b{min-width:70px;color:var(--ink);font-weight:600}
   .legend .lrow span{color:var(--ink2)}
 
-  .toast{position:fixed;left:50%;top:max(62px,calc(env(safe-area-inset-top) + 54px));
+  .toast{position:fixed;left:50%;top:max(62px,calc(var(--alto) + 54px));
     transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);
     border-radius:10px;padding:9px 14px;font-size:12.5px;max-width:88vw;display:none;z-index:30;
     text-align:center;line-height:1.45}
@@ -256,11 +290,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     #bLang{order:2;flex:none}
     .search{order:3;flex:1 1 100%;max-width:none}
     /* il brindello sotto la barra deve scendere sotto DUE righe, non una */
-    .toast{top:calc(env(safe-area-inset-top) + 108px)}
+    .toast{top:calc(var(--alto) + 108px)}
     /* e la striscia del navigatore pure: la barra qui è a due righe */
-    .nav{top:calc(env(safe-area-inset-top) + 106px)}
+    .nav{top:calc(var(--alto) + 106px)}
     .nav .d{font-size:21px} .nav canvas{width:40px;height:40px}
-    body.navon .toast{top:calc(env(safe-area-inset-top) + 172px)}
+    body.navon .toast{top:calc(var(--alto) + 172px)}
   }
   /* schermi molto stretti: il sottotitolo è la prima cosa sacrificabile */
   @media (max-width:360px){
@@ -309,11 +343,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <button class="rbtn" id="bLang" style="width:auto;height:auto;padding:10px 12px;font-family:var(--font-d);font-size:13px;letter-spacing:.06em" title="Language">EN</button>
 </div>
 
-<div class="compass" id="compass" role="button" tabindex="0" title="Riallinea a nord" aria-label="Riallinea a nord">
-  <svg viewBox="0 0 24 24" id="compassArrow">
-    <path d="M12 3 L15.4 14 L12 12.2 L8.6 14 Z" fill="#ff4438"></path>
-    <path d="M12 21 L8.6 14 L12 12.2 L15.4 14 Z" fill="#8b98a5" opacity=".5"></path>
-  </svg>
+<div class="cwrap">
+  <div class="compass" id="compass" role="button" tabindex="0" title="Riallinea a nord" aria-label="Riallinea a nord">
+    <svg viewBox="0 0 24 24" id="compassArrow">
+      <path d="M12 3 L15.4 14 L12 12.2 L8.6 14 Z" fill="#ff4438"></path>
+      <path d="M12 21 L8.6 14 L12 12.2 L15.4 14 Z" fill="#8b98a5" opacity=".5"></path>
+    </svg>
+  </div>
+  <button class="c3d" id="b3d" title="Vista guida 3D" aria-label="Vista guida 3D">3D</button>
 </div>
 
 <div class="rail">
@@ -324,8 +361,6 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
        bottone Demo, tolto su richiesta di Tiago. -->
   <button class="rbtn" id="bMaps" title="Mappe" aria-label="Mappe" hidden>
     <svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"></path><path d="M9 4.5v12.7M15 6.8v12.7"></path></svg></button>
-  <button class="rbtn" id="b3d" title="Vista guida 3D" aria-label="Vista guida 3D">
-    <svg viewBox="0 0 24 24"><path d="M12 3 3.2 7.4 12 11.8l8.8-4.4z"></path><path d="M3.2 12.2 12 16.6l8.8-4.4"></path><path d="M3.2 16.9 12 21.3l8.8-4.4"></path></svg></button>
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
     <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
   <button class="rbtn" id="bCar" title="La mia auto" aria-label="La mia auto">
@@ -535,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '72';
+const APPVER = '74';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -595,7 +630,11 @@ async function loadRegion(r, onProgress){
   if(!res){
     try{
       const c = await caches.open(cacheName(r.id));
-      const ks = await c.keys();
+      /* Solo i file `data-`: nella stessa cache adesso ci stanno anche
+         l'indirizzario e i civici, e prendere "l'ultima chiave qualunque"
+         faceva partire l'app con l'indice degli indirizzi al posto della rete. */
+      const nome = url.split('?')[0].split('/').pop();
+      const ks = (await c.keys()).filter(k=>k.url.split('?')[0].endsWith(nome));
       if(ks.length) res = await c.match(ks[ks.length-1]);
     }catch(e){}
   }
@@ -603,9 +642,46 @@ async function loadRegion(r, onProgress){
   const buf = await readStream(res, onProgress);
   return JSON.parse(new TextDecoder().decode(buf));
 }
+/* L'indirizzario sta in file suoi, accanto al dataset di guida:
+     geo-<reg>.json  vie, località, comuni, CAP   (serve alla ricerca)
+     civ-<reg>.json  ancore dei civici             (serve solo a "via + numero")
+   Separati perché il dataset di guida è già pubblicato e pesa 206 MB: rifarlo per
+   aggiungerci dei nomi sarebbe stato un pomeriggio di elaborazione e un push da
+   capo. Così invece si aggiungono, si aggiornano e si saltano da soli. */
+const geoUrl = r => r.geo ? r.geo+'?v='+r.gv : null;
+const civUrl = r => r.civ ? r.civ+'?v='+r.cv : null;
+const pesoTot = r => (r.bytes||0)+(r.gb||0)+(r.cb||0);
+
+/* Legge un file della regione: prima dalla Cache API (anche con una versione
+   diversa: una copia vecchia batte il nulla), poi dalla rete. */
+async function leggiFile(url, rid, onProgress){
+  if(!url) return null;
+  let res = null;
+  try{ res = await caches.match(url) }catch(e){}
+  if(!res){
+    try{
+      const c = await caches.open(cacheName(rid));
+      const ks = (await c.keys()).filter(k=>k.url.split('?')[0].endsWith(url.split('?')[0].split('/').pop()));
+      if(ks.length) res = await c.match(ks[ks.length-1]);
+    }catch(e){}
+  }
+  if(!res){
+    res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const buf = await readStream(res, onProgress||(()=>{}));
+    try{
+      const c = await caches.open(cacheName(rid));
+      await c.put(url, new Response(buf, {headers:{'Content-Type':'application/json'}}));
+    }catch(e){}
+    return JSON.parse(new TextDecoder().decode(buf));
+  }
+  return JSON.parse(new TextDecoder().decode(await readStream(res, onProgress||(()=>{}))));
+}
+
 async function installRegion(r, onProgress){
   const url = dataUrl(r);
-  const buf = await readStream(await fetch(url), onProgress);
+  const tot = pesoTot(r);
+  const buf = await readStream(await fetch(url), got=>onProgress(got, tot));
   // controllare PRIMA di mettere in cache: una risposta 200 che non è il dataset
   // (una pagina d'errore, una redirezione del captive portal di un hotel) verrebbe
   // conservata per sempre e la regione non si aprirebbe mai più
@@ -616,6 +692,20 @@ async function installRegion(r, onProgress){
   const c = await caches.open(cacheName(r.id));
   for(const k of await c.keys()) await c.delete(k);      // via le versioni vecchie
   await c.put(url, new Response(buf, {headers:{'Content-Type':'application/json'}}));
+  /* L'indirizzario si scarica subito dopo, ma se cade la rete a metà la mappa
+     resta buona: senza indirizzario si guida lo stesso, si cerca solo peggio. */
+  let fatto = r.bytes;
+  for(const u of [geoUrl(r), civUrl(r)]){
+    if(!u) continue;
+    try{
+      const b = await readStream(await fetch(u), got=>onProgress(fatto+got, tot));
+      const t = new TextDecoder().decode(b);
+      const j = JSON.parse(t);
+      if(!j || !(j.st || j.civ)) throw new Error('indirizzario incompleto');
+      await c.put(u, new Response(b, {headers:{'Content-Type':'application/json'}}));
+      fatto += b.length;
+    }catch(e){ console.warn('indirizzario non scaricato:', u, e.message) }
+  }
   if(!RSTATE.inst.includes(r.id)) RSTATE.inst.push(r.id);
   rsave();
 }
@@ -1157,7 +1247,10 @@ const STYLES = {
 /* ---- lingue ---- */
 const T = {
   it: {
-    search:'Cerca paese o strada…', fav:'preferito', kinds:['città','paese','villaggio','frazione'],
+    search:'Cerca via, paese, CAP…', fav:'preferito', kinds:['città','paese','villaggio','frazione'],
+    ixLoad:'preparo l\'indirizzario…', ixNone:'nessun risultato',
+    ixNoGeo:'indirizzario non scaricato per questa mappa',
+    ixCiv:'civico ricavato dai numeri vicini', ixHint:'via, o via e paese, o CAP',
     right:'DESTRA', left:'SINISTRA', hairpin:'· TORNANTE', straight:'RETTILINEO',
     cam:'AUTOVELOX', camVoice:'autovelox', lim:'limite', fixed:'postazione fissa',
     noCurve:'nessuna curva nel raggio utile', inC:'IN', inC2:'CURVA', m:'METRI', now:'ORA',
@@ -1208,7 +1301,10 @@ const T = {
     navDest:'destinazione',
   },
   en: {
-    search:'Search town or road…', fav:'favourite', kinds:['city','town','village','hamlet'],
+    search:'Search street, town, postcode…', fav:'favourite', kinds:['city','town','village','hamlet'],
+    ixLoad:'building the address index…', ixNone:'no match',
+    ixNoGeo:'address index not downloaded for this map',
+    ixCiv:'number interpolated from nearby ones', ixHint:'street, or street and town, or postcode',
     right:'RIGHT', left:'LEFT', hairpin:'· HAIRPIN', straight:'STRAIGHT',
     cam:'SPEED CAMERA', camVoice:'speed camera', lim:'limit', fixed:'fixed camera',
     noCurve:'no corner within range', inC:'IN', inC2:'CORNER', m:'METERS', now:'NOW',
@@ -2582,8 +2678,9 @@ function renderMaps(){
     row.className='rrow'+(r.id===hereId?' here':'');
     const nm=document.createElement('div');
     nm.className='rnm';
-    nm.innerHTML='<b>'+r.nm+'</b><span>'+MB(r.bytes)+' · '+r.km.toLocaleString('it-IT')+' km · '+
-      r.curve.toLocaleString('it-IT')+(L==='it'?' curve':' corners')+'</span>';
+    nm.innerHTML='<b>'+r.nm+'</b><span>'+MB(pesoTot(r))+' · '+r.km.toLocaleString('it-IT')+' km · '+
+      r.curve.toLocaleString('it-IT')+(L==='it'?' curve':' corners')+
+      (r.vie?' · '+r.vie.toLocaleString('it-IT')+(L==='it'?' vie':' streets'):'')+'</span>';
     row.appendChild(nm);
 
     // scaricata ma non attiva: la riga resta in evidenza finché non la si accende
@@ -2596,7 +2693,7 @@ function renderMaps(){
       if(!inst){
         bt.disabled=true;
         try{
-          await installRegion(r, got=>{ bt.textContent=Math.round(got/r.bytes*100)+'%' });
+          await installRegion(r, (got,tot)=>{ bt.textContent=Math.round(got/(tot||r.bytes)*100)+'%' });
           /* Scaricare NON attivava: la regione finiva in `inst` e basta, il bottone
              cambiava parola da "Scarica" a "Attiva ora" e chi toccava "Fatto"
              pensando di aver finito si ritrovava la mappa vuota. Se non c'è ancora
@@ -2661,7 +2758,7 @@ async function showStore(){
   if(!mapStore) return;
   const inst=RSTATE.inst.map(rById).filter(Boolean);
   let txt=inst.length+' '+(inst.length===1?tr().onDevice1:tr().onDevice)+' · '+
-          MB(inst.reduce((a,r)=>a+r.bytes,0));
+          MB(inst.reduce((a,r)=>a+pesoTot(r),0));
   try{
     const est=await navigator.storage.estimate();
     if(est&&est.quota) txt+=' · '+tr().freeSpace+' '+MB(est.quota-(est.usage||0));
@@ -2752,32 +2849,456 @@ function renderLegend(){
 }
 renderLegend();
 
-/* ricerca */
+/* ============ ricerca indirizzi ============
+
+   Prima qui c'era un `includes()` sull'elenco dei paesi. Cercare "rue rené menada"
+   non dava niente, e il motivo non era l'algoritmo: era che quel nome nei dati non
+   c'era. Nel dataset di guida i nomi di via arrivano solo dalle strade
+   classificate, e tutto il resto — le residenziali, cioè dove sta la gente — finisce
+   in `grey`, che è geometria e basta. Misurato: a Bruxelles 970 nomi cercabili su
+   5.690, in Vallonia 20.616 su 49.572.
+
+   Adesso i nomi arrivano da geocode.py (geo-<reg>.json) e qui sotto c'è il motore
+   che li interroga, con gli stessi pezzi che hanno i geocoder veri:
+
+     · normalizzazione — accenti, maiuscole, punteggiatura: "Ménada" = "menada",
+       e serve davvero, perché in Vallonia la stessa via è taggata in tutti e due i modi
+     · abbreviazioni e sinonimi — "r." = rue, "v.le" = viale, "st" = saint = sint
+     · indice invertito parola → vie, con ricerca a prefisso sull'ultima parola:
+       i risultati si stringono mentre scrivi, senza riscorrere tutto l'elenco
+     · AND fra le parole in qualsiasi ordine ("menada beauvechain" trova),
+       mentre le parole che dicono solo il *tipo* di strada (rue, via, chemin)
+       non sono obbligatorie: chi cerca scrive "menada" e basta
+     · tolleranza agli errori di battitura, distanza 1 (2 sulle parole lunghe)
+     · numero civico e CAP riconosciuti dentro la frase: "rue X 12", "4040 Herstal"
+     · ordinamento per pertinenza *e vicinanza*: la Via Roma giusta è quella a 2 km,
+       non la prima in ordine alfabetico a 300. È il pezzo che sui navigatori conta
+       di più e che quasi nessuno implementa quando si fa una ricerca "a mano".
+*/
 let PLACES=[], BM=[];      // riempiti dal boot, quando i dati sono arrivati
 const qEl=document.getElementById('q'), resEl=document.getElementById('results');
 function flyTo(x,y,z){ S.cx=x;S.cy=y;S.scale=z||1.2;S.rot=0;setMode('free');S.need=true }
-function renderResults(term){
-  const t=term.trim().toLowerCase();
-  let list;
-  if(!t) list=BM;
-  else list=[...BM,...PLACES].filter(p=>p.n.toLowerCase().includes(t))
-        .sort((a,b)=>(a.n.toLowerCase().indexOf(t))-(b.n.toLowerCase().indexOf(t))||(a.r||0)-(b.r||0))
-        .slice(0,18);
-  resEl.innerHTML='';
-  for(const p of list){
-    const row=document.createElement('div'); row.className='rr';
-    const b=document.createElement('button'); b.className='nm';
-    b.innerHTML=p.n+(p.bm?'<span class="k">'+tr().fav+'</span>':
-      '<span class="k">'+tr().kinds[p.r]+'</span>');
-    b.onclick=()=>{flyTo(p.x,p.y,p.z||1.4);resEl.classList.remove('show');qEl.value='';qEl.blur()};
-    const g=document.createElement('button'); g.className='go';
-    g.textContent=tr().navGo; g.title=tr().navGo;
-    g.onclick=()=>{resEl.classList.remove('show');qEl.value='';qEl.blur();avviaNav(p.x,p.y,p.n)};
-    row.appendChild(b); row.appendChild(g); resEl.appendChild(row);
-  }
-  resEl.classList.toggle('show',list.length>0);
+
+const nrm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+                  .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+
+/* Parole che dicono soltanto *che tipo* di strada è. Non identificano niente da
+   sole, quindi non sono obbligatorie nel confronto: valgono un premio se ci sono. */
+const TIPOVIA = new Set([
+  'via','viale','corso','piazza','piazzale','largo','vicolo','strada','stradone','contrada',
+  'borgo','salita','discesa','lungomare','lungolago','circonvallazione','traversa','frazione',
+  'rue','avenue','boulevard','chaussee','place','chemin','route','impasse','clos','allee',
+  'voie','quai','square','sentier','ruelle','venelle','thier','trixhe','dreve','rampe',
+  'straat','laan','steenweg','weg','plein','dreef','baan','pad','kaai','markt','wijk',
+  'strasse','platz','gasse','ring','allee','stiege',
+  'street','road','lane','drive','avenue']);
+/* Come le scrive la gente → come stanno scritte in OpenStreetMap. Una sigla può
+   valere più cose (st = saint in francese, sint in nederlandese): si tengono tutte
+   e basta che ne combaci una. */
+const VARIANTI = {
+  v:['via'], vle:['viale'], cso:['corso'], pzza:['piazza'], pza:['piazza'],
+  ple:['piazzale'], lgo:['largo'], loc:['localita'], fraz:['frazione'],
+  r:['rue'], av:['avenue'], ave:['avenue'], bd:['boulevard'], blvd:['boulevard'],
+  ch:['chaussee','chemin'], chee:['chaussee'], pl:['place'], rte:['route'],
+  st:['saint','sint','santo','santa'], ste:['sainte','sint'], str:['straat','strasse'],
+  stwg:['steenweg'], stw:['steenweg'], gr:['grand','grote'],
+};
+
+/* --- l'indice ---
+   Array paralleli invece di un oggetto per via: con quattro regioni attive sono
+   centinaia di migliaia di voci, e un oggetto JS per ognuna costerebbe più della
+   mappa stessa. Il testo normalizzato si tiene solo per il nome; per località,
+   comuni e CAP si tiene una volta sola nelle rispettive tabelle. */
+const IX = {
+  n:[], nn:[], x:[], y:[], loc:[], com:[], cap:[], imp:[], tipo:[], rid:[], sid:[],
+  LOC:[], COM:[], CAP:[], CAPSET:new Set(),   // tabelle: {n, nn} / stringhe
+  tok:new Map(), voc:null, base:{},           // base[regione] = id della sua prima via
+  civ:new Map(),                              // id voce -> ancore dei civici
+  pronto:false, inCorso:null, civPronti:new Set(), civInCorso:null, nGeo:0,
+};
+function ixAdd(n, nnExtra, x, y, imp, tipo, loc, com, cap, rid, sid){
+  const id = IX.n.length;
+  const nn = nrm(n + (nnExtra ? ' ' + nnExtra : ''));
+  IX.n.push(n); IX.nn.push(nn); IX.x.push(x); IX.y.push(y);
+  IX.imp.push(imp); IX.tipo.push(tipo);
+  IX.loc.push(loc==null?-1:loc); IX.com.push(com==null?-1:com);
+  IX.cap.push(cap==null?-1:cap); IX.rid.push(rid); IX.sid.push(sid==null?-1:sid);
+  for(const t of nn.split(' ')) if(t) ixTok(t, id);
+  return id;
 }
-qEl.onfocus=()=>renderResults(qEl.value);
+function ixTok(t, id){
+  let a = IX.tok.get(t);
+  if(!a){ a=[]; IX.tok.set(t,a) }
+  if(a[a.length-1]!==id) a.push(id);
+}
+
+/* Costruisce l'indice: preferiti e paesi ci sono già in memoria, le vie arrivano
+   dai file geo-<reg>.json. Si fa la prima volta che si tocca la ricerca, non al
+   boot: chi accende l'app per guidare non deve pagare l'attesa dell'indirizzario. */
+async function costruisciIndice(){
+  const t0 = performance.now();
+  const capIdx = new Map();
+  const capId = s => {
+    if(!s) return -1;
+    let i = capIdx.get(s);
+    if(i===undefined){ i = IX.CAP.length; IX.CAP.push(s); IX.CAPSET.add(s); capIdx.set(s,i) }
+    return i;
+  };
+  for(const r of RSTATE.att.map(rById).filter(Boolean)){
+    let g = null;
+    try{ g = await leggiFile(geoUrl(r), r.id) }
+    catch(e){ console.warn('indirizzario '+r.id+' non caricato:', e.message) }
+    if(!g || !g.st){ indiceDaRete(r); continue }
+    IX.nGeo++;
+    const loc0 = IX.LOC.length, com0 = IX.COM.length;
+    for(const c of (g.com||[])) IX.COM.push({n:c, nn:nrm(c)});
+    for(const l of g.loc)       IX.LOC.push({n:l[0], nn:nrm(l[0])});
+    // le località sono entità cercabili anche loro: quartieri e frazioni che nel
+    // dataset di guida non ci sono (lì ci stanno solo città/paese/villaggio/frazione)
+    for(let i=0;i<g.loc.length;i++){
+      const l = g.loc[i], [x,y] = toXY(l[2], l[1]);
+      const id = ixAdd(l[0], '', x, y, 2.3-(l[3]||0)*0.4, 1, loc0+i, -1, capId(l[4]||''), r.id, -1);
+      // il CAP si cerca, ma NON entra nel nome normalizzato: se no "Herstal" e
+      // "Herstal 4040" sembrano due posti diversi e il paese esce due volte
+      if(l[4]) ixTok(nrm(l[4]), id);
+    }
+    IX.base[r.id] = IX.n.length;         // da qui in poi sono vie, in ordine di file
+    for(let i=0;i<g.st.length;i++){
+      const s = g.st[i];                 // [nome, loc, lat, lon, rango, len, cap, com, alias?]
+      const [x,y] = toXY(s[3], s[2]);
+      const alias = (s[8]||[]).join(' ');
+      // importanza: una nazionale batte una stradina, e a parità vince la più lunga
+      const imp = (7-(s[4]||5))*0.13 + Math.log10(1+(s[5]||0))*0.22;
+      const id = ixAdd(s[0], alias, x, y, imp, 2,
+                       s[1]>=0?loc0+s[1]:-1, s[7]>=0?com0+s[7]:-1, capId(s[6]||''), r.id, i);
+      // il posto si cerca anche per località, comune e CAP: "gare herstal", "4040"
+      if(s[1]>=0) for(const t of IX.LOC[loc0+s[1]].nn.split(' ')) if(t) ixTok(t,id);
+      if(s[7]>=0) for(const t of IX.COM[com0+s[7]].nn.split(' ')) if(t) ixTok(t,id);
+      if(s[6])    ixTok(nrm(s[6]), id);
+    }
+  }
+  /* Preferiti e paesi del dataset di guida si aggiungono per ultimi, e solo se
+     l'indirizzario non ce li ha già: se no lo stesso paese comparirebbe due volte,
+     una col comune scritto sotto e una senza. */
+  for(const b of BM) ixAdd(b.n, '', b.x, b.y, 3.2, 0, -1, -1, -1, '', -1);
+  for(const p of PLACES){
+    if(giaPresente(p.n, p.x, p.y)) continue;
+    ixAdd(p.n, '', p.x, p.y, 2.4-(p.r||0)*0.45, 1, -1, -1, -1, '', -1);
+  }
+  IX.voc = [...IX.tok.keys()].sort();
+  IX.pronto = true;
+  console.log('indirizzario:', IX.n.length, 'voci ·', IX.tok.size, 'parole ·',
+              Math.round(performance.now()-t0), 'ms');
+}
+function giaPresente(n, x, y){
+  const nn = nrm(n), t = nn.split(' ')[0];
+  for(const id of (IX.tok.get(t)||[]))
+    if(IX.nn[id]===nn && Math.hypot(IX.x[id]-x, IX.y[id]-y) < 2500) return true;
+  return false;
+}
+/* Ripiego per le mappe senza indirizzario (dataset vecchi, o file non scaricato):
+   i nomi delle strade classificate sono già in memoria, dentro gli archi. Non ha
+   le residenziali né i civici, ma è meglio del niente di prima. */
+function indiceDaRete(r){
+  const visti = new Map();
+  for(const e of E){
+    if(e.rg!==r.id || !e.via) continue;
+    const nn = nrm(e.via), x = e.xy[0], y = e.xy[1];
+    const a = visti.get(nn);
+    if(a && Math.hypot(a[0]-x, a[1]-y) < 4000) continue;
+    visti.set(nn, [x,y]);
+    ixAdd(e.via, '', x, y, (4-(e.rank||3))*0.13, 2, -1, -1, -1, r.id, -1);
+  }
+}
+function assicuraIndice(){
+  if(!IX.inCorso) IX.inCorso = costruisciIndice().then(()=>renderResults(qEl.value));
+  return IX.inCorso;
+}
+
+/* I civici pesano quanto tutto il resto dell'indice, quindi il loro file si legge
+   solo quando qualcuno scrive davvero un numero. */
+async function assicuraCivici(){
+  if(IX.civInCorso) return IX.civInCorso;
+  IX.civInCorso = (async()=>{
+    for(const r of RSTATE.att.map(rById).filter(Boolean)){
+      if(IX.civPronti.has(r.id) || !r.civ) continue;
+      IX.civPronti.add(r.id);
+      let c = null;
+      try{ c = await leggiFile(civUrl(r), r.id) }
+      catch(e){ console.warn('civici '+r.id+' non caricati:', e.message); continue }
+      if(!c || !c.civ) continue;
+      // da (regione, indice via) a id di voce: le vie sono state inserite in ordine
+      const base = IX.base[r.id];
+      if(base===undefined) continue;
+      for(const [sid, anc] of c.civ){
+        const id = base + sid;
+        if(IX.rid[id]===r.id && IX.sid[id]===sid) IX.civ.set(id, anc);
+      }
+    }
+  })();
+  return IX.civInCorso;
+}
+
+/* --- interrogazione --- */
+function trovaTok(nn, w, prefisso){
+  let i = nn.indexOf(w);
+  while(i>=0){
+    if(i===0 || nn[i-1]===' '){
+      const f = i+w.length;
+      if(prefisso || f===nn.length || nn[f]===' ') return i;
+    }
+    i = nn.indexOf(w, i+1);
+  }
+  return -1;
+}
+function postingsPrefisso(p){
+  const v = IX.voc;
+  let lo=0, hi=v.length;
+  while(lo<hi){ const m=(lo+hi)>>1; if(v[m]<p) lo=m+1; else hi=m }
+  const out = [];
+  for(let i=lo;i<v.length && v[i].startsWith(p);i++){
+    const a = IX.tok.get(v[i]);
+    for(const id of a) out.push(id);
+    if(out.length>40000) break;
+  }
+  return out;
+}
+/* Correzione dei refusi: si guardano solo le parole del vocabolario che cominciano
+   con la stessa lettera e hanno lunghezza simile — su 200.000 parole scorrere
+   tutto a ogni tasto non si può. */
+function vicine(w){
+  const max = w.length>=7 ? 2 : 1, out = [];
+  for(const t of IX.voc){
+    if(t[0]!==w[0] || Math.abs(t.length-w.length)>max) continue;
+    if(dist(t,w)<=max) out.push(t);
+    if(out.length>6) break;
+  }
+  return out;
+}
+function dist(a,b){                     // Levenshtein, due righe sole
+  let prev = Array.from({length:b.length+1}, (_,i)=>i);
+  for(let i=1;i<=a.length;i++){
+    const cur=[i];
+    for(let j=1;j<=b.length;j++)
+      cur[j]=Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    prev=cur;
+  }
+  return prev[b.length];
+}
+
+function analizzaQuery(t){
+  const parti = nrm(t).split(' ').filter(Boolean);
+  const parole = []; let civ=null, cap=null;
+  for(let i=0;i<parti.length;i++){
+    const p = parti[i];
+    if(/^\d+$/.test(p)){
+      // 4 cifre in Belgio, 5 in Italia: se è un CAP che esiste davvero è un CAP,
+      // se no è un civico. Deciderlo sui dati e non sulla lunghezza evita di
+      // scambiare per CAP il civico 1000 di un viale lungo.
+      if(p.length>=4 && IX.CAPSET.has(p)) cap=p; else civ=p;
+    } else parole.push({w:p, tipo:TIPOVIA.has(p), forme:[p].concat(VARIANTI[p]||[]),
+                        ultima:false});
+  }
+  if(parole.length) parole[parole.length-1].ultima = !/\s$/.test(t);
+  return {parole, civ, cap};
+}
+
+/* Tre passate, sempre più larghe, e ci si ferma alla prima che dà qualcosa.
+   Serve perché una parola finita di scrivere è un vincolo pieno: chi cerca "gare
+   herstal" non vuole "Rue de la Garenne" — ma se in tutta Herstal una "Gare" non
+   c'è, mostrargliela è meglio che rispondere "niente". Stessa scala dei motori
+   veri: esatto → prefisso → refuso. */
+function cerca(t){
+  const q = analizzaQuery(t);
+  if(!q.parole.length && !q.cap) return [];
+  let out = passata(q, false, false);
+  if(!out.length) out = passata(q, true, false);
+  if(!out.length) out = passata(q, true, true);
+  return out;
+}
+function passata(q, tuttiPrefissi, refusi){
+  // il driver è la parola più rara: "rue rené menada" si guida da "menada" (2 voci),
+  // non da "rue" (30.000). È la differenza fra 2 ms e mezzo secondo per tasto.
+  let dpost=null;
+  for(const p of q.parole){
+    p.pre = tuttiPrefissi || p.ultima;
+    let post = [];
+    for(const f of p.forme){
+      const a = IX.tok.get(f);
+      if(a) post = post.length ? post.concat(a) : a;
+    }
+    if(p.pre && p.w.length>=2){
+      const pre = postingsPrefisso(p.w);
+      post = post.length ? post.concat(pre) : pre;
+    }
+    if(refusi && !p.tipo){
+      const alt = vicine(p.w);           // refuso: si riprova con le parole simili
+      for(const a of alt){ const l=IX.tok.get(a); if(l) post=post.concat(l) }
+      if(alt.length) p.forme = p.forme.concat(alt);
+    }
+    if(!post.length) continue;
+    if(!dpost || post.length<dpost.length) dpost=post;
+  }
+  if(!dpost && q.cap) dpost = IX.tok.get(q.cap) || [];
+  if(!dpost) return [];
+
+  const rx = (S.pos||[S.cx,S.cy])[0], ry = (S.pos||[S.cx,S.cy])[1];
+  const qj = q.parole.map(p=>p.w).join(' ');
+  const visti = new Set(), out = [];
+  for(const id of dpost){
+    if(visti.has(id)) continue;
+    visti.add(id);
+    const nn = IX.nn[id];
+    const lnn = IX.loc[id]>=0 ? IX.LOC[IX.loc[id]].nn : '';
+    const cnn = IX.com[id]>=0 ? IX.COM[IX.com[id]].nn : '';
+    let s = 0, nelNome = 0;
+    for(const p of q.parole){
+      let pos=-1, intera=false, dove=0;      // dove: 0 nome, 1 località/comune
+      for(const f of p.forme){
+        let k = trovaTok(nn, f, p.pre);
+        if(k>=0){
+          const fi=k+f.length, tut = fi===nn.length || nn[fi]===' ';
+          if(pos<0 || k<pos || (k===pos&&tut)){ pos=k; intera=tut; dove=0 }
+        }
+        if(pos<0){
+          k = trovaTok(lnn, f, p.pre);
+          if(k<0) k = trovaTok(cnn, f, p.pre);
+          if(k>=0){ pos=k; intera=true; dove=1 }
+        }
+      }
+      if(pos<0){
+        if(p.tipo) continue;                 // "rue" può mancare: non è un errore
+        s = -1e9; break;                     // una parola vera che non c'è: fuori
+      }
+      const peso = dove ? 0.55 : 1;
+      s += (intera ? 1.6 : 1.0)*peso;
+      if(dove===0){ nelNome++; if(pos===0) s += 1.7 }   // comincia col nome: è quello che intendi
+    }
+    if(s<=-1e6) continue;
+    /* Quanto del NOME è stato coperto dalla domanda. Senza questo "Avenue
+       Marie-Louise" batteva "Avenue Louise" cercando proprio "avenue louise":
+       stesse parole trovate, ma una ha una parola in più che nessuno ha chiesto. */
+    let nt = 1;
+    for(let k=0;k<nn.length;k++) if(nn.charCodeAt(k)===32) nt++;
+    s += 1.6 * Math.min(1, nelNome/nt);
+    // e chi ha scritto il nome intero, tale e quale, viene prima di chi lo contiene
+    if(qj && nn.startsWith(qj) && (nn.length===qj.length || nn[qj.length]===' ')) s += 1.4;
+    if(q.cap){
+      const c = IX.cap[id]>=0 ? IX.CAP[IX.cap[id]] : '';
+      s += c===q.cap ? 3.5 : -1.2;
+    }
+    s += IX.imp[id];
+    const d = Math.hypot(IX.x[id]-rx, IX.y[id]-ry)/1000;
+    s -= Math.log10(1+d)*1.35;              // più lontano, più in basso: come sui navigatori
+    out.push([s, id]);
+    if(out.length>60000) break;
+  }
+  out.sort((a,b)=>b[0]-a[0]);
+  /* Stesso nome nello stesso posto, due volte. Capita di continuo: al confine due
+     regioni portano la stessa via, e dentro una regione la stessa strada è taggata
+     in OSM in due modi ("Rue René Ménada" e "Rue Rene Menada", 700 m di distanza,
+     due comuni diversi). Chi cerca vuole una riga sola. */
+  const fin = [];
+  for(const [s,id] of out){
+    const nn = IX.nn[id];
+    let doppia = false;
+    for(const f of fin)
+      if(IX.nn[f.id]===nn && Math.hypot(IX.x[f.id]-IX.x[id], IX.y[f.id]-IX.y[id])<2500){
+        doppia = true; break;
+      }
+    if(doppia) continue;
+    fin.push({id, s, civ:q.civ});
+    if(fin.length>=14) break;
+  }
+  return fin;
+}
+
+/* Il civico si ricava interpolando fra le ancore vicine, pari con pari e dispari
+   con dispari: i due lati della strada corrono paralleli, mescolarli sposta il
+   punto sul marciapiede di fronte. */
+function posCivico(anc, num, x, y){
+  const n = parseInt(num,10);
+  if(!isFinite(n) || !anc || !anc.length) return null;
+  const lato = anc.filter(a=>(a[0]%2)===(n%2));
+  const use = lato.length>=2 ? lato : anc;
+  let a=null, b=null;
+  for(const p of use){
+    if(p[0]<=n && (!a || p[0]>a[0])) a=p;
+    if(p[0]>=n && (!b || p[0]<b[0])) b=p;
+  }
+  if(!a && !b) return null;
+  let dla, dlo;
+  if(!a || !b || a[0]===b[0]){ const p=a||b; dla=p[1]; dlo=p[2] }
+  else{
+    const t=(n-a[0])/(b[0]-a[0]);
+    dla = a[1]+(b[1]-a[1])*t; dlo = a[2]+(b[2]-a[2])*t;
+  }
+  return [x + dlo*1e-5*KX, y + dla*1e-5*KY];
+}
+
+function sottotitolo(id){
+  const p = [];
+  const loc = IX.loc[id]>=0 ? IX.LOC[IX.loc[id]].n : '';
+  const com = IX.com[id]>=0 ? IX.COM[IX.com[id]].n : '';
+  const cap = IX.cap[id]>=0 ? IX.CAP[IX.cap[id]] : '';
+  if(loc && loc!==com) p.push(loc);
+  if(cap || com) p.push(((cap?cap+' ':'')+com).trim());
+  return p.join(' · ');
+}
+
+function renderResults(term){
+  const t = term.trim();
+  resEl.innerHTML='';
+  if(!t){
+    // a campo vuoto restano i preferiti, come prima
+    for(const b of BM) rigaRis({id:-1, bm:b});
+    resEl.classList.toggle('show', BM.length>0);
+    return;
+  }
+  if(!IX.pronto){
+    assicuraIndice();
+    const d=document.createElement('div'); d.className='info'; d.textContent=tr().ixLoad;
+    resEl.appendChild(d); resEl.classList.add('show');
+    return;
+  }
+  const list = cerca(t);
+  if(list.some(r=>r.civ)) assicuraCivici().then(()=>{ if(qEl.value.trim()===t) renderResults(t) });
+  for(const r of list) rigaRis(r);
+  if(!list.length){
+    const d=document.createElement('div'); d.className='info';
+    d.textContent = IX.nGeo ? tr().ixNone+' — '+tr().ixHint : tr().ixNoGeo;
+    resEl.appendChild(d);
+  }
+  resEl.classList.add('show');
+}
+
+function rigaRis(r){
+  const row=document.createElement('div'); row.className='rr';
+  const b=document.createElement('button'); b.className='nm';
+  let nome, sub, x, y, z=1.4;
+  if(r.bm){ nome=r.bm.n; sub=tr().fav; x=r.bm.x; y=r.bm.y; z=r.bm.z||1.4 }
+  else{
+    const id=r.id;
+    nome=IX.n[id]; sub=sottotitolo(id); x=IX.x[id]; y=IX.y[id];
+    if(r.civ){
+      const p = posCivico(IX.civ.get(id), r.civ, x, y);
+      if(p){ nome = nome+' '+r.civ; x=p[0]; y=p[1]; z=2.6 }
+    }
+    if(IX.tipo[id]===2) z=2.2;
+  }
+  const t1=document.createElement('span'); t1.className='via'; t1.textContent=nome;
+  b.appendChild(t1);
+  if(sub){ const t2=document.createElement('span'); t2.className='dove'; t2.textContent=sub;
+           b.appendChild(t2) }
+  const chiudi=()=>{ resEl.classList.remove('show'); qEl.value=''; qEl.blur() };
+  b.onclick=()=>{ flyTo(x,y,z); chiudi() };
+  const g=document.createElement('button'); g.className='go';
+  g.textContent=tr().navGo; g.title=tr().navGo;
+  g.onclick=()=>{ chiudi(); avviaNav(x,y,nome) };
+  row.appendChild(b); row.appendChild(g); resEl.appendChild(row);
+}
+
+qEl.onfocus=()=>{ assicuraIndice(); renderResults(qEl.value) };
 qEl.oninput=()=>renderResults(qEl.value);
 qEl.onblur=()=>setTimeout(()=>resEl.classList.remove('show'),180);
 
@@ -2864,6 +3385,13 @@ async function boot(){
   RSTATE.inst = RSTATE.inst.filter(id=>rById(id));
   RSTATE.att  = RSTATE.att.filter(id=>rById(id) && RSTATE.inst.includes(id));
   rsave();
+  /* Una mappa tolta dal manifesto (la Vallonia orientale, finita dentro la
+     Vallonia) sparisce dall'elenco ma la sua cache resterebbe lì a occupare
+     decine di MB per sempre: si butta. */
+  caches.keys().then(ks=>{
+    for(const k of ks)
+      if(k.startsWith('copilota-data-') && !rById(k.slice(14))) caches.delete(k);
+  }).catch(()=>{});
   const att = RSTATE.att.map(rById);
 
   if(!att.length){
