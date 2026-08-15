@@ -103,11 +103,16 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .note.off .call{font-size:17px;color:var(--ink2)}
   .note.off .gear,.note.off canvas{display:none}
   @media (max-width:520px){
-    .note{gap:9px;padding:8px 11px 8px 8px}
+    /* La nota è a tutta larghezza: in verticale lo spazio sopra avanza, e stringerla
+       al centro serviva solo a far tagliare la sottoriga. */
+    .note{gap:9px;padding:8px 11px 8px 8px;left:8px;right:8px;transform:none;max-width:none}
     .note canvas{width:46px;height:46px}
     .note .call{font-size:24px} .note .sub{font-size:11px}
+    /* la velocità di riferimento è il numero che serve in curva: va a capo, non
+       finisce in "ref. 52 k…" */
+    .note .sub{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
     .note .gear{font-size:27px;min-width:42px;padding:0 9px}
-    .note .dist{font-size:28px;min-width:66px}
+    .note .dist{font-size:28px;min-width:60px}
   }
 
   /* ---- hud sinistra ---- */
@@ -759,6 +764,7 @@ const T = {
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
     hereOn:n=>'Sei in '+n+': attiva la mappa dal pannello Mappe.',
     farApart:'Regioni molto lontane fra loro: le note restano corrette, il disegno si deforma un po\'. Meglio tenere attive solo quelle dove guidi.',
+    tooMuch:mb=>'Molte mappe attive (~'+mb+' MB di memoria): sul telefono l\'app rischia di venire chiusa mentre guidi. Tieni attive solo le regioni dove stai andando — restano scaricate lo stesso.',
     inUse:'in uso', boost:'km/h in boost', at:'a', byLimit:'limite',
     legalOn:'La velocità di riferimento non supera mai il limite della strada: sulle curve larghe è il limite a comandare.',
     legalOff:'La velocità di riferimento ignora il limite: mostra solo quello che la curva permette. Da usare a fondo chiuso.',
@@ -789,6 +795,7 @@ const T = {
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
     hereOn:n=>'You are in '+n+': activate the map from the Maps panel.',
     farApart:'Regions far apart: pacenotes stay correct, drawing gets slightly distorted. Better to keep active only the ones you drive in.',
+    tooMuch:mb=>'A lot of active maps (~'+mb+' MB of memory): on a phone the app may get killed while you drive. Keep active only the regions you are heading to — they stay downloaded anyway.',
     inUse:'in use', boost:'km/h on boost', at:'at', byLimit:'limit',
     legalOn:'The reference speed never exceeds the road limit: on open corners the limit is what rules.',
     legalOff:'The reference speed ignores the limit and shows only what the corner allows. For closed roads.',
@@ -800,6 +807,8 @@ const S = {
   cx:0, cy:0, scale:0.02, rot:0,
   mode:'free', audio:false, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
+  dp:null, dhd:null,  // posizione e direzione *mostrate*: inseguono pos/hd senza scatti
+  fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
   car:'m5', cal:36, style:'strada', legal:true,
   snap:null,          // {e, i, t, dir, dist}
   local:false,        // agganciato a una via residenziale (solo posizione e limite)
@@ -884,7 +893,9 @@ function viewBounds(){
 const PCACHE=new Map();
 function cellPaths(kk){
   let c=PCACHE.get(kk);
-  if(c) return c;
+  // rimetterla in fondo la rende l'ultima a essere buttata: le celle che si stanno
+  // guardando adesso sopravvivono, quelle lasciate indietro no
+  if(c){ PCACHE.delete(kk); PCACHE.set(kk,c); return c }
   const ids=GRID.get(kk), gids=GGRID.get(kk);
   if(!ids && !gids) return null;
   const paths=CLS.map(()=>new Path2D());
@@ -908,7 +919,13 @@ function cellPaths(kk){
     }
   }
   c={paths,grey};
-  if(PCACHE.size>900) PCACHE.clear();
+  /* Prima qui c'era un PCACHE.clear(): svuotare tutto significa che il frame dopo
+     ogni cella inquadrata va ricostruita in una volta sola, ed è uno scatto secco
+     proprio mentre si guida. Si buttano invece le più vecchie, poche per volta. */
+  if(PCACHE.size>900){
+    let n=200;
+    for(const k of PCACHE.keys()){ if(n--<=0) break; PCACHE.delete(k) }
+  }
   PCACHE.set(kk,c);
   return c;
 }
@@ -974,11 +991,13 @@ function draw(){
 
   // posizione
   if(S.pos && S.mode!=='free'){
-    const [x,y]=S.pos;
+    // la freccia sta sulla posizione ammorbidita, come la camera: se stesse sul fix
+    // grezzo scivolerebbe avanti e indietro rispetto alla mappa a ogni secondo
+    const [x,y]=S.dp||S.pos, hh=(S.dhd!=null?S.dhd:S.hd);
     if(S.acc>10&&S.mode==='follow'){
       ctx.fillStyle='rgba(79,214,255,.09)'; ctx.beginPath(); ctx.arc(x,y,S.acc,0,7); ctx.fill();
     }
-    ctx.save(); ctx.translate(x,y); ctx.rotate((S.hd!=null?S.hd:Math.PI/2)-Math.PI/2);
+    ctx.save(); ctx.translate(x,y); ctx.rotate((hh!=null?hh:Math.PI/2)-Math.PI/2);
     ctx.scale(pw(1),pw(1));
     ctx.fillStyle=ACCENT; ctx.strokeStyle='#0c1013'; ctx.lineWidth=2;
     ctx.beginPath(); ctx.moveTo(0,13); ctx.lineTo(8,-9); ctx.lineTo(0,-4.5); ctx.lineTo(-8,-9);
@@ -1023,7 +1042,47 @@ function draw(){
   }
   updateScale(); document.getElementById('compassArrow').style.transform='rotate('+(S.rot*180/Math.PI)+'deg)';
 }
-function loop(){ if(S.need){S.need=false;draw()} requestAnimationFrame(loop) }
+/* Fra un fix GPS e l'altro passa circa un secondo. Ridisegnando solo quando arriva
+   il fix, la mappa avanza a scatti di un secondo e la rotazione salta di colpo: in
+   guida è la cosa che si nota di più. Qui la posizione *mostrata* insegue quella
+   stimata (ultimo fix + velocità × tempo trascorso) con un'attenuazione
+   esponenziale, e il disegno gira a ogni frame finché ci si muove.
+   La posizione vera (S.pos) resta quella del GPS: l'aggancio alla strada, le note e
+   i limiti continuano a lavorare sul dato buono, non su quello ammorbidito. */
+let camT = 0;
+function cameraTick(now){
+  if(S.mode==='free' || !S.pos) return false;
+  if(!S.dp){ S.dp=[S.pos[0],S.pos[1]]; S.dhd=S.hd; camT=now; S.cx=S.dp[0]; S.cy=S.dp[1]; return true }
+  const dt = Math.min(2.5, (now-(S.fixT||now))/1000);   // se il GPS tace, non estrapolare all'infinito
+  const tx = S.pos[0] + (S.vx||0)*dt, ty = S.pos[1] + (S.vy||0)*dt;
+  const k = 1 - Math.pow(0.002, Math.min(0.12, (now-camT)/1000));
+  camT = now;
+  const ddx = tx-S.dp[0], ddy = ty-S.dp[1];
+  S.dp[0] += ddx*k; S.dp[1] += ddy*k;
+  let dh = 0;
+  if(S.hd!=null){
+    if(S.dhd==null) S.dhd=S.hd;
+    dh = S.hd-S.dhd;
+    while(dh>Math.PI)dh-=2*Math.PI; while(dh<-Math.PI)dh+=2*Math.PI;
+    S.dhd += dh*k;
+  }
+  /* L'auto non sta al centro: la camera è spostata in avanti lungo la direzione di
+     marcia, così il veicolo finisce nel terzo basso e lo schermo mostra la strada
+     che deve ancora arrivare invece di quella già fatta. È quello che fanno tutti
+     i navigatori, e con le note di curva conta il doppio. Da fermi si ricentra. */
+  const avanti = (S.mode!=='free' && S.dhd!=null && S.v>2) ? (H*0.20)/S.scale : 0;
+  S.cx = S.dp[0] + (avanti ? Math.cos(S.dhd)*avanti : 0);
+  S.cy = S.dp[1] + (avanti ? Math.sin(S.dhd)*avanti : 0);
+  if(S.mode==='follow' && S.dhd!=null && S.v>1.2) S.rot=S.dhd-Math.PI/2;
+  // da fermi non c'è niente da animare: si smette di ridisegnare invece di
+  // bruciare batteria a 60 fps col telefono in tasca
+  return Math.abs(ddx)+Math.abs(ddy) > 0.05 || Math.abs(dh) > 0.0004;
+}
+function loop(now){
+  if(cameraTick(now||performance.now())) S.need=true;
+  if(S.need){S.need=false;draw()}
+  requestAnimationFrame(loop);
+}
 
 function updateScale(){
   const t=90/S.scale;
@@ -1330,8 +1389,10 @@ function feed(x,y,hd,v,acc){
   S.snap = (m && m.d<70) ? m : null;
   S.local = !S.snap && distToGrey(x,y,45) < 45;    // strada locale, fuori dalla rete annotata
   buildAhead();
-  if(S.mode!=='free'){ S.cx=x; S.cy=y; }
-  if(S.mode==='follow' && S.hd!=null && S.v>1.2) S.rot=S.hd-Math.PI/2;
+  // la camera non salta qui: insegue in cameraTick, frame per frame
+  S.fixT = performance.now();
+  S.vx = S.hd!=null ? Math.cos(S.hd)*S.v : 0;
+  S.vy = S.hd!=null ? Math.sin(S.hd)*S.v : 0;
   const kmhNow=Math.round(S.v*3.6);
   speedV.textContent=String(kmhNow);
   const limSign=document.getElementById('limSign');
@@ -1459,7 +1520,10 @@ function setMode(m){
                                  : '<path d="M8 5.5v13l10.5-6.5z"></path>';
   }
   hud.classList.toggle('show',m!=='free');
-  if(m==='free'){ nEl.classList.remove('show'); if(S.wake){S.wake.release().catch(()=>{});S.wake=null} }
+  // uscendo dall'inseguimento si dimentica la posizione ammorbidita, così al
+  // rientro la mappa si piazza subito invece di planarci sopra da lontano
+  if(m==='free'){ S.dp=null; S.dhd=null;
+    nEl.classList.remove('show'); if(S.wake){S.wake.release().catch(()=>{});S.wake=null} }
   S.need=true;
 }
 bGps.onclick=()=>S.mode==='follow'?setMode('free'):startGps();
@@ -1565,8 +1629,19 @@ function renderMaps(){
     }
     mapList.appendChild(row);
   }
-  // avviso onesto: con regioni lontane le note restano giuste, il disegno si deforma
   const att=RSTATE.att.map(rById).filter(Boolean);
+  /* Avviso di memoria. Misurato: 40 MB di dati diventano ~260 MB di heap una volta
+     costruiti gli indici, cioè circa 6,5 volte. Oltre una certa soglia il telefono
+     chiude la scheda — e se succede mentre guidi è il guasto peggiore possibile,
+     quindi meglio dirlo prima che scoprirlo in curva. */
+  const mbAtt = att.reduce((a,r)=>a+r.bytes,0)/1e6;
+  if(mbAtt > 55){
+    const w=document.createElement('p'); w.className='disc';
+    w.style.color='#ff8a1e';
+    w.textContent = tr().tooMuch(Math.round(mbAtt*6.5));
+    mapList.appendChild(w);
+  }
+  // avviso onesto: con regioni lontane le note restano giuste, il disegno si deforma
   if(att.length>1){
     const la0=Math.min(...att.map(r=>r.bbox[0])), la1=Math.max(...att.map(r=>r.bbox[2]));
     if(la1-la0>4.5){
