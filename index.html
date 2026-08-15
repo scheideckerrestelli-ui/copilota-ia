@@ -7,11 +7,11 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>
 if ('serviceWorker' in navigator) addEventListener('load', () => {
-  const had = !!navigator.serviceWorker.controller;   // gia' controllata = e' un aggiornamento
+  const had = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('sw.js').catch(()=>{});
   let done = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!had || done) return;                        // al primo giro non ricaricare
+    if (!had || done) return;
     done = true; location.reload();
   });
 });
@@ -138,7 +138,13 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .sheet .grip{width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 14px}
   .sheet h2{font-family:var(--font-d);font-size:19px;letter-spacing:.05em;text-transform:uppercase;
     font-weight:600;margin-bottom:4px}
-  .sheet h2 span{color:var(--accent)}
+  /* l'accento si chiede, non si prende: `.sheet h2 span` colorava anche i wrapper
+     [data-lang], quindi i titoli tradotti uscivano tutti azzurri */
+  .sheet h2 .ac{color:var(--accent);font-style:normal}
+  .opt{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:13px;
+    color:var(--ink);cursor:pointer}
+  .opt input{accent-color:var(--accent);width:18px;height:18px;flex:none}
+  #gearBox[hidden]{display:none}
   .sheet h3{font-family:var(--font-d);font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
     font-weight:600;margin:16px 0 7px;color:var(--accent)}
   .sheet p,.sheet li{font-size:13px;line-height:1.55;color:var(--ink2)}
@@ -224,8 +230,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 <div class="rail">
   <button class="rbtn" id="bGps" title="Segui GPS" aria-label="Segui GPS">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="7.5"></circle><path d="M12 1.5v3.2M12 19.3v3.2M1.5 12h3.2M19.3 12h3.2"></path></svg></button>
-  <button class="rbtn" id="bDemo" title="Demo guida" aria-label="Demo guida">
-    <svg viewBox="0 0 24 24" id="iDemo"><path d="M8 5.5v13l10.5-6.5z"></path></svg></button>
+  <!-- Bottone Mappe: il contenuto del pannello lo aggiunge la sessione multi-regione.
+       Togliere `hidden` quando esiste #sheetMaps. Ha preso il posto del vecchio
+       bottone Demo, tolto su richiesta di Tiago. -->
+  <button class="rbtn" id="bMaps" title="Mappe" aria-label="Mappe" hidden>
+    <svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"></path><path d="M9 4.5v12.7M15 6.8v12.7"></path></svg></button>
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
     <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
   <button class="rbtn" id="bCar" title="La mia MiTo" aria-label="La mia MiTo">
@@ -262,38 +271,35 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 <!-- pannello auto -->
 <div class="sheet" id="sheetCar"><div class="inner">
   <div class="grip"></div>
-  <h2>La mia <span>MiTo</span></h2>
-  <p data-lang="it"><b>Full stage 3+</b> · 320 CV · <b>350 Nm</b> · turbo TD04, motore rifatto 2026 ·
-     cambio manuale <b>5 marce</b> · full boost da <b>3.700</b> a <b>7.500 giri</b>. La marcia
-     consigliata è la più alta che all'apice resta in boost: coppia piena senza cambiare in curva.
-     Nei tornanti preferisce la 2ª alla 1ª quando tiene i giri — con 350 Nm su un'anteriore,
-     la 1ª in uscita è solo pattinamento.</p>
-  <p data-lang="en"><b>Full stage 3+</b> · 320 hp · <b>350 Nm</b> · TD04 turbo, engine rebuilt 2026 ·
-     <b>5-speed</b> manual · full boost from <b>3,700</b> to <b>7,500 rpm</b>. The suggested gear is
-     the highest one still on boost at the apex: full torque with no mid-corner shift. In hairpins
-     it prefers 2nd over 1st whenever the revs hold — with 350 Nm through the front wheels,
-     1st on exit is just wheelspin.</p>
-  <h3><span data-lang="it">Cambio</span><span data-lang="en">Gearbox</span></h3>
+  <h2><span data-lang="it">La mia <i class="ac">auto</i></span><span data-lang="en">My <i class="ac">car</i></span></h2>
   <div class="row2" id="carChips"></div>
-  <div class="slider">
-    <input type="range" id="calSlider" min="30" max="52" step="0.5">
-    <div class="val"><span id="calVal">40</span> <small style="font-size:9px;color:var(--ink2)">km/h ×1000g in <span id="calGear">6ª</span></small></div>
+  <p style="margin-top:10px" id="carDesc"></p>
+  <div id="gearBox">
+    <h3><span data-lang="it">Rapporti</span><span data-lang="en">Ratios</span></h3>
+    <div class="slider">
+      <input type="range" id="calSlider" min="30" max="52" step="0.5">
+      <div class="val"><span id="calVal">40</span> <small style="font-size:9px;color:var(--ink2)">km/h ×1000g in <span id="calGear">6ª</span></small></div>
+    </div>
+    <div class="gears" id="gearTable"></div>
   </div>
-  <div class="gears" id="gearTable"></div>
-  <h3><span data-lang="it">Modalità DNA</span><span data-lang="en">DNA mode</span></h3>
+  <h3><span data-lang="it">Stile di guida</span><span data-lang="en">Driving style</span></h3>
   <div class="row2" id="styleChips"></div>
   <p style="margin-top:9px" id="styleDesc"></p>
+  <label class="opt"><input type="checkbox" id="legalChk">
+    <span data-lang="it">Non superare mai il limite della strada</span>
+    <span data-lang="en">Never exceed the road speed limit</span></label>
+  <p style="margin-top:6px;font-size:11.5px" id="legalDesc"></p>
   <div class="disc" data-lang="it">La velocità di riferimento è √(accelerazione laterale × raggio):
     un valore <b>teorico</b>, che presume asfalto asciutto e pulito, gomme in ordine e strada
     libera. Non tiene conto di pendenza, sopraelevazione, ghiaia, umido all'ombra né di chi arriva
-    in senso opposto — e su strada aperta sono quelli a decidere. In <b>Dynamic</b> i numeri
+    in senso opposto — e su strada aperta sono quelli a decidere. Con <b>Fondo chiuso</b> i numeri
     diventano da percorso chiuso: sulla provinciale trattali come il tetto assoluto, non come
     obiettivo.</div>
   <div class="disc" data-lang="en">The reference speed is √(lateral acceleration × radius): a
     <b>theoretical</b> figure that assumes clean dry tarmac, good tyres and an empty road. It knows
     nothing about gradient, camber, gravel, damp patches in the shade or oncoming traffic — and on
-    an open road those are what decide. In <b>Dynamic</b> the numbers are closed-road territory:
-    on a public road treat them as the absolute ceiling, not a target.</div>
+    an open road those are what decide. With <b>Closed road</b> the numbers are closed-road
+    territory: on a public road treat them as the absolute ceiling, not a target.</div>
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span></button>
 </div></div>
 
@@ -316,7 +322,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 <!-- info -->
 <div class="sheet" id="sheetInfo"><div class="inner">
   <div class="grip"></div>
-  <h2>Copilota <span>IA</span> · v0.6</h2>
+  <h2>Copilota <i class="ac">IA</i> · v0.6</h2>
   <p id="infoStats" data-lang="it"></p>
   <p id="infoStatsEn" data-lang="en"></p>
   <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span></h3>
@@ -509,21 +515,63 @@ function edgeLimit(e){
 }
 
 /* ============ stato ============ */
+/* `grip` = quanta della tenuta di riferimento (la MiTo = 1,00) regge l'auto: entra
+   nell'accelerazione laterale insieme allo stile. Le chiavi m5/m6 restano quelle
+   vecchie per non buttare via l'auto gia' salvata sul telefono. */
 const CARS = {
-  m5: {nm:'MiTo · 5 marce', g:[0.235,0.411,0.605,0.795,1.0], ref:36, n:5},
-  m6: {nm:'Cambio · 6 marce', g:[0.190,0.3325,0.490,0.6425,0.810,1.0], ref:40, n:6},
+  m5: {nm:'Alfa MiTo', sub:'stage 3+ · 320 CV · 350 Nm · 5 marce',
+       auto:false, n:5, g:[0.235,0.411,0.605,0.795,1.0], ref:36,
+       boost:3700, rpmLim:7500, grip:1.00,
+       d_it:"Full stage 3+, turbo TD04, 320 CV e 350 Nm, cambio manuale a 5 marce, full boost "+
+            "da 3.700 a 7.500 giri. La marcia consigliata è la più alta che all'apice resta in "+
+            "boost: coppia piena senza cambiare in curva. Nei tornanti preferisce la 2ª alla 1ª "+
+            "quando tiene i giri — con 350 Nm su un'anteriore, la 1ª in uscita è solo pattinamento.",
+       d_en:"Full stage 3+, TD04 turbo, 320 hp and 350 Nm, 5-speed manual, full boost from 3,700 "+
+            "to 7,500 rpm. The suggested gear is the highest one still on boost at the apex: full "+
+            "torque with no mid-corner shift. In hairpins it prefers 2nd over 1st whenever the revs "+
+            "hold — with 350 Nm through the front wheels, 1st on exit is just wheelspin."},
+  cla:{nm:'Mercedes CLA 200 d', sub:'Shooting Brake 2017 · 136 CV · 300 Nm · 7G-DCT',
+       auto:true, n:7, grip:0.85,
+       d_it:"Di serie: 2.143 cm³ diesel, 136 CV, 300 Nm già pieni a 1.400 giri, doppia frizione "+
+            "7G-DCT, 1.555 kg. Il cambio lo fa lei, quindi qui il copilota non suggerisce la marcia: "+
+            "ti dà la velocità con cui la curva si percorre pulita. Rispetto alla MiTo la tenuta di "+
+            "riferimento è più bassa (station wagon alta e pesante, gomme da tutti i giorni), quindi "+
+            "gli stessi raggi escono con numeri più bassi.",
+       d_en:"Stock: 2,143 cc diesel, 136 hp, 300 Nm from 1,400 rpm, 7G-DCT dual clutch, 1,555 kg. "+
+            "The car picks the gear, so the co-driver does not call one here: it gives you the speed "+
+            "that takes the corner cleanly. Reference grip is lower than the MiTo's (tall, heavy "+
+            "estate on everyday tyres), so the same radii come out slower."},
+  m6: {nm:'Altra auto', sub:'cambio manuale 6 marce',
+       auto:false, n:6, g:[0.190,0.3325,0.490,0.6425,0.810,1.0], ref:40,
+       boost:3000, rpmLim:6500, grip:0.92,
+       d_it:"Profilo generico per un'altra auto a cambio manuale: sei rapporti, coppia utile fra "+
+            "3.000 e 6.500 giri. Tara il rapporto finale col cursore qui sotto.",
+       // nota: le stringhe qui sono a doppi apici apposta, così gli apostrofi e gli
+       // accenti italiani si scrivono normali senza escape
+       d_en:"Generic profile for another manual car: six ratios, useful torque between 3,000 and "+
+            "6,500 rpm. Set the final drive with the slider below."},
 };
-const BOOST = 3700, RPMLIM = 7500;          // full boost -> limitatore (stage 3+)
-const DNA = {
-  d: {nm:'Dynamic', a:4.6, cv:320, bar:1.8,
-      d_it:'Asfalto asciutto e pulito, ritmo alto: 320 CV, 1,8 bar.',
-      d_en:'Clean dry tarmac, committed pace: 320 hp, 1.8 bar.'},
-  n: {nm:'Natural',  a:3.5, cv:280, bar:1.6,
-      d_it:'Andatura normale, margine ampio per traffico e imprevisti.',
-      d_en:'Normal pace, wide margin for traffic and surprises.'},
-  a: {nm:'All Weather', a:2.5, cv:280, bar:1.6,
-      d_it:'Fondo bagnato o freddo: 280 CV, 1,6 bar, aderenza ridotta.',
-      d_en:'Wet or cold surface: 280 hp, 1.6 bar, reduced grip.'},
+const boostOf = () => CARS[S.car].boost || 3000;
+const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
+const isAuto = () => !!CARS[S.car].auto;
+
+/* Stile di guida = accelerazione laterale di riferimento in m/s2, tarata per STRADA
+   APERTA. I valori di prima (fino a 4,6) erano da fondo chiuso: su una provinciale
+   non tengono conto di chi arriva in senso opposto, ghiaia e curve cieche. Quel
+   valore resta, ma dichiarato per quello che e'. */
+const STYLES = {
+  calmo:  {a:2.0, nm_it:'Tranquillo', nm_en:'Relaxed',
+           d_it:'Passeggeri a bordo, bagnato, buio, strada che non conosci.',
+           d_en:'Passengers aboard, wet, dark, a road you do not know.'},
+  strada: {a:2.6, nm_it:'Strada', nm_en:'Road',
+           d_it:'Andatura fluida su strada aperta: margine per traffico, fondo sporco e curve cieche.',
+           d_en:'Flowing pace on an open road: margin for traffic, dirty surface and blind corners.'},
+  deciso: {a:3.2, nm_it:'Deciso', nm_en:'Committed',
+           d_it:'Asfalto asciutto e strada che conosci. Resta un uso stradale, non un tempo sul giro.',
+           d_en:'Dry tarmac on a road you know. Still road use, not a lap time.'},
+  pista:  {a:4.6, nm_it:'Fondo chiuso', nm_en:'Closed road',
+           d_it:'Numeri da strada chiusa. Su strada aperta sono il tetto assoluto, mai un obiettivo.',
+           d_en:'Closed-road figures. On a public road they are the absolute ceiling, never a target.'},
 };
 /* ---- lingue ---- */
 const T = {
@@ -535,7 +583,8 @@ const T = {
     gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', flat:'· in pieno', rpm:'giri',
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale'},
-    roadOff:'fuori strada mappata', voiceOn:'copilota attivo',
+    roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo',
+    localCall:'Strada locale', localSub:'strada urbana: nessuna nota di curva, limite dedotto',
     gWords:['prima','seconda','terza','quarta','quinta','sesta'],
     cWords:['tornante','uno','due','tre','quattro','cinque','sei'],
     sideW:['destra','sinistra'], hairW:'tornante a ',
@@ -546,7 +595,9 @@ const T = {
     gpsDenied:'Permesso GPS negato. Se il browser non lo chiede nemmeno, controlla la localizzazione nelle impostazioni di sistema.',
     gpsErr:'GPS non disponibile: ', gpsNone:'Questo browser non espone il GPS.',
     outZone:'Sei fuori dalla zona caricata (Lazio).',
-    inUse:'in uso', boost:'km/h in boost', at:'a',
+    inUse:'in uso', boost:'km/h in boost', at:'a', byLimit:'limite',
+    legalOn:'La velocità di riferimento non supera mai il limite della strada: sulle curve larghe è il limite a comandare.',
+    legalOff:'La velocità di riferimento ignora il limite: mostra solo quello che la curva permette. Da usare a fondo chiuso.',
   },
   en: {
     search:'Search town or road…', fav:'favourite', kinds:['city','town','village','hamlet'],
@@ -556,7 +607,8 @@ const T = {
     gear:'GEAR', then:'then', radius:'radius', ref:'ref.', flat:'· flat out', rpm:'rpm',
     off:'Off mapped roads', offSub:'get closer to a mapped road to resume pacenotes',
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road'},
-    roadOff:'off mapped roads', voiceOn:'co-driver active',
+    roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active',
+    localCall:'Local road', localSub:'urban street: no corner calls, limit inferred',
     gWords:['first','second','third','fourth','fifth','sixth'],
     cWords:['hairpin','one','two','three','four','five','six'],
     sideW:['right','left'], hairW:'hairpin ',
@@ -567,7 +619,9 @@ const T = {
     gpsDenied:'GPS permission denied. If the browser never asks, check location in your system settings.',
     gpsErr:'GPS unavailable: ', gpsNone:'This browser does not expose GPS.',
     outZone:'You are outside the loaded area (Lazio).',
-    inUse:'in use', boost:'km/h on boost', at:'at',
+    inUse:'in use', boost:'km/h on boost', at:'at', byLimit:'limit',
+    legalOn:'The reference speed never exceeds the road limit: on open corners the limit is what rules.',
+    legalOff:'The reference speed ignores the limit and shows only what the corner allows. For closed roads.',
   },
 };
 let L='it';
@@ -576,42 +630,56 @@ const S = {
   cx:0, cy:0, scale:0.02, rot:0,
   mode:'free', audio:false, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
-  car:'m5', cal:36, style:'d',
+  car:'m5', cal:36, style:'strada', legal:true,
   snap:null,          // {e, i, t, dir, dist}
+  local:false,        // agganciato a una via residenziale (solo posizione e limite)
   ahead:[], said:new Set(), lastSaid:0,
   demo:null, need:true,
 };
 try{
   const st=JSON.parse(localStorage.getItem('copilota2')||'{}');
   if(st.car&&CARS[st.car])S.car=st.car;
-  if(st.style&&DNA[st.style])S.style=st.style;
+  if(st.style&&STYLES[st.style])S.style=st.style;   // i vecchi 'd'/'n'/'a' cadono su 'strada'
   if(typeof st.cal==='number')S.cal=st.cal;
+  if(typeof st.legal==='boolean')S.legal=st.legal;
   if(st.audio)S.audio=true;
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,audio:S.audio,lang:L}))}catch(e){}};
+  {car:S.car,style:S.style,cal:S.cal,legal:S.legal,audio:S.audio,lang:L}))}catch(e){}};
 
 /* velocità (km/h) per 1000 giri, per marcia */
 function gearKmh(){ const c=CARS[S.car]; return c.g.map(r=>r*S.cal); }
 const rpmAt = (kmh,g) => kmh/gearKmh()[g-1]*1000;
-/* Marcia da pilota, cambio manuale FWD con 350 Nm:
-   - la più ALTA che all'apice resta in boost (>=3400 giri): coppia piena senza cambiare in curva
-   - se anche al limitatore non basta (curva velocissima) -> marcia più lunga
-   - tornanti: se la 2ª tiene >=3000 giri si preferisce alla 1ª (trazione in uscita) */
+/* Marcia da pilota, cambio manuale:
+   - la più ALTA che all'apice resta in coppia piena: niente cambio in curva
+   - se anche in ultima non ci arriva (curva velocissima) -> marcia più lunga
+   - tornanti: se la 2ª tiene si preferisce alla 1ª (trazione in uscita)
+   Le soglie sono relative alla fascia utile dell'auto scelta, non più fisse sulla MiTo. */
 function bestGear(kmh){
-  const t=gearKmh(), n=t.length;
+  const t=gearKmh(), n=t.length, lo=boostOf()-50, hi=rpmLimOf()-600;
   let pick=null;
   for(let g=n; g>=1; g--){
-    if(rpmAt(kmh,g)>=3650){ pick=g; break; }
+    if(rpmAt(kmh,g)>=lo){ pick=g; break; }
   }
-  if(pick==null) pick = n;                            // sotto boost pure in ultima: velocissima
-  else if(rpmAt(kmh,pick)>6900 && pick<n) pick+=1;    // troppo vicino al limitatore: allunga
-  if(pick===1 && rpmAt(kmh,2)>=3000) pick=2;          // trazione > giri nei tornanti
+  if(pick==null) pick = n;
+  else if(rpmAt(kmh,pick)>hi && pick<n) pick+=1;
+  if(pick===1 && rpmAt(kmh,2)>=boostOf()*0.81) pick=2;
   return pick;
 }
-const latA = ()=>DNA[S.style].a;
-const curveKmh = r => Math.round(Math.sqrt(latA()*Math.min(r,900))*3.6);
+/* Tenuta di riferimento = stile di guida × quanto regge l'auto. */
+const latA = ()=>STYLES[S.style].a * (CARS[S.car].grip||1);
+const rawCurveKmh = r => Math.round(Math.sqrt(latA()*Math.min(r,900))*3.6);
+/* Su strada aperta la curva non è l'unico vincolo: c'è il limite. Con S.legal
+   attivo la velocità di riferimento non lo supera mai — è quasi sempre lui a
+   comandare sulle curve larghe, ed è il motivo per cui prima i numeri erano
+   inutilizzabili in guida normale. */
+function curveKmh(r, e){
+  const v = rawCurveKmh(r);
+  if(!S.legal || !e) return v;
+  return Math.min(v, edgeLimit(e).v);
+}
+const cappedByLimit = (r,e) => S.legal && e && rawCurveKmh(r) > edgeLimit(e).v;
 
 /* ============ canvas ============ */
 const cv=document.getElementById('map'), ctx=cv.getContext('2d');
@@ -805,6 +873,30 @@ function nearEdges(x,y,rad){
   }
   return out;
 }
+/* Le vie `residential` di OSM non stanno nella rete annotata: sono solo il disegno
+   grigio. In paese il copilota diceva "fuori strada mappata" anche stando su una
+   strada perfettamente normale. Qui ci si aggancia lo stesso — senza note di curva,
+   ma dicendo dove sei e con che limite. Ritorna la distanza dalla grigia più vicina. */
+function distToGrey(x,y,rad){
+  const c0=Math.floor((x-rad)/CELL), c1=Math.floor((x+rad)/CELL);
+  const r0=Math.floor((y-rad)/CELL), r1=Math.floor((y+rad)/CELL);
+  let bd=1e18;
+  for(let cx=c0;cx<=c1;cx++) for(let cy=r0;cy<=r1;cy++){
+    const ids=GGRID.get(ckey(cx,cy)); if(!ids) continue;
+    for(const id of ids){
+      const g=GREY[id], np=g.length>>1;
+      for(let i=0;i<np-1;i++){
+        const ax=g[2*i], ay=g[2*i+1], dx=g[2*i+2]-ax, dy=g[2*i+3]-ay;
+        const L2=dx*dx+dy*dy;
+        let t = L2>0 ? ((x-ax)*dx+(y-ay)*dy)/L2 : 0;
+        t = t<0?0:t>1?1:t;
+        const px=ax+t*dx-x, py=ay+t*dy-y, d=px*px+py*py;
+        if(d<bd) bd=d;
+      }
+    }
+  }
+  return Math.sqrt(bd);
+}
 function projectOn(e,x,y){
   let bd=1e18, bi=0, bt=0;
   for(let i=0;i<e.np-1;i++){
@@ -966,7 +1058,7 @@ const sideOf = a => tr().sideW[isRight(a)?0:1];
 function phrase(a,withGear){
   const s=sideOf(a), t0=tr();
   let t = a.c.c===0 ? (t0.hairW+s) : (s+' '+t0.cWords[a.c.c]);
-  if(withGear) t += ', '+t0.gWords[bestGear(curveKmh(a.c.r))-1];
+  if(withGear && !isAuto()) t += ', '+t0.gWords[bestGear(curveKmh(a.c.r, a.e))-1];
   return t;
 }
 
@@ -975,7 +1067,8 @@ function updateNote(){
   if(S.mode==='free'||!S.pos){nEl.classList.remove('show');return}
   if(!S.snap || S.snap.d>70){
     nEl.classList.add('show','off'); nCall.style.color='';
-    nCall.textContent=t0.off; nSub.textContent=t0.offSub;
+    nCall.textContent = S.local ? t0.localCall : t0.off;
+    nSub.textContent  = S.local ? t0.localSub  : t0.offSub;
     nDist.textContent='—'; nLab.textContent=''; nGear.hidden=true;
     return;
   }
@@ -1010,18 +1103,27 @@ function updateNote(){
     return;
   }
   nEl.classList.add('show');
-  const kmh=curveKmh(a.c.r), g=bestGear(kmh), rpm=Math.round(rpmAt(kmh,g)/50)*50;
+  const kmh=curveKmh(a.c.r, a.e);
   nCall.style.color=CLS[a.c.c].col;
   nCall.textContent=(isRight(a)?t0.right+' ':t0.left+' ')+(a.c.c===0?t0.hairpin:CLS[a.c.c].nm);
-  let sub=t0.radius+' ~'+a.c.r+' m · '+t0.ref+' '+kmh+' km/h · '+rpm+' '+t0.rpm;
+  let sub=t0.radius+' ~'+a.c.r+' m · '+t0.ref+' '+kmh+' km/h';
+  if(cappedByLimit(a.c.r, a.e)) sub += ' ('+t0.byLimit+')';   // comanda il limite, non la curva
+  if(!isAuto()){
+    const g0=bestGear(kmh);
+    sub += ' · '+Math.round(rpmAt(kmh,g0)/50)*50+' '+t0.rpm;
+  }
   const b=S.ahead[1];
   if(b && b.dist-a.dist<190) sub+='   '+t0.then+' '+(isRight(b)?'→':'←')+' '+CLS[b.c.c].nm;
   const flat = !a.inside && S.v>8 && kmh >= S.v*3.6+8;      // si passa senza frenare
   if(flat) sub += '   '+t0.flat;
   nSub.textContent=sub;
-  nGear.hidden=false;
-  gearV.textContent = L==='it' ? g+'ª' : g+['st','nd','rd','th','th','th'][g-1];
-  nGear.style.borderColor = flat ? CLS[6].col : 'var(--line)';
+  // col cambio automatico la marcia la sceglie l'auto: il riquadro sparisce
+  nGear.hidden = isAuto();
+  if(!isAuto()){
+    const g=bestGear(kmh);
+    gearV.textContent = L==='it' ? g+'ª' : g+['st','nd','rd','th','th','th'][g-1];
+    nGear.style.borderColor = flat ? CLS[6].col : 'var(--line)';
+  }
   if(a.inside){nDist.textContent=t0.inC;nLab.textContent=t0.inC2}
   else{
     const d=Math.round(a.dist);
@@ -1056,6 +1158,7 @@ function feed(x,y,hd,v,acc){
   lastFix=[x,y];
   const m=matchRoad(x,y,S.hd);
   S.snap = (m && m.d<70) ? m : null;
+  S.local = !S.snap && distToGrey(x,y,45) < 45;    // strada locale, fuori dalla rete annotata
   buildAhead();
   if(S.mode!=='free'){ S.cx=x; S.cy=y; }
   if(S.mode==='follow' && S.hd!=null && S.v>1.2) S.rot=S.hd-Math.PI/2;
@@ -1069,8 +1172,12 @@ function feed(x,y,hd,v,acc){
     limSign.style.borderStyle=lim.sure?'solid':'dashed';   // inferito = bordo tratteggiato
     // soglie stile TomTom/Waze: arancione fino a +5, rosso oltre
     speedV.style.color = kmhNow>lim.v+5 ? '#ff4438' : kmhNow>lim.v ? '#ff8a1e' : '';
+  } else if(S.local){
+    // strada locale: in Italia dentro il centro abitato sono 50, sempre dedotto
+    limSign.textContent='~50'; limSign.style.opacity=0.72; limSign.style.borderStyle='dashed';
+    speedV.style.color = kmhNow>55 ? '#ff4438' : kmhNow>50 ? '#ff8a1e' : '';
   } else { limSign.textContent='—'; limSign.style.opacity=0.5; speedV.style.color=''; }
-  roadName.textContent = S.snap ? tr().roads[S.snap.e.rank] : tr().roadOff;
+  roadName.textContent = S.snap ? tr().roads[S.snap.e.rank] : (S.local ? tr().roadLocal : tr().roadOff);
   updateNote(); S.need=true;
 }
 function toast(m,ms){
@@ -1141,7 +1248,7 @@ function startDemo(){
     // target di velocità dalle curve davanti
     let target=27;
     for(const a of S.ahead){
-      const need=curveKmh(a.c.r)/3.6;
+      const need=curveKmh(a.c.r, a.e)/3.6;
       const d=Math.max(1,a.dist);
       const vmax=Math.sqrt(need*need + 2*3.2*d);       // decelerazione 3.2 m/s²
       target=Math.min(target, a.inside?need:vmax);
@@ -1173,15 +1280,18 @@ function setMode(m){
   if(p==='follow'&&m!=='follow')stopGps();
   if(p==='demo'&&m!=='demo')S.demo=null;
   bGps.classList.toggle('on',m==='follow');
-  bDemo.classList.toggle('on',m==='demo');
-  iDemo.innerHTML = m==='demo' ? '<rect x="7" y="6.5" width="10" height="11" rx="1.5"></rect>'
-                               : '<path d="M8 5.5v13l10.5-6.5z"></path>';
+  // il bottone Demo non è più nella rail (startDemo resta, si chiama da console)
+  if(bDemo){
+    bDemo.classList.toggle('on',m==='demo');
+    iDemo.innerHTML = m==='demo' ? '<rect x="7" y="6.5" width="10" height="11" rx="1.5"></rect>'
+                                 : '<path d="M8 5.5v13l10.5-6.5z"></path>';
+  }
   hud.classList.toggle('show',m!=='free');
   if(m==='free'){ nEl.classList.remove('show'); if(S.wake){S.wake.release().catch(()=>{});S.wake=null} }
   S.need=true;
 }
 bGps.onclick=()=>S.mode==='follow'?setMode('free'):startGps();
-bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
+if(bDemo) bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
 bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
   if(S.audio)say(tr().voiceOn); save() };
 const bLang=document.getElementById('bLang');
@@ -1199,6 +1309,11 @@ document.getElementById('compass').onclick=()=>{S.rot=0;S.need=true};
 /* pannelli */
 const sheets={car:document.getElementById('sheetCar'),legend:document.getElementById('sheetLegend'),
               info:document.getElementById('sheetInfo')};
+/* pannello Mappe: lo aggiunge la sessione multi-regione. Bottone e voce si
+   agganciano da soli quando #sheetMaps compare nel documento. */
+const sheetMaps=document.getElementById('sheetMaps'); if(sheetMaps) sheets.maps=sheetMaps;
+const bMaps=document.getElementById('bMaps');
+if(bMaps && sheetMaps){ bMaps.hidden=false; bMaps.onclick=()=>openSheet('maps'); }
 function openSheet(k){ for(const n in sheets) sheets[n].classList.toggle('show',n===k) }
 function closeSheets(){ for(const n in sheets) sheets[n].classList.remove('show') }
 /* su iOS Safari `position:fixed;bottom:0` finisce sotto la barra del browser: riservo lo
@@ -1224,36 +1339,46 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{
 const carChips=document.getElementById('carChips'), styleChips=document.getElementById('styleChips'),
       gearTable=document.getElementById('gearTable'), calSlider=document.getElementById('calSlider'),
       calVal=document.getElementById('calVal'), calGear=document.getElementById('calGear'),
-      styleDesc=document.getElementById('styleDesc');
+      styleDesc=document.getElementById('styleDesc'), carDesc=document.getElementById('carDesc'),
+      gearBox=document.getElementById('gearBox'), legalChk=document.getElementById('legalChk'),
+      legalDesc=document.getElementById('legalDesc');
 function gearTableHtml(){
-  const t=gearKmh();
+  const t=gearKmh(), lo=boostOf(), hi=rpmLimOf();
   return t.map((v,i)=>
-    '<div><b>'+(i+1)+'ª</b>'+Math.round(v*BOOST/1000)+'–'+Math.round(v*RPMLIM/1000)+
+    '<div><b>'+(i+1)+'ª</b>'+Math.round(v*lo/1000)+'–'+Math.round(v*hi/1000)+
     '<br><span style="opacity:.6">'+tr().boost+'</span></div>').join('');
 }
 function renderCar(){
   carChips.innerHTML='';
   for(const k in CARS){
-    const b=document.createElement('button');
+    const c=CARS[k], b=document.createElement('button');
     b.className='chip'+(k===S.car?' on':'');
-    b.innerHTML='<b>'+CARS[k].n+(L==='it'?' marce':' gears')+'</b>'+(k===S.car?tr().inUse:'');
-    b.onclick=()=>{S.car=k;S.cal=CARS[k].ref;renderCar();save();updateNote()};
+    b.innerHTML='<b>'+c.nm+'</b>'+c.sub+(k===S.car?'<br>'+tr().inUse:'');
+    b.onclick=()=>{S.car=k; if(c.ref)S.cal=c.ref; renderCar(); save(); updateNote(); S.need=true};
     carChips.appendChild(b);
   }
+  carDesc.textContent=CARS[S.car]['d_'+L];
   styleChips.innerHTML='';
-  for(const k in DNA){
-    const b=document.createElement('button');
+  for(const k in STYLES){
+    const s=STYLES[k], b=document.createElement('button');
     b.className='chip'+(k===S.style?' on':'');
-    b.innerHTML='<b>'+DNA[k].nm+'</b>'+DNA[k].cv+' CV · '+DNA[k].bar.toFixed(1)+' bar';
+    b.innerHTML='<b>'+s['nm_'+L]+'</b>'+s.a.toFixed(1)+' m/s²';
     b.onclick=()=>{S.style=k;renderCar();save();updateNote();S.need=true};
     styleChips.appendChild(b);
   }
-  styleDesc.textContent=DNA[S.style]['d_'+L];
-  calSlider.value=S.cal; calVal.textContent=S.cal.toFixed(0);
-  calGear.textContent=CARS[S.car].n+'ª';
-  gearTable.style.gridTemplateColumns='repeat('+CARS[S.car].n+',1fr)';
-  gearTable.innerHTML=gearTableHtml();
+  styleDesc.textContent=STYLES[S.style]['d_'+L];
+  // con l'automatico non c'è nessuna marcia da consigliare: via rapporti e tabella
+  gearBox.hidden = isAuto();
+  if(!isAuto()){
+    calSlider.value=S.cal; calVal.textContent=S.cal.toFixed(0);
+    calGear.textContent=CARS[S.car].n+'ª';
+    gearTable.style.gridTemplateColumns='repeat('+CARS[S.car].n+',1fr)';
+    gearTable.innerHTML=gearTableHtml();
+  }
+  legalChk.checked=S.legal;
+  legalDesc.textContent=tr()[S.legal?'legalOn':'legalOff'];
 }
+legalChk.onchange=()=>{S.legal=legalChk.checked; save(); renderCar(); updateNote(); S.need=true};
 calSlider.oninput=()=>{S.cal=+calSlider.value;calVal.textContent=S.cal.toFixed(0);
   gearTable.innerHTML=gearTableHtml(); save(); updateNote()};
 renderCar();
