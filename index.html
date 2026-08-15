@@ -8,7 +8,14 @@
 <script>
 if ('serviceWorker' in navigator) addEventListener('load', () => {
   const had = !!navigator.serviceWorker.controller;   // gia' controllata = e' un aggiornamento
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    // Una PWA installata su iOS controlla gli aggiornamenti solo all'avvio da freddo:
+    // riaprendola dal selettore app puo' restare ferma a una versione vecchia per
+    // giorni. Qui si controlla anche ogni volta che torna in primo piano.
+    const controlla = () => { if (!document.hidden) reg.update().catch(()=>{}) };
+    document.addEventListener('visibilitychange', controlla);
+    setTimeout(controlla, 3000);
+  }).catch(()=>{});
   let done = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!had || done) return;                        // al primo giro non ricaricare
@@ -365,6 +372,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <p id="infoStats" data-lang="it"></p>
   <p id="infoStatsEn" data-lang="en"></p>
   <p class="disc" id="infoPerf"></p>
+  <p class="disc" id="infoVer"></p>
   <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span></h3>
   <ul data-lang="it">
     <li>Nessun percorso da impostare: l'app <b>ti aggancia alla strada</b> su cui sei e legge le
@@ -441,6 +449,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
+const APPVER = '56';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -815,6 +824,8 @@ const T = {
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
     noSave:'Non riesco a salvare la scelta: spazio esaurito o navigazione privata. Libera spazio e riprova.',
     perf:(f,a)=>'Sta girando a '+f+' fotogrammi al secondo su '+a+' tratti caricati. Segue lo schermo: 120 su iPhone Pro con ProMotion, 60 sugli altri, meno da fermo o in risparmio energetico.',
+    ver:(v,pwa)=>'Versione '+v+(pwa?' · app installata':' · dal browser')+'. Se qui il numero non sale dopo un aggiornamento, la copia vecchia e\' rimasta in cache: chiudi del tutto l\'app dal selettore e riaprila.',
+    gpsPwa:'L\'app aggiunta alla schermata Home ha permessi PROPRI, separati da Safari: il "Consenti" dato al sito non vale qui. Vai in Impostazioni → Privacy e sicurezza → Localizzazione e cerca «Copilota» nell\'elenco. Se non c\'e\', togli l\'icona dalla schermata Home, riaggiungila e tocca Consenti quando te lo chiede la prima volta.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
     dlFail:'Scaricamento fallito: ',
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
@@ -849,6 +860,8 @@ const T = {
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
     noSave:'Cannot save your choice: storage full or private browsing. Free some space and try again.',
     perf:(f,a)=>'Running at '+f+' frames per second over '+a+' loaded segments. It follows the display: 120 on ProMotion iPhones, 60 elsewhere, less when parked or in low power mode.',
+    ver:(v,pwa)=>'Version '+v+(pwa?' · installed app':' · from the browser')+'. If this number does not go up after an update, the old copy is still cached: close the app from the switcher and reopen it.',
+    gpsPwa:'The app added to your Home Screen has its OWN permissions, separate from Safari: allowing the website does not apply here. Go to Settings → Privacy & Security → Location Services and look for “Copilota”. If it is not there, remove the icon from the Home Screen, add it again and tap Allow the first time it asks.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
     dlFail:'Download failed: ',
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
@@ -1511,9 +1524,14 @@ document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&S.mode!=
 /* perché il GPS è stato negato: iframe (la demo su claude.ai), pagina non HTTPS,
    oppure permesso bloccato per il sito. Il messaggio generico non aiutava. */
 const IN_FRAME = (()=>{ try{ return window.top!==window.self }catch(e){ return true } })();
+const INSTALLATA = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 async function gpsWhy(){
   if(IN_FRAME) return tr().gpsFrame;
   if(!window.isSecureContext) return tr().gpsInsecure;
+  // Su iOS la app aggiunta alla schermata Home ha permessi PROPRI, separati da
+  // quelli di Safari: aver dato "Consenti" al sito non vale per l'icona. Mandare
+  // qui l'utente nelle impostazioni di Safari e' mandarlo nel posto sbagliato.
+  if(INSTALLATA) return tr().gpsPwa;
   try{
     const p = await navigator.permissions.query({name:'geolocation'});
     if(p.state==='prompt') return tr().gpsDenied;    // mai chiesto: lo blocca qualcos'altro
@@ -1650,6 +1668,8 @@ function mostraPerf(){
   const el=document.getElementById('infoPerf'); if(!el) return;
   const scrivi=()=>{ if(!sheets.info.classList.contains('show')) return;
     el.textContent = tr().perf(fpsVisto||'—', E.length.toLocaleString('it-IT'));
+    const v=document.getElementById('infoVer');
+    if(v) v.textContent = tr().ver(APPVER, INSTALLATA);
     setTimeout(scrivi, 1000); };
   scrivi();
 }
