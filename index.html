@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '75';
+const APPVER = '77';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -1222,6 +1222,32 @@ const CARS = {
             "does not use them for the calls. What it does use are the ratios and the usable band: "+
             "all-wheel drive and wide tyres put reference grip above the MiTo's, so the same radii "+
             "come out faster."},
+  fie:{nm:'Ford Fiesta ST-Line', sub:'2019 · 1.0 EcoBoost 3 cilindri · 101 CV · 6 marce',
+       /* B6 a 6 rapporti: 3,727 · 2,048 · 1,321 · 0,951 · 0,756 · 0,614, finale 4,067,
+          normalizzati sulla 6ª. Con 195/55 R16 (circonferenza 1,916 m) la 6ª fa ~46 km/h
+          ogni 1000 giri — cioè 120 km/h a 2.600 giri, che è il valore di partenza del
+          cursore. I rapporti esatti del cambio sono da confermare sul libretto
+          [poco sicuro]: quello che conta per la marcia consigliata è la loro distanza
+          fra loro, e quella è giusta; il rapporto finale lo tara il cursore.
+          Fascia utile da turbo piccolo: 170 Nm già a 1.400 giri e pieni fino a 4.500,
+          quindi si parte da 1.800 e non da 3.000 come sui turbo grossi. */
+       auto:false, n:6, ref:46, grip:0.95, boost:1800, rpmLim:6000,
+       g:[0.1647,0.2998,0.4648,0.6456,0.8122,1.0],
+       d_it:"999 cm³ tre cilindri turbo EcoBoost, 101 CV, 170 Nm da 1.400 a 4.500 giri, "+
+            "manuale a 6 marce, poco più di 1.100 kg. È l'opposto della MiTo: la coppia c'è "+
+            "già appena sopra il minimo e finisce presto, quindi la marcia consigliata è quasi "+
+            "sempre più alta di quanto verrebbe da tirare — sopra i 5.000 giri il tre cilindri "+
+            "fa rumore e basta. Tenuta di riferimento poco sotto la MiTo: assetto ST-Line e "+
+            "peso ridotto aiutano, ma gomme e larghezza sono da tutti i giorni. "+
+            "Manutenzione: SP-98 dai 100.000 km, e a 100.000 km è stata cambiata la cinghia di "+
+            "distribuzione a bagno d'olio — il punto debole noto di questo motore.",
+       d_en:"999 cc three-cylinder EcoBoost turbo, 101 hp, 170 Nm from 1,400 to 4,500 rpm, "+
+            "6-speed manual, just over 1,100 kg. The opposite of the MiTo: torque arrives just "+
+            "off idle and is gone early, so the suggested gear is almost always taller than "+
+            "instinct says — above 5,000 rpm the triple makes noise and little else. Reference "+
+            "grip sits just below the MiTo: ST-Line suspension and low weight help, but the "+
+            "tyres are everyday ones. Servicing: 98 octane since 100,000 km, and the wet timing "+
+            "belt was replaced at 100,000 km — the known weak point of this engine."},
   m6: {nm:'Altra auto', sub:'cambio manuale 6 marce',
        auto:false, n:6, g:[0.190,0.3325,0.490,0.6425,0.810,1.0], ref:40,
        boost:3000, rpmLim:6500, grip:0.92,
@@ -1722,15 +1748,13 @@ function disegnaPiano(c0,c1,r0,r1){
   if(S.pos && S.mode!=='free'){
     // la freccia sta sulla posizione ammorbidita, come la camera: se stesse sul fix
     // grezzo scivolerebbe avanti e indietro rispetto alla mappa a ogni secondo
-    const [x,y]=S.dp||S.pos, hh=(S.dhd!=null?S.dhd:S.hd);
+    // il cerchio dell'imprecisione resta qui, in metri veri: è l'unica cosa del
+    // segnaposto che deve crescere e calare con lo zoom. La freccia no — quella si
+    // disegna in spazio schermo, in disegnaMe()
+    const [x,y]=S.dp||S.pos;
     if(S.acc>10&&S.mode==='follow'){
       ctx.fillStyle='rgba(79,214,255,.09)'; ctx.beginPath(); ctx.arc(x,y,S.acc,0,7); ctx.fill();
     }
-    ctx.save(); ctx.translate(x,y); ctx.rotate((hh!=null?hh:Math.PI/2)-Math.PI/2);
-    ctx.scale(pw(1),pw(1));
-    ctx.fillStyle=ACCENT; ctx.strokeStyle='#0c1013'; ctx.lineWidth=2;
-    ctx.beginPath(); ctx.moveTo(0,13); ctx.lineTo(8,-9); ctx.lineTo(0,-4.5); ctx.lineTo(-8,-9);
-    ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
   }
   ctx.restore();
 }
@@ -1770,18 +1794,50 @@ function disegna3d(c0,c1,r0,r1){
   g.addColorStop(0,BG); g.addColorStop(1,BG+'00');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H*0.44);
   // posizione: proiettata, e l'orientamento si prende proiettando un punto davanti
-  if(S.pos && S.mode!=='free'){
-    const p0=S.dp||S.pos, hh=(S.dhd!=null?S.dhd:S.hd);
-    const p=w2s(p0[0],p0[1]);
-    if(p){
-      const q = hh!=null ? w2s(p0[0]+Math.cos(hh)*14, p0[1]+Math.sin(hh)*14) : null;
-      const ang = q ? Math.atan2(q[1]-p[1], q[0]-p[0]) : -Math.PI/2;
-      ctx.save(); ctx.translate(p[0],p[1]); ctx.rotate(ang+Math.PI/2);
-      ctx.fillStyle=ACCENT; ctx.strokeStyle='#0c1013'; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(0,-13); ctx.lineTo(8,9); ctx.lineTo(0,4.5); ctx.lineTo(-8,9);
-      ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
-    }
+}
+
+/* ============ il segnaposto della macchina ============
+   Uno solo per tutte e due le viste, e in spazio schermo: prima erano due triangoli
+   piatti scritti due volte, uno per la vista piana e uno per la 3D, e nella piana
+   restava agganciato allo zoom. Forma presa dal segnaposto di Google Maps, che è
+   quello che tutti riconoscono al volo: chevron arrotondato, bordo chiaro che lo
+   stacca dall'asfalto scuro, un'ombra sotto per staccarlo dalla strada, e il fascio
+   della direzione quando il verso di marcia si conosce. La punta è la direzione:
+   niente cerchio, che non dice dove stai andando. */
+function disegnaMe(){
+  if(!S.pos || S.mode==='free') return;
+  const p0=S.dp||S.pos, hh=(S.dhd!=null?S.dhd:S.hd);
+  const p=w2s(p0[0],p0[1]); if(!p) return;
+  // la direzione si prende da un punto 14 m più avanti e poi si proietta: in vista
+  // inclinata l'angolo sullo schermo non è quello del mondo
+  const q = hh!=null ? w2s(p0[0]+Math.cos(hh)*14, p0[1]+Math.sin(hh)*14) : null;
+  const ang = q ? Math.atan2(q[1]-p[1], q[0]-p[0]) : -Math.PI/2;
+  ctx.save();
+  ctx.translate(p[0],p[1]); ctx.rotate(ang+Math.PI/2);
+  if(hh!=null){
+    const g=ctx.createRadialGradient(0,0,7,0,0,58);
+    g.addColorStop(0,'rgba(79,214,255,.26)'); g.addColorStop(1,'rgba(79,214,255,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.moveTo(0,0);
+    ctx.arc(0,0,58,-Math.PI/2-0.40,-Math.PI/2+0.40); ctx.closePath(); ctx.fill();
   }
+  ctx.beginPath();
+  ctx.moveTo(0,-12.6);
+  ctx.quadraticCurveTo(1.7,-12.3, 2.3,-10.3);
+  ctx.lineTo(8.4,7.0);
+  ctx.quadraticCurveTo(9.1,9.3, 6.9,8.4);
+  ctx.lineTo(0,5.5);
+  ctx.lineTo(-6.9,8.4);
+  ctx.quadraticCurveTo(-9.1,9.3, -8.4,7.0);
+  ctx.lineTo(-2.3,-10.3);
+  ctx.quadraticCurveTo(-1.7,-12.3, 0,-12.6);
+  ctx.closePath();
+  ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=7; ctx.shadowOffsetY=1.5;
+  ctx.fillStyle=ACCENT; ctx.fill();
+  ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
+  ctx.lineWidth=2.1; ctx.lineJoin='round'; ctx.strokeStyle='rgba(246,251,255,.95)';
+  ctx.stroke();
+  ctx.restore();
 }
 
 /* roba in spazio schermo, uguale nelle due viste */
@@ -1837,6 +1893,7 @@ function disegnaSopra(){
     ctx.fillStyle=p.r===0?'#c3ccd4':INK2;
     ctx.fillText(p.n,sx+9,sy+0.5);
   }
+  disegnaMe();          // per ultimo: la macchina sta sopra tutto, anche sui nomi
   /* Nessuna mappa caricata: dirlo SULLA mappa, non solo in un pannello. Il pannello
      si può chiudere con un tocco distratto e sotto resterebbe uno schermo nero senza
      spiegazione — è esattamente quello che è successo. Il canvas invece c'è sempre. */
@@ -2925,7 +2982,7 @@ const IX = {
   LOC:[], COM:[], CAP:[], CAPSET:new Set(),   // tabelle: {n, nn} / stringhe
   tok:new Map(), voc:null, base:{},           // base[regione] = id della sua prima via
   civ:new Map(),                              // id voce -> ancore dei civici
-  pronto:false, inCorso:null, civPronti:new Set(), civInCorso:null, nGeo:0,
+  pronto:false, inCorso:null, civPronti:new Set(), civInCorso:null, civFatti:false, nGeo:0,
 };
 function ixAdd(n, nnExtra, x, y, imp, tipo, loc, com, cap, rid, sid){
   const id = IX.n.length;
@@ -3046,6 +3103,11 @@ async function assicuraCivici(){
         if(IX.rid[id]===r.id && IX.sid[id]===sid) IX.civ.set(id, anc);
       }
     }
+    /* Questa riga non è cosmetica: senza, chi scriveva un numero civico mandava la
+       ricerca in giostra. Il disegno chiedeva i civici, la promessa era già
+       risolta, il .then ridisegnava, che richiedeva i civici… e la pagina si
+       piantava con l'elenco vuoto. */
+    IX.civFatti = true;
   })();
   return IX.civInCorso;
 }
@@ -3099,6 +3161,14 @@ function dist(a,b){                     // Levenshtein, due righe sole
 
 function analizzaQuery(t){
   const parti = nrm(t).split(' ').filter(Boolean);
+  /* "v.le Roma" diventa "v le roma" appena si tolgono i punti, e allora "v" e "le"
+     sono due parole che nel nome non ci sono. Le sigle spezzate si ricuciscono
+     prima di cercare: v+le = viale, c+so = corso, p+zza = piazza. */
+  for(let i=0;i<parti.length-1;i++){
+    if(parti[i].length<=2 && parti[i+1].length<=3 && VARIANTI[parti[i]+parti[i+1]]){
+      parti.splice(i, 2, parti[i]+parti[i+1]);
+    }
+  }
   const parole = []; let civ=null, cap=null;
   for(let i=0;i<parti.length;i++){
     const p = parti[i];
@@ -3248,6 +3318,7 @@ function posCivico(anc, num, x, y){
 }
 
 function sottotitolo(id){
+  if(IX.tipo[id]===0) return tr().fav;
   const p = [];
   const loc = IX.loc[id]>=0 ? IX.LOC[IX.loc[id]].n : '';
   const com = IX.com[id]>=0 ? IX.COM[IX.com[id]].n : '';
@@ -3273,7 +3344,8 @@ function renderResults(term){
     return;
   }
   const list = cerca(t);
-  if(list.some(r=>r.civ)) assicuraCivici().then(()=>{ if(qEl.value.trim()===t) renderResults(t) });
+  if(!IX.civFatti && list.some(r=>r.civ))
+    assicuraCivici().then(()=>{ if(qEl.value.trim()===t) renderResults(t) });
   for(const r of list) rigaRis(r);
   if(!list.length){
     const d=document.createElement('div'); d.className='info';
