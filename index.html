@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '111';
+const APPVER = '113';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -1054,6 +1054,29 @@ function tipoDaAngolo(ang){
   if(A>0.38) return ang>0?'sx':'dx';
   return ang>0?'sxk':'dxk';
 }
+/* Quante uscite si superano in rotatoria, contando quella che si prende.
+   In rotonda «gira a destra» o «gira a sinistra» è l'istruzione sbagliata da dare:
+   la rotatoria si percorre in un verso solo, e un lato annunciato invita a farla al
+   contrario. Tiago, guidando: «mi mandava nelle rotonde al contrario». Tutti i
+   navigatori dicono l'uscita, e adesso costa poco perché la rotatoria è già
+   riconosciuta dal fatto che gli archi in mezzo sono a senso unico.
+   Si conta, per ogni arco dell'anello, se dalla giunzione in fondo si può USCIRE su
+   una strada che non è dell'anello. L'ultimo arco è quello da cui si esce davvero,
+   quindi il totale è il numero dell'uscita da annunciare. */
+function contaUscite(archi, kDa, kA){
+  const anello=new Set();
+  for(let k=kDa;k<kA;k++) anello.add(archi[k].e.id);
+  let n=0;
+  for(let k=kDa;k<kA;k++){
+    const a=archi[k], jn = a.verso>0 ? a.e.j1 : a.e.j0;
+    for(const id of (JUN.get(jn)||[])){
+      if(anello.has(id)) continue;
+      if(!percorribile(E[id], jn)) continue;      // di lì non si esce: non è un'uscita
+      n++; break;
+    }
+  }
+  return n;
+}
 function costruisciManovre(archi){
   const c0=[]; let cum=0;
   for(let k=0;k<archi.length;k++){ c0[k]=cum; cum+=archi[k].e.len }
@@ -1118,8 +1141,11 @@ function costruisciManovre(archi){
         u.ang=Math.max(-3, Math.min(3, u.ang+x.ang));
         u.tipo=tipoDaAngolo(u.ang);
         u.via=x.via||u.via;               // il nome è quello della strada in cui si finisce
+        if(rot && u.rotIn===undefined) u.rotIn=u.k;   // primo arco dell'anello
         u.rot=u.rot||rot;
         u.k=x.k;
+        // si ricalcola a ogni fusione: l'anello cresce finché si gira
+        if(u.rot && u.rotIn!==undefined) u.uscita=contaUscite(archi, u.rotIn, u.k);
         continue;
       }
     }
@@ -1497,6 +1523,11 @@ const T = {
     navRecalc:'Fuori percorso: ricalcolo…',
     navNoGps:'avvia il GPS per avere le indicazioni',
     navRot:'alla rotatoria,',
+    /* Ordinali PROPRI, non riusati da `gWords` (che sono le marce): se un giorno si
+       aggiunge un'auto con più rapporti, `gWords` si allunga per un motivo che non
+       ha niente a che vedere con le rotatorie. */
+    navUscite:['prima','seconda','terza','quarta','quinta','sesta'],
+    navUscitaPre:'la ', navUscitaPost:' uscita',
     d3gps:'La vista 3D si accende quando guidi: avvia il GPS.',
     navWarn:'Nei dati non ci sono i divieti di svolta né gli accessi privati, e le autostrade non sono nella rete: la segnaletica vince sempre su di me.',
     navDest:'destinazione',
@@ -1551,6 +1582,8 @@ const T = {
     navRecalc:'Off route: recalculating…',
     navNoGps:'start GPS to get the directions',
     navRot:'at the roundabout,',
+    navUscite:['first','second','third','fourth','fifth','sixth'],
+    navUscitaPre:'take the ', navUscitaPost:' exit',
     d3gps:'The 3D view kicks in while driving: start GPS.',
     navWarn:'The data has no turn restrictions and no private access, and motorways are not in the network: road signs always beat me.',
     navDest:'destination',
@@ -3251,7 +3284,13 @@ function tickNav(){
   while(nv.mi<nv.man.length && nv.man[nv.mi].cum - pr.fatto < -20) nv.mi++;
   const mn = nv.man[nv.mi] || null;
   const dm = mn ? Math.max(0, mn.cum - pr.fatto) : pr.restano;
-  const frase = mn ? (mn.rot ? t0.navRot+' ' : '') + t0.navTurn[mn.tipo]
+  /* In rotatoria si annuncia l'USCITA, non il lato: la rotonda si percorre in un
+     verso solo, e dire «gira a sinistra» invita a farla al contrario. Se per qualche
+     motivo l'uscita non si è potuta contare si ricade sul lato, che è comunque meglio
+     di niente. */
+  const uscOrd = mn && mn.rot && mn.uscita>=1 ? t0.navUscite[Math.min(mn.uscita,6)-1] : null;
+  const frase = mn ? (uscOrd ? t0.navRot+' '+t0.navUscitaPre+uscOrd+t0.navUscitaPost
+                             : (mn.rot ? t0.navRot+' ' : '') + t0.navTurn[mn.tipo])
                      + (mn.via ? ' '+t0.navInto+' '+mn.via : '') : '';
 
   navD.textContent = dm<30 ? t0.navNow : kmTxt(dm);
