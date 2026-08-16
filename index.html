@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '77';
+const APPVER = '84';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -787,42 +787,106 @@ function posGiun(j){
   return e.j0===j ? [e.xy[0],e.xy[1]] : [e.xy[2*e.np-2], e.xy[2*e.np-1]];
 }
 /* Costo in secondi, non in metri: una statale a 90 batte una stradina a 50 anche
-   se è più lunga, che è come sceglie un guidatore vero. */
-function costo(e){ return e.len / Math.max(20, edgeLimit(e).v) * 3.6; }
+   se è più lunga, che è come sceglie un guidatore vero.
+   Le residenziali (rango 5) esistono nel grafo per il primo e l'ultimo miglio —
+   per farti partire da casa invece che dalla provinciale a 166 m — non per essere
+   scorciatoie fra due statali. Quindi il loro tempo si moltiplica, e imboccarne una
+   venendo da una strada vera costa una penalità secca in più. È il trucco di Google:
+   non è che non te le fa fare, è che ci arriva e basta. */
+const PEN_MINORE = 3.5, ENTRO_MINORE = 40, PEN_INVERSIONE = 60;
+function costo(e){
+  const t = e.len / Math.max(20, edgeLimit(e).v) * 3.6;
+  return e.rank>=5 ? t*PEN_MINORE : t;
+}
+/* Divieti di svolta. La chiave è (giunzione, via da cui arrivi): allo stesso
+   incrocio, venendo da una strada puoi girare e venendo da un'altra no. */
+const RESTR = new Map();
+function svoltaVietata(jn, wDa, wA){
+  const r = RESTR.get(jn+':'+wDa);
+  if(!r) return false;
+  if(r.solo) return r.solo !== wA;      // "obbligo di svolta": tutto il resto è vietato
+  return r.no ? r.no.has(wA) : false;
+}
 
-function calcolaRotta(jDa, jA, limite=400000){
+/* A* sugli ARCHI ORIENTATI, non sulle giunzioni.
+   Il motivo è il divieto di svolta: non dipende da dove sei, ma da DA DOVE ARRIVI.
+   Allo stesso incrocio, venendo da una strada puoi girare a sinistra e venendo da
+   un'altra no — con lo stato sulla sola giunzione quell'informazione non esiste
+   proprio dove servirebbe. Lo stato qui è (arco, verso), impacchettato in un numero:
+   indice·2, più 1 se lo si percorre al contrario.
+   Costa il doppio in memoria e niente in tempo: gli archi esplorati sono gli stessi.
+   In più permette di far pagare la SVOLTA e non solo la strada, che è come si
+   scoraggiano l'inversione a U e l'ingresso nelle stradine. */
+/* Due accorgimenti senza i quali su un paese intero non si arriva in fondo.
+   Misurato sul Belgio unito (709.884 archi, 1,4 milioni di stati): senza, un
+   Visé→Charleroi esauriva il budget dopo 1,9 secondi e tornava "nessun percorso".
+
+   1. Le STRADINE si esplorano solo vicino alla partenza e all'arrivo. Servono a
+      uscire di casa e ad arrivare al portone, non ad attraversare il paese: fuori da
+      quella corona sono metà del grafo esplorata per niente. È la gerarchia che usano
+      tutti i motori veri, in versione minima.
+   2. EURISTICA PESATA. La stima in linea d'aria a 110 km/h è onesta ma debole su un
+      percorso che di media ne fa 60, e A* finisce per aprire mezzo Belgio. Moltiplicarla
+      concentra la ricerca verso la meta; il percorso può uscire teoricamente peggiore
+      fino al peso scelto, in pratica di pochissimo. Lo fanno tutti i navigatori. */
+const RAGGIO_MINORI = 3000, PESO_H = 1.25;
+function calcolaRotta(jDa, jA, limite=900000){
   const meta = posGiun(jA); if(!meta) return null;
-  const g=new Map([[jDa,0]]), prev=new Map(), chiuso=new Set();
-  const q=new Coda();
-  // euristica: tempo minimo in linea d'aria a 110 km/h, mai sovrastimato
+  if(jDa===jA) return {archi:[], metri:0, secondi:0, visti:0};
+  const orig = posGiun(jDa);
+  const R2 = RAGGIO_MINORI*RAGGIO_MINORI;
+  const aiBordi = (x,y) =>
+    (orig && (x-orig[0])*(x-orig[0]) + (y-orig[1])*(y-orig[1]) < R2) ||
+    ((x-meta[0])*(x-meta[0]) + (y-meta[1])*(y-meta[1]) < R2);
+  // tempo minimo in linea d'aria a 110 km/h: mai sovrastimato, quindi ammissibile
   const h=j=>{ const p=posGiun(j); return p ? Math.hypot(p[0]-meta[0],p[1]-meta[1])/30.5 : 0 };
-  q.push(jDa, h(jDa));
-  let visti=0;
+  const testa = s => { const e=E[s>>1]; return (s&1) ? e.j0 : e.j1 };
+  const g=new Map(), prev=new Map(), chiuso=new Set();
+  const q=new Coda();
+  for(const id of (JUN.get(jDa)||[])){
+    const e=E[id];
+    if(!percorribile(e,jDa)) continue;
+    const s = id*2 + (e.j0===jDa ? 0 : 1);
+    const c = costo(e);
+    if(c < (g.get(s)??Infinity)){ g.set(s,c); q.push(s, c+h(testa(s))*PESO_H) }
+  }
+  let visti=0, fine=-1;
   while(q.size){
-    const cur=q.pop();
-    if(chiuso.has(cur)) continue;
-    if(cur===jA) break;
-    chiuso.add(cur);
+    const s=q.pop();
+    if(chiuso.has(s)) continue;
+    chiuso.add(s);
     if(++visti>limite) return null;
-    const gc=g.get(cur);
-    for(const id of (JUN.get(cur)||[])){
-      const e=E[id];
-      if(!percorribile(e,cur)) continue;
-      const alt = e.j0===cur ? e.j1 : e.j0;
-      if(alt===cur || chiuso.has(alt)) continue;
-      const ng = gc + costo(e);
-      if(ng < (g.get(alt)??Infinity)){ g.set(alt,ng); prev.set(alt,id); q.push(alt, ng+h(alt)) }
+    const jn=testa(s);
+    if(jn===jA){ fine=s; break }
+    const e=E[s>>1], gc=g.get(s);
+    for(const id of (JUN.get(jn)||[])){
+      const o=E[id];
+      if(!percorribile(o,jn)) continue;
+      if(o.rank>=5){                          // stradine solo vicino ai due estremi
+        const m=(o.np>>1)*2;
+        if(!aiBordi(o.xy[m], o.xy[m+1])) continue;
+      }
+      if(svoltaVietata(jn, e.wid, o.wid)) continue;
+      const t = id*2 + (o.j0===jn ? 0 : 1);
+      if(chiuso.has(t)) continue;
+      // la penalità sta sulla SVOLTA: inversione a U cara, e imboccare una stradina
+      // venendo da una strada vera si paga una volta sola, non a ogni suo tratto
+      const pen = (id===e.id ? PEN_INVERSIONE : 0)
+                + (o.rank>=5 && e.rank<5 ? ENTRO_MINORE : 0);
+      const ng = gc + costo(o) + pen;
+      if(ng < (g.get(t)??Infinity)){ g.set(t,ng); prev.set(t,s); q.push(t, ng+h(testa(t))*PESO_H) }
     }
   }
-  if(!prev.has(jA) && jDa!==jA) return null;
-  const archi=[]; let n=jA;
-  while(prev.has(n)){ const id=prev.get(n), e=E[id];
-    archi.push({e, verso: e.j1===n ? 1 : -1});
-    n = e.j0===n ? e.j1 : e.j0;
-    if(archi.length>20000) break }
+  if(fine<0) return null;
+  const archi=[]; let s=fine;
+  while(s!==undefined){
+    archi.push({e:E[s>>1], verso:(s&1)?-1:1});
+    s = prev.get(s);
+    if(archi.length>20000) break;
+  }
   archi.reverse();
   const metri=archi.reduce((a,x)=>a+x.e.len,0);
-  return {archi, metri, secondi: Math.round(g.get(jA)||0), visti};
+  return {archi, metri, secondi: Math.round(g.get(fine)||0), visti};
 }
 
 /* ---- da dove si parte, dove si arriva ----------------------------------------
@@ -849,8 +913,42 @@ function componenteGrande(j, soglia=300){
   for(const v of visti) (ok?COMP_OK:COMP_NO).add(v);
   return ok;
 }
-/* La giunzione più vicina che stia nella rete principale. */
-function giunzioneVicina(x,y,rad=1500){
+/* Raggiungibilità RISPETTANDO i sensi unici. `componenteGrande` qui sopra cammina
+   ignorandoli, e va bene per riconoscere un frammento staccato — ma non basta:
+   nel centro di Eupen la giunzione più vicina aveva un arco uscente e stava nella
+   componente grande, eppure andando avanti si arrivava a **due** giunzioni in tutto.
+   Una tasca a senso unico. Da lì nessun percorso esiste, e A* lo scopriva dopo aver
+   svuotato la coda, in zero millisecondi, restituendo "nessun percorso" su una
+   destinazione perfettamente raggiungibile.
+   Il risultato NON si propaga ai nodi visitati come nel caso non orientato: chi sta
+   più avanti raggiunge un sottoinsieme, non lo stesso insieme. Si tiene per nodo. */
+const COMP_DIR = new Map();
+function raggiunge(j, verso, soglia=300){
+  const k = j*4 + (verso>0 ? 1 : 2);
+  const c = COMP_DIR.get(k); if(c!==undefined) return c;
+  const visti=new Set([j]), coda=[j];
+  while(coda.length && visti.size<soglia){
+    const cur=coda.pop();
+    for(const id of (JUN.get(cur)||[])){
+      const e=E[id], alt = e.j0===cur ? e.j1 : e.j0;
+      // in avanti si deve poter percorrere DA cur, all'indietro VERSO cur
+      if(!percorribile(e, verso>0 ? cur : alt)) continue;
+      if(!visti.has(alt)){ visti.add(alt); coda.push(alt) }
+    }
+  }
+  const ok = visti.size>=soglia;
+  COMP_DIR.set(k, ok);
+  return ok;
+}
+/* La giunzione più vicina che stia nella rete principale — e da cui si possa
+   davvero fare quello che serve.
+   `verso` = +1 partenza (da lì si deve poter USCIRE), -1 arrivo (ci si deve poter
+   ENTRARE), 0 indifferente. Senza questo controllo si finisce agganciati alla piazza
+   pedonale a senso unico del centro: la giunzione c'è, è nella componente grande, e
+   il percorso non esiste lo stesso. È successo davvero — Eupen falliva in zero
+   millisecondi e Visé→Charleroi bruciava un secondo e mezzo per finire in niente,
+   perché la destinazione si poteva solo lasciare, mai raggiungere. */
+function giunzioneVicina(x,y,rad=1500,verso=0){
   let best=null;
   for(const id of nearEdges(x,y,rad)){
     const e=E[id];
@@ -859,10 +957,11 @@ function giunzioneVicina(x,y,rad=1500){
       const d=Math.hypot(p[0]-x,p[1]-y);
       if(d>rad || (best && d>=best.d)) continue;
       if(!componenteGrande(j)) continue;
+      if(verso && !raggiunge(j, verso)) continue;
       best={j,d};
     }
   }
-  if(!best && rad<12000) return giunzioneVicina(x,y,rad*3);   // in montagna 1,5 km non bastano
+  if(!best && rad<12000) return giunzioneVicina(x,y,rad*3,verso);  // in montagna 1,5 km non bastano
   return best ? best.j : null;
 }
 /* Si parte dalla giunzione che si ha DAVANTI sulla strada dove si sta viaggiando,
@@ -878,7 +977,7 @@ function giunzionePartenza(){
     if(percorribile(e,da) && componenteGrande(j)) return {j, e, verso:S.snap.dir};
   }
   const p=S.pos||[S.cx,S.cy];
-  const j=giunzioneVicina(p[0],p[1]);
+  const j=giunzioneVicina(p[0],p[1],1500,+1);      // da qui si deve poter uscire
   return j==null ? null : {j, e:null, verso:0};
 }
 
@@ -1033,10 +1132,25 @@ function gjun(osm){ let g=JKEY.get(osm); if(g===undefined){ g=JKEY.size; JKEY.se
    vince la prima regione che la carica. L'id via negativo marca invece una copia
    troncata al bordo dell'estratto: quella cede sempre il posto alla versione
    intera, e se nessuno ce l'ha intera si tiene la monca — meglio di un buco. */
+const SENZA_CURVE = Object.freeze([]);
 const WOWN = new Map();       // id via OSM -> {rid, intera}
 const GSEEN = new Set(), CSEEN = new Set(), PSEEN = new Set();
 const VIE = {};   // regione -> dizionario dei nomi di via
 
+/* I divieti arrivano con la giunzione come indice LOCALE alla regione: va tradotta
+   nell'indice globale come si fa per gli archi, se no al confine non combaciano. */
+function buildRestr(){
+  const jnArr = RAW.jn;
+  for(const r of (RAW.restr||[])){
+    const [jLoc, frm, to, tipo] = r;
+    if(!jnArr || jnArr[jLoc]===undefined) continue;
+    const k = gjun(jnArr[jLoc])+':'+frm;
+    let v = RESTR.get(k);
+    if(!v){ v={no:null, solo:0}; RESTR.set(k,v) }
+    if(tipo===1) v.solo = to;
+    else { if(!v.no) v.no = new Set(); v.no.add(to) }
+  }
+}
 function buildEdges(rid, map){
   VIE[rid] = RAW.vie || [];
   const jn = RAW.jn || null;
@@ -1065,12 +1179,17 @@ function buildEdges(rid, map){
       L += Math.hypot(xy[2*i]-xy[2*i-2], xy[2*i+1]-xy[2*i-1]); cum[i]=L;
     }
     const sc = L>1 ? len/L : 1;                 // polyline semplificata -> metri veri
-    const curves=[];
-    for (let i=0;i<cflat.length;i+=5)
-      curves.push({d0:cflat[i], d1:cflat[i+1], dir:cflat[i+2], c:cflat[i+3], r:cflat[i+4]});
+    /* Un array vuoto condiviso invece di 356.000 array vuoti distinti: le residenziali
+       non hanno curve per costruzione, e in Belgio sono metà degli archi. */
+    let curves = SENZA_CURVE;
+    if (cflat.length){
+      curves=[];
+      for (let i=0;i<cflat.length;i+=5)
+        curves.push({d0:cflat[i], d1:cflat[i+1], dir:cflat[i+2], c:cflat[i+3], r:cflat[i+4]});
+    }
     const gj0=J(j0), gj1=J(j1);
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
-               id:E.length, rg:rid, ow:ow||0,
+               id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                // il nome sta nel dizionario della sua regione, non in un campo per arco
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : ''};
     map[k] = e.id;                       // indice locale -> globale, serve agli autovelox
@@ -1292,7 +1411,7 @@ const T = {
     noCurve:'nessuna curva nel raggio utile', inC:'IN', inC2:'CURVA', m:'METRI', now:'ORA',
     gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', flat:'· in pieno', rpm:'giri',
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
-    roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale'},
+    roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale',5:'Strada di paese'},
     roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo',
     localCall:'Strada locale', localSub:'strada urbana: nessuna nota di curva, limite dedotto',
     gWords:['prima','seconda','terza','quarta','quinta','sesta','settima','ottava','nona'],
@@ -1346,7 +1465,7 @@ const T = {
     noCurve:'no corner within range', inC:'IN', inC2:'CORNER', m:'METERS', now:'NOW',
     gear:'GEAR', then:'then', radius:'radius', ref:'ref.', flat:'· flat out', rpm:'rpm',
     off:'Off mapped roads', offSub:'get closer to a mapped road to resume pacenotes',
-    roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road'},
+    roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road',5:'Residential street'},
     roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active',
     localCall:'Local road', localSub:'urban street: no corner calls, limit inferred',
     gWords:['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth'],
@@ -1609,7 +1728,7 @@ function tracciati3d(c0,c1,r0,r1){
       const f=fasciaDi(Y*CAM.sp+CAM.R);
       let a=0;
       for(let n=0;n<e.runs.length;n+=2){
-        traccia(paths[e.runs[n+1]][f], xy, a, e.runs[n]);
+        traccia(e.rank>=5 ? grey[f] : paths[e.runs[n+1]][f], xy, a, e.runs[n]);
         a=e.runs[n];
       }
     }
@@ -1638,19 +1757,23 @@ function cellPaths(kk){
   const ids=GRID.get(kk), gids=GGRID.get(kk);
   if(!ids && !gids) return null;
   const paths=CLS.map(()=>new Path2D());
+  /* Le residenziali ora sono archi come gli altri, ma sulla mappa devono restare
+     quello che erano: un reticolo grigio sottile. Colorarle come le strade da
+     guidare vorrebbe dire annegare le curve vere in un tappeto di grigio chiaro. */
+  let grey=null;
+  const grigia = () => (grey || (grey=new Path2D()));
   if(ids) for(const id of ids){
-    const e=E[id], xy=e.xy, runs=e.runs;
+    const e=E[id], xy=e.xy, runs=e.runs, minore=e.rank>=5;
     let a=0;
     for(let m=0;m<runs.length;m+=2){
-      const b=runs[m], cl=runs[m+1], P=paths[cl];
+      const b=runs[m], cl=runs[m+1], P = minore ? grigia() : paths[cl];
       P.moveTo(xy[2*a],xy[2*a+1]);
       for(let i=a+1;i<=b;i++) P.lineTo(xy[2*i],xy[2*i+1]);
       a=b;
     }
   }
-  let grey=null;
   if(gids){
-    grey=new Path2D();
+    grigia();
     for(const gi of gids){
       const g=GREY[gi], np=g.length>>1;
       grey.moveTo(g[0],g[1]);
@@ -2086,7 +2209,10 @@ function matchRoad(x,y,hd){
     // carreggiate separate l'aggancio saltava sull'altra corsia e faceva credere
     // di essere fuori percorso
     if(S.nav && S.nav.idx.has(id)) score -= 16;
-    score -= (4-Math.min(4,e.rank))*1.5;           // preferisci strade di rango alto
+    // preferisci strade di rango alto. Le residenziali ora sono nella rete e
+    // vanno bene per agganciarsi quando ci sei davvero sopra, ma non devono
+    // rubare l'aggancio alla provinciale quando ci passi accanto e basta
+    score += e.rank>=5 ? 9 : -(4-e.rank)*1.5;
     if(!best||score<best.score) best={e,i:pr.i,t:pr.t,d:pr.d,dir,score};
   }
   return best;
@@ -2397,7 +2523,7 @@ function avviaNav(x,y,nome){
   if(!E.length) return;
   const t0=tr();
   if(x<BB[0]-4000||x>BB[2]+4000||y<BB[1]-4000||y>BB[3]+4000){ toast(t0.navOut,5500); return }
-  const part=giunzionePartenza(), jA=giunzioneVicina(x,y);
+  const part=giunzionePartenza(), jA=giunzioneVicina(x,y,1500,-1);   // qui ci si deve entrare
   if(!part || jA==null){ toast(t0.navNone,5500); return }
   const r=calcolaRotta(part.j, jA);
   if(!r || !r.archi.length){ toast(t0.navNone,5500); return }
@@ -3519,7 +3645,7 @@ async function boot(){
       setTimeout(fin,400);
     });
     const map = new Int32Array(RAW.edges.length);   // indice arco locale -> globale
-    buildEdges(r.id, map); buildGrey(); buildCams(map);
+    buildEdges(r.id, map); buildGrey(); buildCams(map); buildRestr();
     for(const p of RAW.places){
       const pk = p[0]+'|'+Math.round(p[1]*100)+','+Math.round(p[2]*100);
       if(PSEEN.has(pk)) continue;
