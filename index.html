@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '97';
+const APPVER = '104';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -2037,6 +2037,8 @@ function etichetteDaRifare(){
   if(Math.abs(S.pitch-LCAM.pitch)>0.08) return true;
   // l'orizzonte della vista inclinata dipende dalla velocità: accelerando si allarga
   if(CAM.on && Math.abs(vista3d()-LCAM.lim) > LCAM.lim*0.25) return true;
+  // attraversare una soglia di rango stradale cambia del tutto i candidati
+  if(LCAM.rv!==vieRango()) return true;
   // quanto si è spostata la camera, misurato in pixel di adesso
   return Math.hypot(S.cx-LCAM.cx, S.cy-LCAM.cy)*S.scale > Math.min(W,H)*LBL.mossa;
 }
@@ -2097,7 +2099,198 @@ function piazzaEtichette(){
       occupa(b); k.fatto=true; sel.push(k.i);
     }
   LSEL=sel;
-  LCAM={cx:S.cx, cy:S.cy, scale:S.scale, rot:S.rot, pitch:S.pitch, rank, lim};
+  piazzaVie(libero, occupa);      // dopo i paesi: nella collisione i paesi vincono
+  LCAM={cx:S.cx, cy:S.cy, scale:S.scale, rot:S.rot, pitch:S.pitch, rank, lim, rv:vieRango()};
+}
+
+/* ============ nomi di via lungo la strada ============
+   È la cosa che fa smettere alla mappa di essere un grafo colorato. Il nome c'è già
+   nell'arco (`e.via`), quindi non serve nessun dato nuovo.
+
+   Non si segue la curva glifo per glifo. Si usa la variante di protomaps: si cerca un
+   tratto quasi DRITTO (deviazione massima ~4° dalla corda) lungo almeno quanto la
+   scritta, e lì si disegna la stringa intera ruotata in un solo `fillText`. Costa
+   circa 10 volte meno del per-glifo e dà quasi tutto l'effetto. Nei tornanti
+   appenninici semplicemente non piazza niente — che è il comportamento giusto: un
+   nome spalmato su un tornante non si legge comunque.
+
+   Tre cose che sembrano dettagli e non lo sono:
+   - **si riproietta, non si ripiazza**: di ogni etichetta si tengono due punti in
+     coordinate MONDO (dove sta, e dove punta), e l'angolo sullo schermo si ricava
+     proiettandoli tutti e due. Serve alla vista inclinata, dove l'angolo sullo
+     schermo non è quello del mondo, e fa sì che i nomi non ballino durante il pan;
+   - **il testo non si legge a testa in giù**: se la direzione punta a sinistra si
+     gira di 180°, e la scritta resta sulla stessa retta letta al contrario;
+   - **due passate, prima tutti gli aloni e poi tutti i testi**: con una passata sola
+     l'alone di un nome mangia la coda del nome vicino.
+
+   Il numero di etichette per nome è limitato (`perNome`): una via lunga è spezzata in
+   molti archi agli incroci, e senza il tetto la stessa strada si ripete dieci volte.
+   Concatenare i tratti omonimi è lavoro di preprocessing e sta in coda alla
+   rigenerazione unica; questo tetto è la versione che si può avere oggi. */
+const VIA={passo:260, curvaMax:0.075, minScala:0.22, perNome:3, celle:420, aria:7};
+/* Fin dove si scende nella gerarchia stradale, in funzione dello zoom. Da lontano
+   solo le classificate, altrimenti il nome di ogni viuzza copre la rete che si sta
+   guardando; da vicino anche le residenziali, che è dove il nome di via serve davvero
+   (in Vallonia hanno un nome 121.552 archi di rango 5 su 128.271). Il tetto vero non
+   è questo numero ma la collisione: alzarlo aggiunge candidati, non etichette. */
+function vieRango(){ return S.scale>0.9?5 : S.scale>0.45?4 : 3 }
+let VIAFONT='';
+let RANGOVIE=3;      // rango massimo del piazzamento in corso, fissato da piazzaVie
+let LVIE=[];        // {n, ax,ay, bx,by} in coordinate MONDO
+
+function puntoSu(P,cum,d,da){
+  let i=da||0;
+  while(i<cum.length-2 && cum[i+1]<d) i++;
+  const t=(d-cum[i])/Math.max(1e-6, cum[i+1]-cum[i]);
+  return [P[2*i]+(P[2*i+2]-P[2*i])*t, P[2*i+1]+(P[2*i+3]-P[2*i+1])*t, i];
+}
+/* Cuce i tratti omonimi in una polilinea sola, camminando nelle giunzioni da tutt'e
+   due i capi. `rev` dice se un tratto va percorso al rovescio: la catena deve essere
+   geometricamente continua, e due archi consecutivi possono benissimo essere
+   memorizzati in versi opposti (l'uno finisce dove l'altro finisce).
+   Tetti: 64 tratti e 4 km, se no una nazionale si mangia mezza regione in un colpo. */
+function catenaVia(e0, visti){
+  const nome=e0.via, cat=[{e:e0, rev:false}];
+  visti.add(e0.id);
+  let L=e0.len;
+  const cerca=(nodo)=>{
+    const vic=JUN.get(nodo); if(!vic) return null;
+    for(const id of vic){
+      if(visti.has(id)) continue;
+      const c=E[id];
+      if(c.via===nome && c.rank<=RANGOVIE) return c;
+    }
+    return null;
+  };
+  let nodo=e0.j1;
+  for(let g=0; g<64 && L<4000; g++){
+    const c=cerca(nodo); if(!c) break;
+    const rev = c.j0!==nodo;                 // se si attacca col suo j1, va al rovescio
+    cat.push({e:c, rev}); visti.add(c.id); L+=c.len;
+    nodo = rev ? c.j0 : c.j1;
+  }
+  nodo=e0.j0;
+  for(let g=0; g<64 && L<4000; g++){
+    const c=cerca(nodo); if(!c) break;
+    const rev = c.j1!==nodo;                 // entrando all'indietro il verso si gira
+    cat.unshift({e:c, rev}); visti.add(c.id); L+=c.len;
+    nodo = rev ? c.j1 : c.j0;
+  }
+  return cat;
+}
+function piazzaVie(libero, occupa){
+  LVIE=[];
+  if(S.scale<VIA.minScala || !E.length) return;
+  const [bx0,by0,bx1,by1]=viewBounds();
+  const c0=Math.floor(bx0/CELL), c1=Math.floor(bx1/CELL);
+  const r0=Math.floor(by0/CELL), r1=Math.floor(by1/CELL);
+  if((c1-c0+1)*(r1-r0+1)>VIA.celle) return;      // da lassù non si leggerebbero
+  RANGOVIE=vieRango();
+  ctx.font=VIAFONT||(VIAFONT='10px '+getComputedStyle(document.body).fontFamily);
+  const visti=new Set(), quanti=new Map(), P=[];
+  for(let cx=c0;cx<=c1;cx++) for(let cy=r0;cy<=r1;cy++){
+    const ids=GRID.get(ckey(cx,cy)); if(!ids) continue;
+    for(const id of ids){
+      if(visti.has(id)) continue;
+      const e=E[id];
+      if(!e.via || e.rank>RANGOVIE){ visti.add(id); continue }
+      if((quanti.get(e.via)||0)>=VIA.perNome){ visti.add(id); continue }
+      if(e._vw===undefined) e._vw=ctx.measureText(e.via).width;
+      const w=e._vw;
+      /* La CATENA, non il singolo arco. Gli archi sono spezzati a ogni incrocio: in
+         una vista da 3,3 km ce n'erano 2.672 col nome, e solo SEI lunghi abbastanza
+         per starci la scritta — un isolato da 100 m a quello zoom fa 30 px, meno
+         della parola. Quindi si cammina nelle giunzioni e si cuciono i tratti che
+         portano lo stesso nome, orientando ognuno nel verso giusto. Concatenarli in
+         preprocessing è meglio e sta in coda alla rigenerazione unica; questo è ciò
+         che si può avere senza toccare i dati. */
+      const catena=catenaVia(e, visti);
+      P.length=0; let ok=true;
+      for(const t of catena){
+        const a=t.e.xy, np=t.e.np;
+        for(let k=0;k<np;k++){
+          const i = t.rev ? np-1-k : k;
+          if(P.length && k===0) continue;          // il nodo in comune non si ripete
+          const q=w2s(a[2*i], a[2*i+1]);
+          if(!q){ ok=false; break }
+          P.push(q[0],q[1]);
+        }
+        if(!ok) break;
+      }
+      if(!ok) continue;
+      const n=P.length>>1; if(n<2) continue;
+      const cum=new Float64Array(n);
+      for(let i=1;i<n;i++) cum[i]=cum[i-1]+Math.hypot(P[2*i]-P[2*i-2], P[2*i+1]-P[2*i-1]);
+      const L=cum[n-1];
+      if(L<w+26) continue;
+      /* Le ancore SCORRONO finché non attecchiscono, non stanno a passo fisso
+         dall'inizio della catena. Col passo fisso una via che comincia fuori
+         schermo piazzava le sue ancore fuori e dentro non ne restava nessuna: in
+         centro a Liegi si passava da 196 etichette (quasi tutte invisibili) a 11
+         vere. Adesso si avanza a passi piccoli finché una posizione è buona; da lì
+         si salta di `passo`, così la spaziatura minima resta garantita. */
+      /* Si parte appena la scritta ci sta, NON a `passo/2`. `passo` regola la distanza
+         FRA due etichette della stessa via, non da dove si comincia a cercare: usarlo
+         anche come offset iniziale voleva dire che una catena più corta di 130 px non
+         piazzava mai niente — e la mediana misurata è 163 px, perché le vie restano
+         spezzate a ogni incrocio anche dopo la cucitura. Da qui veniva il paradosso
+         di vedere MENO nomi zoomando dentro. */
+      const fine=Math.max(40, w*0.6);
+      for(let d=w/2+8; d<L-6; ){
+        const d0=d-w/2, d1=d+w/2;
+        if(d0<6 || d1>L-6){ d+=fine; continue }
+        const a=puntoSu(P,cum,d0), b=puntoSu(P,cum,d1,a[2]), m=puntoSu(P,cum,d,a[2]);
+        const ang=Math.atan2(b[1]-a[1], b[0]-a[0]);
+        // dirittura: ogni segmento sotto la scritta entro curvaMax dalla corda
+        let dritto=true;
+        for(let i=a[2];i<=b[2] && i<n-1 && dritto;i++){
+          let dd=Math.atan2(P[2*i+3]-P[2*i+1], P[2*i+2]-P[2*i])-ang;
+          while(dd>Math.PI)dd-=2*Math.PI; while(dd<-Math.PI)dd+=2*Math.PI;
+          if(Math.abs(dd)>VIA.curvaMax) dritto=false;
+        }
+        if(!dritto){ d+=fine; continue }
+        // riquadro ASSE-ALLINEATO del rettangolo ruotato: basta e costa due moduli
+        const ca=Math.cos(ang), sa=Math.sin(ang), hw=w/2, hh=6;
+        const ex=Math.abs(hw*ca)+Math.abs(hh*sa), ey=Math.abs(hw*sa)+Math.abs(hh*ca);
+        /* Fuori dallo schermo non si piazza. Le celle della griglia sono da 1.500 m e
+           si estendono ben oltre il viewport, quindi senza questo taglio si spendeva
+           tempo a decidere etichette che nessuno vedrà mai — e il conteggio ne usciva
+           gonfiato di un fattore dieci. Il margine è lo stesso dei paesi: chi entra da
+           fuori deve aver già partecipato alla collisione. */
+        if(m[0]<-LBL.bordo || m[1]<-LBL.bordo || m[0]>W+LBL.bordo || m[1]>H+LBL.bordo){ d+=fine; continue }
+        const g=VIA.aria;
+        const box=[m[0]-ex-g, m[1]-ey-g, m[0]+ex+g, m[1]+ey+g];
+        if(!libero(box)){ d+=fine; continue }
+        occupa(box);
+        const wa=s2w(m[0],m[1]), wb=s2w(m[0]+ca*20, m[1]+sa*20);
+        LVIE.push({n:e.via, ax:wa[0], ay:wa[1], bx:wb[0], by:wb[1]});
+        d+=VIA.passo;                       // piazzata: si salta alla prossima distanza utile
+        const q=(quanti.get(e.via)||0)+1; quanti.set(e.via,q);
+        if(q>=VIA.perNome) break;
+      }
+    }
+  }
+}
+function disegnaVie(){
+  if(!LVIE.length) return;
+  ctx.font=VIAFONT;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.lineJoin='round'; ctx.lineWidth=3;
+  const pronte=[];
+  for(const v of LVIE){
+    const a=w2s(v.ax,v.ay); if(!a) continue;
+    const b=w2s(v.bx,v.by); if(!b) continue;
+    if(a[0]<-160||a[1]<-60||a[0]>W+160||a[1]>H+60) continue;
+    let ang=Math.atan2(b[1]-a[1], b[0]-a[0]);
+    if(ang>Math.PI/2 || ang<-Math.PI/2) ang+=Math.PI;   // mai a testa in giù
+    pronte.push([v.n, a[0], a[1], ang]);
+  }
+  ctx.strokeStyle=BG;
+  for(const p of pronte){ ctx.save(); ctx.translate(p[1],p[2]); ctx.rotate(p[3]); ctx.strokeText(p[0],0,0); ctx.restore() }
+  ctx.fillStyle='#7c8a97';
+  for(const p of pronte){ ctx.save(); ctx.translate(p[1],p[2]); ctx.rotate(p[3]); ctx.fillText(p[0],0,0); ctx.restore() }
+  ctx.textAlign='left'; ctx.textBaseline='middle';
 }
 /* Integra la dissolvenza e disegna. Torna true se qualcosa si sta ancora muovendo,
    così `disegnaSopra` può chiedere un altro fotogramma: senza, una dissolvenza
@@ -2110,8 +2303,14 @@ function disegnaEtichette(now){
      resta storto per tutta la sessione e le collisioni si calcolano su misure finte. */
   ctx.font=LBLFONT||(LBLFONT='11px '+getComputedStyle(document.body).fontFamily);
   ctx.textAlign='left'; ctx.textBaseline='middle';
-  ctx.lineJoin='round'; ctx.lineWidth=3;
   if(etichetteDaRifare()) piazzaEtichette();
+  disegnaVie();          // i nomi di via stanno SOTTO i nomi paese
+  /* Il font va rimesso: `piazzaEtichette` chiama `piazzaVie`, che passa a quello dei
+     nomi di via per misurarli e lo lascia lì. Senza questa riga i nomi paese si
+     disegnano col font sbagliato, e solo quando la camera si è appena mossa. */
+  ctx.font=LBLFONT;
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.lineJoin='round'; ctx.lineWidth=3;
   /* `dt` va tenuto dentro [0, 200]. Il tetto serve al ritorno da schermo spento: senza,
      un `dt` da minuti farebbe comparire tutto di colpo, che è proprio ciò che la
      dissolvenza deve evitare. Il pavimento a zero serve perché un passo NEGATIVO non
