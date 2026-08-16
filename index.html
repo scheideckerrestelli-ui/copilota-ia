@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '109';
+const APPVER = '111';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -2660,15 +2660,48 @@ function cameraTickAuto(now){
   if(S.mode==='free' || !S.pos) return false;
   if(!S.dp){ S.dp=[S.pos[0],S.pos[1]]; S.dhd=S.hd; camT=now; S.cx=S.dp[0]; S.cy=S.dp[1]; return true }
   const dt = Math.min(2.5, (now-(S.fixT||now))/1000);   // se il GPS tace, non estrapolare all'infinito
-  const tx = S.pos[0] + (S.vx||0)*dt, ty = S.pos[1] + (S.vy||0)*dt;
-  const k = 1 - Math.pow(0.002, Math.min(0.12, (now-camT)/1000));
+  let tx = S.pos[0] + (S.vx||0)*dt, ty = S.pos[1] + (S.vy||0)*dt;
+  /* AGGANCIO VISIVO ALLA CARREGGIATA. Prima il segnaposto stava sulla posizione
+     grezza del GPS: con 5-10 m di errore laterale, in curva e fra i palazzi usciva
+     dalla strada e si vedeva benissimo — Tiago guidando: "non sta veramente centrato
+     sulla strada, a volte fuoriesce un po'". Ogni navigatore vero disegna il veicolo
+     agganciato alla strada riconosciuta, non dove dice il satellite.
+     `S.snap` c'era già ma serviva solo a note, limiti e percorso. Qui si proietta il
+     punto ESTRAPOLATO sull'arco agganciato, così il segnaposto scivola lungo la
+     carreggiata fra un fix e l'altro invece di ballarci attorno.
+     Il dato buono non si tocca: `S.pos` resta il GPS, e note, limiti e map matching
+     continuano a lavorare su quello. Qui si cambia solo ciò che si DISEGNA.
+     Guardia a 40 m: oltre, o si è davvero fuori strada o l'estrapolazione ha superato
+     la fine dell'arco, e allora è più onesto mostrare la posizione vera. */
+  let hdStrada=null;
+  if(S.snap && S.snap.e){
+    const e=S.snap.e, pr=projectOn(e,tx,ty);
+    if(pr.d<40){
+      const i=pr.i, ax=e.xy[2*i], ay=e.xy[2*i+1];
+      tx = ax+(e.xy[2*i+2]-ax)*pr.t;
+      ty = ay+(e.xy[2*i+3]-ay)*pr.t;
+      /* E anche il verso: la direzione del GPS balla a bassa velocità e faceva
+         oscillare tutta la mappa, perché in inseguimento la rotazione la comanda lei.
+         Quella della strada è ferma per costruzione. */
+      if(S.v>2) hdStrada = segHeading(e,i) + (S.snap.dir<0 ? Math.PI : 0);
+    }
+  }
+  /* `k` è la frazione di strada che la posizione mostrata copre verso quella vera in
+     questo fotogramma, e vale `1 - 0.002^dt`. Il tetto a 0,12 s serve al ritorno da
+     schermo spento. Il PAVIMENTO A ZERO è la difesa che mancava: con un `dt` negativo
+     l'esponente si rovescia, `k` diventa negativo e l'attenuazione **diverge** —
+     misurato, la posizione mostrata scappava di 140 m per fotogramma nel verso
+     opposto alla marcia. Con dt=0 viene k=0, cioè fermo, che è il comportamento
+     giusto per un fotogramma che non ha visto passare tempo. */
+  const k = 1 - Math.pow(0.002, Math.max(0, Math.min(0.12, (now-camT)/1000)));
   camT = now;
   const ddx = tx-S.dp[0], ddy = ty-S.dp[1];
   S.dp[0] += ddx*k; S.dp[1] += ddy*k;
   let dh = 0;
-  if(S.hd!=null){
-    if(S.dhd==null) S.dhd=S.hd;
-    dh = S.hd-S.dhd;
+  const hdRif = hdStrada!=null ? hdStrada : S.hd;
+  if(hdRif!=null){
+    if(S.dhd==null) S.dhd=hdRif;
+    dh = hdRif-S.dhd;
     while(dh>Math.PI)dh-=2*Math.PI; while(dh<-Math.PI)dh+=2*Math.PI;
     S.dhd += dh*k;
   }
