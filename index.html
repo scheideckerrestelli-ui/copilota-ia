@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '92';
+const APPVER = '97';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -1980,6 +1980,175 @@ function disegnaMe(){
   ctx.restore();
 }
 
+/* ============ motore delle etichette ============
+   Prima i nomi paese si disegnavano in ordine di inserzione, ognuno ignaro degli
+   altri: a zoom medio si accavallavano, e cambiando inquadratura comparivano e
+   sparivano di colpo. Qui si fa quello che fanno Mapbox e Google, in Canvas 2D puro
+   e senza toccare i dati.
+
+   Cinque regole, e ognuna copre un difetto preciso:
+
+   1. Il piazzamento si decide in COORDINATE SCHERMO con una griglia di collisione a
+      celle intere — una `Map` da chiave-cella a lista di rettangoli. Niente quadtree:
+      la query è O(1) e i candidati sono nell'ordine delle migliaia.
+   2. I candidati si processano in ordine DETERMINISTICO (rango, poi indice). Senza,
+      due fotogrammi con la stessa inquadratura possono dare risultati diversi, ed è
+      il modo più sicuro di far ballare le etichette.
+   3. Chi è GIÀ VISIBILE ha la precedenza — è l'isteresi. Senza, due etichette che si
+      contendono lo stesso posto se lo scambiano a ogni ripiazzamento.
+   4. Si compare e si sparisce in DISSOLVENZA (300 ms), non di colpo.
+   5. Il piazzamento NON si rifà a ogni fotogramma, ma solo quando la camera si è
+      mossa abbastanza. Durante il movimento si RIPROIETTA quello che si è già
+      deciso: è questo che evita il "ballo" delle implementazioni ingenue, e costa
+      quanto una `w2s` per etichetta.
+
+   Si piazza anche 100 px OLTRE i bordi dello schermo. A 50 px Mapbox ha misurato
+   instabilità visibile durante il pan, e il motivo è che un'etichetta che entra da
+   fuori arriva senza aver mai partecipato alla collisione: appare già sovrapposta.
+
+   L'identità qui è gratis. Mapbox deve riconciliare le stesse feature fra tile
+   diverse con un `CrossTileSymbolIndex`; noi abbiamo `PLACES` unificato e stabile
+   per tutta la sessione (cambiare mappe fa `location.reload()`), quindi l'indice
+   nell'array È l'identità, e la dissolvenza sa sempre di chi sta parlando. */
+/* `aria` è il margine attorno al riquadro, ed è la manopola della densità: non
+   impedisce sovrapposizioni (quelle le impedisce già il riquadro), fa respirare.
+   Misurato a 50 km inquadrati con i centri di rango 2: 210 etichette a 0 px, 121 a
+   8, 90 a 14. A 8 la densità è di un'etichetta ogni ~110-150 px di lato. */
+const LBL={cella:32, bordo:100, fade:300, mossa:0.45, dz:0.4, aria:8};
+let LBLFONT='';         // risolto una volta: `getComputedStyle` a ogni frame costa
+let LOP=new Map();      // indice in PLACES -> opacità corrente (0..1)
+let LSEL=[];            // indici scelti all'ultimo piazzamento, in ordine di disegno
+let LCAM=null;          // camera di quando si è piazzato
+let LT=0;               // istante dell'ultima integrazione della dissolvenza
+
+/* Quanto in basso si scende nella gerarchia dei centri abitati, in funzione dello
+   zoom. Le soglie sono state ALLENTATE di un gradino quando è entrata la collisione,
+   ed è lì il guadagno vero: prima erano strette perché senza collisione allentarle
+   avrebbe prodotto un ammasso illeggibile, e il prezzo era una mappa quasi senza
+   nomi. Misurato sulla Vallonia in una finestra 1000x620: a 50 km inquadrati si
+   vedeva **1** nome, adesso 28; a 16,7 km se ne vedeva 1, adesso 51. Il numero non
+   è stato indovinato — le soglie sono tarate su una densità di circa un'etichetta
+   ogni 110-150 px di lato, che è quella di un atlante stradale. */
+function etichetteRank(){ return S.scale>0.3?3 : S.scale>0.04?2 : S.scale>0.012?1 : 0 }
+function etichetteDaRifare(){
+  if(!LCAM || LCAM.rank!==etichetteRank()) return true;
+  if(Math.abs(Math.log2(S.scale/LCAM.scale))>LBL.dz) return true;
+  if(Math.abs(S.rot-LCAM.rot)>0.12) return true;
+  if(Math.abs(S.pitch-LCAM.pitch)>0.08) return true;
+  // l'orizzonte della vista inclinata dipende dalla velocità: accelerando si allarga
+  if(CAM.on && Math.abs(vista3d()-LCAM.lim) > LCAM.lim*0.25) return true;
+  // quanto si è spostata la camera, misurato in pixel di adesso
+  return Math.hypot(S.cx-LCAM.cx, S.cy-LCAM.cy)*S.scale > Math.min(W,H)*LBL.mossa;
+}
+/* Il riquadro di un'etichetta: il pallino più il testo alla sua destra. La larghezza
+   del testo si misura UNA volta per posto e si tiene lì: `measureText` è la parte
+   cara di tutto il giro, e il font non cambia mai. */
+function lblBox(p, sx, sy){
+  if(p._w===undefined) p._w=ctx.measureText(p.n).width;
+  const g=LBL.aria;
+  return [sx-4-g, sy-8-g, sx+10+p._w+g, sy+8+g];
+}
+function piazzaEtichette(){
+  const rank=etichetteRank(), c=LBL.cella, G=new Map();
+  const ck=(i,j)=>(i+1024)*4096+(j+1024);
+  const libero=(b)=>{
+    for(let i=Math.floor(b[0]/c);i<=Math.floor(b[2]/c);i++)
+      for(let j=Math.floor(b[1]/c);j<=Math.floor(b[3]/c);j++){
+        const a=G.get(ck(i,j));
+        if(a) for(const o of a) if(b[0]<o[2]&&b[2]>o[0]&&b[1]<o[3]&&b[3]>o[1]) return false;
+      }
+    return true;
+  };
+  const occupa=(b)=>{
+    for(let i=Math.floor(b[0]/c);i<=Math.floor(b[2]/c);i++)
+      for(let j=Math.floor(b[1]/c);j<=Math.floor(b[3]/c);j++){
+        const k=ck(i,j); let a=G.get(k); if(!a){a=[];G.set(k,a)} a.push(b);
+      }
+  };
+  /* In vista inclinata le etichette devono fermarsi DOVE SI FERMANO LE STRADE. La
+     proiezione da sola manda un paese a 40 km appena sotto l'orizzonte, ma i tracciati
+     si disegnano solo entro `vista3d()`: senza questo taglio la metà alta dello schermo
+     si riempie di nomi sospesi sul vuoto, senza un pezzo di mappa sotto. È lo stesso
+     limite che usa `tracciati3d`, e va tenuto uguale a mano perché sono due percorsi
+     separati. */
+  const lim=CAM.on ? vista3d() : 0;
+  const cand=[];
+  for(let i=0;i<PLACES.length;i++){
+    const p=PLACES[i];
+    if(p.r>rank) continue;
+    if(CAM.on){
+      const ax=p.x-CAM.cx, ay=p.y-CAM.cy;
+      if(-ax*CAM.s+ay*CAM.c > lim) continue;
+    }
+    const q=w2s(p.x,p.y); if(!q) continue;        // dietro la camera in vista inclinata
+    const [sx,sy]=q;
+    if(sx<-LBL.bordo||sy<-LBL.bordo||sx>W+LBL.bordo||sy>H+LBL.bordo) continue;
+    cand.push({i,p,sx,sy});
+  }
+  cand.sort((a,b)=>(a.p.r-b.p.r)||(a.i-b.i));     // deterministico: rango, poi indice
+  const sel=[];
+  // due passate: prima chi era già visibile, così non si scambiano il posto
+  for(const giaVisto of [true,false])
+    for(const k of cand){
+      if(k.fatto) continue;
+      if(((LOP.get(k.i)||0)>0.5)!==giaVisto) continue;
+      const b=lblBox(k.p,k.sx,k.sy);
+      if(!libero(b)) continue;
+      occupa(b); k.fatto=true; sel.push(k.i);
+    }
+  LSEL=sel;
+  LCAM={cx:S.cx, cy:S.cy, scale:S.scale, rot:S.rot, pitch:S.pitch, rank, lim};
+}
+/* Integra la dissolvenza e disegna. Torna true se qualcosa si sta ancora muovendo,
+   così `disegnaSopra` può chiedere un altro fotogramma: senza, una dissolvenza
+   iniziata a fine gesto si fermerebbe a metà strada, perché da fermi il ciclo di
+   disegno si spegne apposta per non bruciare batteria. */
+function disegnaEtichette(now){
+  /* Il font si imposta PRIMA di piazzare, non prima di disegnare: `piazzaEtichette`
+     chiama `measureText` e il risultato resta in cache per sempre. Misurato col font
+     sbagliato — qui capitava il `600 9px` dei numeri sugli autovelox — ogni riquadro
+     resta storto per tutta la sessione e le collisioni si calcolano su misure finte. */
+  ctx.font=LBLFONT||(LBLFONT='11px '+getComputedStyle(document.body).fontFamily);
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.lineJoin='round'; ctx.lineWidth=3;
+  if(etichetteDaRifare()) piazzaEtichette();
+  /* `dt` va tenuto dentro [0, 200]. Il tetto serve al ritorno da schermo spento: senza,
+     un `dt` da minuti farebbe comparire tutto di colpo, che è proprio ciò che la
+     dissolvenza deve evitare. Il pavimento a zero serve perché un passo NEGATIVO non
+     smorza: fa scendere le opacità sotto zero senza mai fermarsi, e siccome la
+     condizione di uscita è `n<=0.002` l'etichetta non viene mai tolta e il ciclo di
+     disegno non si spegne più. Visto succedere a -22,65 di opacità. */
+  const dt=LT? Math.min(200, Math.max(0, now-LT)) : 16; LT=now;
+  const passo=dt/LBL.fade;
+  const viva=new Set(LSEL);
+  let inMoto=false;
+  for(const [i,v] of LOP){
+    if(viva.has(i)) continue;
+    const n=v-passo;
+    if(n<=0.002) LOP.delete(i); else { LOP.set(i,n); inMoto=true }
+  }
+  for(const i of LSEL){
+    const v=Math.min(1,(LOP.get(i)||0)+passo);
+    LOP.set(i,v); if(v<1) inMoto=true;
+  }
+  for(const [i,op] of LOP){
+    const p=PLACES[i];
+    const q=w2s(p.x,p.y); if(!q) continue;        // riproiettata, non ripiazzata
+    const [sx,sy]=q;
+    if(sx<-LBL.bordo||sy<-LBL.bordo||sx>W+LBL.bordo||sy>H+LBL.bordo) continue;
+    ctx.globalAlpha=op;
+    ctx.fillStyle=INK2; ctx.beginPath(); ctx.arc(sx,sy,2.2,0,7); ctx.fill();
+    /* Alone invece del rettangolo pieno. Il rettangolo è la scorciatoia che tutti
+       prendono la prima volta e si vede: una fila di targhette opache che coprono la
+       strada proprio dove passa il nome. L'alone oscura solo quanto serve a staccare
+       il testo, e la geometria sotto continua a leggersi. */
+    ctx.strokeStyle=BG; ctx.strokeText(p.n,sx+7,sy+0.5);
+    ctx.fillStyle=p.r===0?'#c3ccd4':INK2; ctx.fillText(p.n,sx+7,sy+0.5);
+  }
+  ctx.globalAlpha=1;
+  return inMoto;
+}
+
 /* roba in spazio schermo, uguale nelle due viste */
 function disegnaSopra(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -2017,25 +2186,8 @@ function disegnaSopra(){
     }
   }
 
-  // paesi
-  ctx.font='11px '+getComputedStyle(document.body).fontFamily;
-  ctx.textAlign='left'; ctx.textBaseline='middle';
-  const maxRank = S.scale>0.9?3 : S.scale>0.35?2 : S.scale>0.1?1 : 0;
-  for(const p of PLACES){
-    if(p.r>maxRank) continue;
-    const q=w2s(p.x,p.y); if(!q) continue;
-    const [sx,sy]=q;
-    if(sx<-90||sy<-20||sx>W+40||sy>H+20) continue;
-    ctx.fillStyle=INK2; ctx.beginPath(); ctx.arc(sx,sy,2.2,0,7); ctx.fill();
-    /* Alone invece del rettangolo pieno. Il rettangolo è la scorciatoia che tutti
-       prendono la prima volta e si vede: una fila di targhette opache che coprono la
-       strada proprio dove passa il nome. L'alone oscura solo quanto serve a staccare
-       il testo, e la geometria sotto continua a leggersi. */
-    ctx.lineWidth=3; ctx.lineJoin='round'; ctx.strokeStyle=BG;
-    ctx.strokeText(p.n,sx+7,sy+0.5);
-    ctx.fillStyle=p.r===0?'#c3ccd4':INK2;
-    ctx.fillText(p.n,sx+7,sy+0.5);
-  }
+  // paesi: chi si vede lo decide il motore etichette, non l'ordine di inserzione
+  if(disegnaEtichette(performance.now())) S.need=true;
   disegnaMe();          // per ultimo: la macchina sta sopra tutto, anche sui nomi
   /* Nessuna mappa caricata: dirlo SULLA mappa, non solo in un pannello. Il pannello
      si può chiudere con un tocco distratto e sotto resterebbe uno schermo nero senza
