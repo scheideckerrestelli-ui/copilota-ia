@@ -1,0 +1,7 @@
+# Questo repo NON e' solo codice: e' la radice del sito su GitHub Pages, quindi
+# tutto quello che finisce committato viene anche SERVITO pubblicamente.
+#
+# `.claude/launch.json` serve a far partire un http.server locale per provare l'app
+# prima di pubblicarla, e contiene un percorso assoluto del Mac. Non ha senso
+# pubblicarlo e non ha senso versionarlo: e' roba della macchina di chi lavora.
+.claude/
