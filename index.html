@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '87';
+const APPVER = '89';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -1524,6 +1524,7 @@ const S = {
   car:'m5', cal:36, style:'strada', legal:true,
   snap:null,          // {e, i, t, dir, dist}
   nav:null,           // percorso attivo: {archi, c0, tot, man, mi, k, idx, dest, jA, path}
+  navRipreso:false,   // il percorso salvato è già stato ripreso dopo una ricarica
   local:false,        // agganciato a una via residenziale (solo posizione e limite)
   ahead:[], said:new Set(), lastSaid:0,
   demo:null, need:true,
@@ -2496,8 +2497,23 @@ function disegnaNavIcona(ang){
   niv.lineTo(tip[0]+Math.cos(dir-2.8)*13, tip[1]+Math.sin(dir-2.8)*13);
   niv.closePath(); niv.fill();
 }
+/* Se iOS chiude l'app per memoria non lo annuncia: la pagina si ricarica e basta.
+   Con una regione grande attiva succede — misurato 177 MB di heap con la Vallonia,
+   556 col Belgio unito, contro un limite che sui telefoni piccoli è molto più basso.
+   Il percorso non deve sparire mentre guidi. Si salva la sola DESTINAZIONE in
+   lon/lat, non il percorso: gli indici interni degli archi cambiano a ogni
+   ricarica, mentre un punto sulla terra no. Si ricalcola al primo aggancio buono. */
+const CHIAVE_ROTTA='copilota-rotta';
+function ricordaDest(x,y,nome){
+  try{ const [lon,lat]=toLL(x,y);
+       sessionStorage.setItem(CHIAVE_ROTTA, JSON.stringify({lon,lat,n:nome})) }catch(e){}
+}
+function scordaDest(){ try{ sessionStorage.removeItem(CHIAVE_ROTTA) }catch(e){} }
+function destRicordata(){
+  try{ const s=sessionStorage.getItem(CHIAVE_ROTTA); return s?JSON.parse(s):null }catch(e){ return null }
+}
 function fermaNav(msg){
-  S.nav=null; document.body.classList.remove('navon');
+  S.nav=null; scordaDest(); document.body.classList.remove('navon');
   navEl.classList.remove('show'); S.need=true;
   if(msg) toast(msg,4500);
 }
@@ -2528,6 +2544,7 @@ function avviaNav(x,y,nome){
   const r=calcolaRotta(part.j, jA);
   if(!r || !r.archi.length){ toast(t0.navNone,5500); return }
   installaRotta(part, r, {x,y,n:nome||t0.navDest}, jA);
+  ricordaDest(x, y, S.nav.dest.n);
   /* I limiti si dicono all'avvio, non si nascondono in un pannello: il percorso può
      proporre una svolta vietata perché le relazioni `restriction` di OSM non sono
      nei dati, e le autostrade non sono nella rete. */
@@ -2631,6 +2648,18 @@ function feed(x,y,hd,v,acc){
   const m=matchRoad(x,y,S.hd);
   S.snap = (m && m.d<70) ? m : null;
   S.local = !S.snap && distToGrey(x,y,45) < 45;    // strada locale, fuori dalla rete annotata
+  /* Ricarica silenziosa a metà viaggio: appena si è agganciati a una strada si
+     ricalcola il percorso verso la destinazione ricordata. Una volta sola — se
+     fallisce non si riprova a ogni fix, se no in una zona scoperta si ricalcola
+     all'infinito mentre guidi. */
+  if(!S.nav && S.snap && !S.navRipreso){
+    const d=destRicordata();
+    if(d){
+      S.navRipreso=true;
+      const [dx,dy]=toXY(d.lon,d.lat);
+      avviaNav(dx,dy,d.n);
+    }
+  }
   // prima del lookahead: aggiorna a che punto del percorso siamo, perché è da lì
   // che `buildAhead` decide quale strada seguire agli incroci
   if(S.nav) tickNav();
