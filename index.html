@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '104';
+const APPVER = '105';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -745,6 +745,20 @@ const SPESS = {
   curva: k => (k<=2 ? 4.4 : 3.8),    // tornante/1/2 più marcati del resto
   bbRetto: 1.8, bbCurva: 2.6,        // vista d'insieme (backbone)
 };
+/* LOD: quanto sono tinte le strade di rango 3-4 in funzione di quante celle si
+   inquadrano. Allontanandosi svaniscono con continuità e a 400 celle sono già a
+   zero, cioè PRIMA che a 420 scatti il passaggio al `backbone()` (solo rango 0-2):
+   così quel passaggio non si vede più, perché quando avviene non c'è più niente da
+   togliere. Prima era un salto secco — misurato a 38,8 km inquadrati, da 31.142
+   archi a 4.961 in un fotogramma. Il numero è legato alle CELLE e non alla scala
+   perché è lo stesso criterio che governa il passaggio, e due criteri diversi
+   tornerebbero a disallinearsi. */
+const LODMIN={da:240, a:400};
+function alphaMinori(nCelle){
+  if(nCelle<=LODMIN.da) return 1;
+  if(nCelle>=LODMIN.a) return 0;
+  return 1-(nCelle-LODMIN.da)/(LODMIN.a-LODMIN.da);
+}
 
 /* ============ decodifica ============ */
 let M = null;
@@ -1727,8 +1741,11 @@ function traccia(P, xy, a, b){
 }
 /* Tutta la rete inquadrata, proiettata e divisa per classe di curva e fascia. */
 function tracciati3d(c0,c1,r0,r1){
-  const paths=[], grey=[new Path2D(),new Path2D(),new Path2D()];
-  for(let k=0;k<CLS.length;k++) paths.push([new Path2D(),new Path2D(),new Path2D()]);
+  const paths=[], pmin=[], grey=[new Path2D(),new Path2D(),new Path2D()];
+  for(let k=0;k<CLS.length;k++){
+    paths.push([new Path2D(),new Path2D(),new Path2D()]);
+    pmin.push([new Path2D(),new Path2D(),new Path2D()]);   // ranghi 3-4, come in piano
+  }
   const visti=new Set(), lim=vista3d();
   for(let cx=c0;cx<=c1;cx++) for(let cy=r0;cy<=r1;cy++){
     const kk=ckey(cx,cy);
@@ -1743,9 +1760,11 @@ function tracciati3d(c0,c1,r0,r1){
       const Y=-ax*CAM.s+ay*CAM.c;
       if(Y>lim*1.25) continue;                 // troppo lontano per contare qualcosa
       const f=fasciaDi(Y*CAM.sp+CAM.R);
+      const banda = e.rank>=5 ? 0 : e.rank>=3 ? 2 : 1;
       let a=0;
       for(let n=0;n<e.runs.length;n+=2){
-        traccia(e.rank>=5 ? grey[f] : paths[e.runs[n+1]][f], xy, a, e.runs[n]);
+        const cl=e.runs[n+1];
+        traccia(banda===0 ? grey[f] : banda===2 ? pmin[cl][f] : paths[cl][f], xy, a, e.runs[n]);
         a=e.runs[n];
       }
     }
@@ -1761,7 +1780,7 @@ function tracciati3d(c0,c1,r0,r1){
       traccia(grey[fasciaDi(Y*CAM.sp+CAM.R)], g, 0, np-1);
     }
   }
-  return {paths, grey};
+  return {paths, pmin, grey};
 }
 
 /* cache di Path2D per cella */
@@ -1774,16 +1793,26 @@ function cellPaths(kk){
   const ids=GRID.get(kk), gids=GGRID.get(kk);
   if(!ids && !gids) return null;
   const paths=CLS.map(()=>new Path2D());
+  /* Seconda banda: i ranghi 3-4. Non è una divisione estetica ma il perno del LOD —
+     allontanandosi sono queste a sfumare, mentre l'ossatura (rango 0-2) resta. Prima
+     stavano insieme alle principali e sparivano tutte insieme al salto delle 420
+     celle: misurato a 38,8 km inquadrati, da 31.142 archi a 4.961 in un fotogramma,
+     l'84% della rete di colpo. Si costruiscono sempre tutte e due le bande e si
+     decide al disegno quale tingere: così la cache per cella non ha bisogno di
+     sapere a che livello di dettaglio è stata costruita. */
+  const pmin=CLS.map(()=>new Path2D());
   /* Le residenziali ora sono archi come gli altri, ma sulla mappa devono restare
      quello che erano: un reticolo grigio sottile. Colorarle come le strade da
      guidare vorrebbe dire annegare le curve vere in un tappeto di grigio chiaro. */
   let grey=null;
   const grigia = () => (grey || (grey=new Path2D()));
   if(ids) for(const id of ids){
-    const e=E[id], xy=e.xy, runs=e.runs, minore=e.rank>=5;
+    const e=E[id], xy=e.xy, runs=e.runs;
+    const banda = e.rank>=5 ? 0 : e.rank>=3 ? 2 : 1;   // 0 grigia, 1 ossatura, 2 minori
     let a=0;
     for(let m=0;m<runs.length;m+=2){
-      const b=runs[m], cl=runs[m+1], P = minore ? grigia() : paths[cl];
+      const b=runs[m], cl=runs[m+1];
+      const P = banda===0 ? grigia() : banda===2 ? pmin[cl] : paths[cl];
       P.moveTo(xy[2*a],xy[2*a+1]);
       for(let i=a+1;i<=b;i++) P.lineTo(xy[2*i],xy[2*i+1]);
       a=b;
@@ -1797,7 +1826,7 @@ function cellPaths(kk){
       for(let i=1;i<np;i++) grey.lineTo(g[2*i],g[2*i+1]);
     }
   }
-  c={paths,grey};
+  c={paths,pmin,grey};
   /* Prima qui c'era un PCACHE.clear(): svuotare tutto significa che il frame dopo
      ogni cella inquadrata va ricostruita in una volta sola, ed è uno scatto secco
      proprio mentre si guida. Si buttano invece le più vecchie, poche per volta. */
@@ -1861,10 +1890,17 @@ function disegnaPiano(c0,c1,r0,r1){
       ctx.strokeStyle='#1b2229'; ctx.lineWidth=pw(SPESS.grigia);
       for(const c of cells) if(c.grey) ctx.stroke(c.grey);
     }
+    /* Dissolvenza dei ranghi minori invece del salto secco. L'ordine per CLASSE DI
+       CURVA resta intatto — è il contenuto dell'app, un tornante deve stare sopra un
+       rettilineo anche se è su una strada più piccola — e dentro ogni classe i minori
+       si disegnano sotto i principali, che a parità di colore non si vede. */
+    const aMin=alphaMinori(nCells);
     ctx.strokeStyle=CLS[7].col; ctx.lineWidth=pw(SPESS.retto);
+    if(aMin>0.004){ ctx.globalAlpha=aMin; for(const c of cells) ctx.stroke(c.pmin[7]); ctx.globalAlpha=1 }
     for(const c of cells) ctx.stroke(c.paths[7]);
     for(let k=6;k>=0;k--){
       ctx.strokeStyle=CLS[k].col; ctx.lineWidth=pw(SPESS.curva(k));
+      if(aMin>0.004){ ctx.globalAlpha=aMin; for(const c of cells) ctx.stroke(c.pmin[k]); ctx.globalAlpha=1 }
       for(const c of cells) ctx.stroke(c.paths[k]);
     }
   } else {
@@ -1917,10 +1953,21 @@ function disegna3d(c0,c1,r0,r1){
     ctx.strokeStyle='#1b2229';
     for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.grigia*FASCE[f]; ctx.stroke(T.grey[f]) }
   }
+  /* Stessa dissolvenza dei ranghi minori della vista piana, e con la stessa funzione:
+     due criteri separati tornerebbero a divergere, e il difetto si vedrebbe solo
+     inclinando la camera. In guida la vista è limitata da `vista3d()` e le celle sono
+     poche, quindi qui vale quasi sempre 1 — ma il codice non può discordare. */
+  const aMin=alphaMinori((c1-c0+1)*(r1-r0+1));
   ctx.strokeStyle=CLS[7].col;
+  if(aMin>0.004){ ctx.globalAlpha=aMin;
+    for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.pmin[7][f]) }
+    ctx.globalAlpha=1 }
   for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.paths[7][f]) }
   for(let k=6;k>=0;k--){
     ctx.strokeStyle=CLS[k].col;
+    if(aMin>0.004){ ctx.globalAlpha=aMin;
+      for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.pmin[k][f]) }
+      ctx.globalAlpha=1 }
     for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.paths[k][f]) }
   }
   if(S.snap && S.mode!=='free'){
