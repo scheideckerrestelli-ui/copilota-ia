@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '89';
+const APPVER = '91';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -728,7 +728,23 @@ const CLS = [
   {col:'#47525c', nm:'RETTO', wd:'',    rg:'oltre 450 m'},
 ];
 const ACCENT='#4fd6ff', BG='#101418', INK2='#8b98a5';
-const RANKW = [3.4, 3.0, 2.6, 2.2, 1.9];      // spessore per rango strada
+/* Un solo posto per gli spessori del tratto, letto dalle DUE strade di disegno
+   (`disegnaPiano` e `disegna3d`). Prima erano numeri scritti a mano in tutti e due:
+   bastava correggerne uno per far divergere la vista piana da quella inclinata, e
+   il difetto si vede solo inclinando la camera, cioè tardi e guidando.
+
+   Qui c'era `RANKW = [3.4,3.0,2.6,2.2,1.9]`, "spessore per rango strada", definita e
+   mai usata. Non era una svista da riparare: in quest'app lo spessore dipende dalla
+   CLASSE DI CURVA, non dal rango, e i Path2D sono raggruppati per classe. Farla
+   "finalmente leggere" avrebbe voluto dire spezzare i tracciati anche per rango —
+   cinque volte i Path2D — e cambiare l'aspetto della mappa, non un refactor a costo
+   zero. Il rango entrerà dal LOD progressivo, che è il posto giusto. */
+const SPESS = {
+  grigia: 2.2,                       // reticolo residenziale (rango >= 5)
+  retto: 2.6,                        // CLS[7], nessuna curva
+  curva: k => (k<=2 ? 4.4 : 3.8),    // tornante/1/2 più marcati del resto
+  bbRetto: 1.8, bbCurva: 2.6,        // vista d'insieme (backbone)
+};
 
 /* ============ decodifica ============ */
 let M = null;
@@ -1842,19 +1858,19 @@ function disegnaPiano(c0,c1,r0,r1){
       const c=cellPaths(ckey(cx,cy)); if(c) cells.push(c);
     }
     if(S.scale>0.35){
-      ctx.strokeStyle='#1b2229'; ctx.lineWidth=pw(2.2);
+      ctx.strokeStyle='#1b2229'; ctx.lineWidth=pw(SPESS.grigia);
       for(const c of cells) if(c.grey) ctx.stroke(c.grey);
     }
-    ctx.strokeStyle=CLS[7].col; ctx.lineWidth=pw(2.6);
+    ctx.strokeStyle=CLS[7].col; ctx.lineWidth=pw(SPESS.retto);
     for(const c of cells) ctx.stroke(c.paths[7]);
     for(let k=6;k>=0;k--){
-      ctx.strokeStyle=CLS[k].col; ctx.lineWidth=pw(k<=2?4.4:3.8);
+      ctx.strokeStyle=CLS[k].col; ctx.lineWidth=pw(SPESS.curva(k));
       for(const c of cells) ctx.stroke(c.paths[k]);
     }
   } else {
     const bp=backbone();
-    ctx.strokeStyle=CLS[7].col; ctx.lineWidth=pw(1.8); ctx.stroke(bp[7]);
-    for(let k=6;k>=0;k--){ ctx.strokeStyle=CLS[k].col; ctx.lineWidth=pw(2.6); ctx.stroke(bp[k]); }
+    ctx.strokeStyle=CLS[7].col; ctx.lineWidth=pw(SPESS.bbRetto); ctx.stroke(bp[7]);
+    for(let k=6;k>=0;k--){ ctx.strokeStyle=CLS[k].col; ctx.lineWidth=pw(SPESS.bbCurva); ctx.stroke(bp[k]); }
   }
 
   // tratto agganciato + curve davanti evidenziate
@@ -1899,13 +1915,13 @@ function disegna3d(c0,c1,r0,r1){
   }
   if(S.scale>0.35){
     ctx.strokeStyle='#1b2229';
-    for(let f=2;f>=0;f--){ ctx.lineWidth=2.2*FASCE[f]; ctx.stroke(T.grey[f]) }
+    for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.grigia*FASCE[f]; ctx.stroke(T.grey[f]) }
   }
   ctx.strokeStyle=CLS[7].col;
-  for(let f=2;f>=0;f--){ ctx.lineWidth=2.6*FASCE[f]; ctx.stroke(T.paths[7][f]) }
+  for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.paths[7][f]) }
   for(let k=6;k>=0;k--){
     ctx.strokeStyle=CLS[k].col;
-    for(let f=2;f>=0;f--){ ctx.lineWidth=(k<=2?4.4:3.8)*FASCE[f]; ctx.stroke(T.paths[k][f]) }
+    for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.paths[k][f]) }
   }
   if(S.snap && S.mode!=='free'){
     const P=new Path2D();
@@ -2011,11 +2027,14 @@ function disegnaSopra(){
     const [sx,sy]=q;
     if(sx<-90||sy<-20||sx>W+40||sy>H+20) continue;
     ctx.fillStyle=INK2; ctx.beginPath(); ctx.arc(sx,sy,2.2,0,7); ctx.fill();
-    ctx.fillStyle='rgba(16,20,24,.7)';
-    const tw=ctx.measureText(p.n).width;
-    ctx.fillRect(sx+5,sy-8,tw+8,16);
+    /* Alone invece del rettangolo pieno. Il rettangolo è la scorciatoia che tutti
+       prendono la prima volta e si vede: una fila di targhette opache che coprono la
+       strada proprio dove passa il nome. L'alone oscura solo quanto serve a staccare
+       il testo, e la geometria sotto continua a leggersi. */
+    ctx.lineWidth=3; ctx.lineJoin='round'; ctx.strokeStyle=BG;
+    ctx.strokeText(p.n,sx+7,sy+0.5);
     ctx.fillStyle=p.r===0?'#c3ccd4':INK2;
-    ctx.fillText(p.n,sx+9,sy+0.5);
+    ctx.fillText(p.n,sx+7,sy+0.5);
   }
   disegnaMe();          // per ultimo: la macchina sta sopra tutto, anche sui nomi
   /* Nessuna mappa caricata: dirlo SULLA mappa, non solo in un pannello. Il pannello
@@ -2041,8 +2060,161 @@ function disegnaSopra(){
    esponenziale, e il disegno gira a ogni frame finché ci si muove.
    La posizione vera (S.pos) resta quella del GPS: l'aggancio alla strada, le note e
    i limiti continuano a lavorare sul dato buono, non su quello ammorbidito. */
+/* ============ animazioni di camera ============
+   Due cose che ogni navigatore vero fa e qui non si facevano: la mappa non si ferma
+   morta quando alzi il dito, e non si teletrasporta quando salti a un posto. Sono
+   difetti percettivi, non di prestazioni — il disegno costa 0,1-0,4 ms mediani su
+   16,7 disponibili, quindi c'è tutto lo spazio per animare.
+
+   Passano tutte e due da `cameraTick`, che è l'unico posto autorizzato a muovere la
+   camera. Messe negli handler si combatterebbero con l'inseguimento della posizione
+   e con l'inclinazione comandata dalla curva in arrivo, e la mappa pomperebbe. */
+let ditoGiu = false;              // un dito è appoggiato: niente rientro elastico
+
+/* --- inerzia del pan ---
+   Costanti di MapLibre: si guarda solo l'ultimo scorcio del gesto (160 ms), la
+   velocità si prende attenuata (linearity 0,3) e clampata, la decelerazione è
+   costante — quindi lo spazio da percorrere è v·durata/2. */
+const GLIDE={finestra:160, linearity:0.3, vMax:1400, decel:2500, minPx:8};
+let panSamp=[];
+function panCampiona(now,x,y){
+  panSamp.push({t:now,x,y});
+  while(panSamp.length>2 && now-panSamp[0].t>GLIDE.finestra) panSamp.shift();
+}
+/* cubic-bezier(0,0,.3,1), la stessa di MapLibre, approssimata in forma chiusa:
+   scarto sotto l'1% nel tratto che si vede (controllato a mano su cinque punti). */
+const easeGlide = t => 1-Math.pow(1-t,2.4);
+function panLancia(now){
+  S.glide=null;
+  if(panSamp.length<2) return;
+  const a=panSamp[0], b=panSamp[panSamp.length-1];
+  const dt=(b.t-a.t)/1000;
+  if(dt<=0.008) return;                     // un fotogramma solo: non è un lancio
+  const dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy);
+  if(d<GLIDE.minPx) return;
+  const v=Math.min(GLIDE.vMax, d*GLIDE.linearity/dt);
+  /* La durata si divide per decelerazione × linearity, non per la sola
+     decelerazione: `linearity` compare due volte in MapLibre, una a smorzare la
+     velocità e una qui. Con la sola decelerazione un flick da 120 px scivolava di
+     10 px in 90 ms — cioè non si vedeva. Così scivola 34 px in 300 ms, e un lancio
+     vero (velocità al tetto) percorre 1.300 px in 1,9 s. */
+  const dur=v/(GLIDE.decel*GLIDE.linearity), dist=v*dur/2;
+  if(dist<GLIDE.minPx) return;
+  S.glide={ux:dx/d, uy:dy/d, dist, dur:dur*1000, t0:now, fatto:0};
+}
+function glideTick(now){
+  const g=S.glide; if(!g) return false;
+  const t=Math.min(1,(now-g.t0)/g.dur);
+  const percorso=g.dist*easeGlide(t), passo=percorso-g.fatto;
+  g.fatto=percorso;
+  if(passo>0.01){
+    /* Si sposta passando per `s2w`, esattamente come fa il dito che trascina:
+       rotazione e inclinazione sono già dentro quella funzione e non resta una
+       seconda formula da tenere allineata a mano. */
+    const w0=s2w(W/2,H/2), w1=s2w(W/2+g.ux*passo, H/2+g.uy*passo);
+    S.cx-=w1[0]-w0[0]; S.cy-=w1[1]-w0[1];
+  }
+  if(t>=1) S.glide=null;
+  return true;
+}
+
+/* --- animatore generico: niente più teletrasporti ---
+   `S.anim.applica(p)` riceve il progresso normalizzato e piazza la camera. Un solo
+   modello per l'ease-out corto e per il volo lungo, e sempre interrompibile: basta
+   appoggiare un dito. */
+function animaCamera(applica, ms){ S.anim={t0:performance.now(), dur:Math.max(1,ms), applica} }
+function animTick(now){
+  const A=S.anim; if(!A) return false;
+  const p=Math.min(1,(now-A.t0)/A.dur);
+  A.applica(p);
+  if(p>=1) S.anim=null;
+  return true;
+}
+const easeOut = t => 1-Math.pow(1-t,3);
+/* Salto corto: interpolazione diretta. Lo zoom si interpola in logaritmo, se no la
+   prima metà dell'animazione si mangia quasi tutto il cambio di scala. */
+function vaiA(to, ms){
+  const d={cx:S.cx, cy:S.cy, scale:S.scale, rot:S.rot};
+  const g=(k)=> to[k]!==undefined ? to[k] : d[k];
+  const acx=g('cx'), acy=g('cy'), asc=g('scale'), arot=g('rot');
+  const lz0=Math.log(d.scale), lz1=Math.log(asc);
+  animaCamera(p=>{
+    const t=easeOut(p);
+    S.cx=d.cx+(acx-d.cx)*t; S.cy=d.cy+(acy-d.cy)*t;
+    S.scale=Math.exp(lz0+(lz1-lz0)*t); S.rot=d.rot+(arot-d.rot)*t;
+  }, ms);
+}
+/* Salto lungo: traiettoria di van Wijk & Nuij. La camera si alza quanto basta a
+   vedere la destinazione e ridiscende, invece di strisciare per mezza regione a
+   zoom pieno. È la curva che usano `flyTo` di Mapbox e Google: ρ=1,42 è il valore
+   che gli autori misurano come ottimo percepito, V=1,2 schermate al secondo. */
+const VW={rho:1.42, V:1.2};
+function volo(to){
+  const w0=W/S.scale, w1=W/(to.scale||S.scale);
+  const dx=(to.cx!==undefined?to.cx:S.cx)-S.cx, dy=(to.cy!==undefined?to.cy:S.cy)-S.cy;
+  const u1=Math.hypot(dx,dy);
+  // sotto le due schermate non c'è niente da sorvolare: l'ease-out è più leggibile
+  if(u1 < w0*2){ vaiA(to, u1<w0*0.15 ? 300 : 480); return }
+  const rho=VW.rho, r2=rho*rho, r4=r2*r2;
+  const bi=i=>{ const wi=i?w1:w0, sg=i?-1:1;
+                return (w1*w1-w0*w0+sg*r4*u1*u1)/(2*wi*r2*u1) };
+  const ri=i=>{ const b=bi(i); return Math.log(-b+Math.sqrt(b*b+1)) };
+  const r0=ri(0), r1=ri(1), SS=(r1-r0)/rho;
+  if(!isFinite(SS) || Math.abs(SS)<1e-6){ vaiA(to,480); return }
+  const dur=Math.min(2000, Math.max(480, Math.abs(SS)/VW.V*1000));
+  const c0x=S.cx, c0y=S.cy, rot0=S.rot, rot1=to.rot!==undefined?to.rot:S.rot;
+  const ch0=Math.cosh(r0), sh0=Math.sinh(r0);
+  animaCamera(p=>{
+    const s=p*SS;
+    const u=w0/r2*(ch0*Math.tanh(rho*s+r0)-sh0);
+    const w=w0*ch0/Math.cosh(rho*s+r0);
+    const f=u/u1;
+    S.cx=c0x+dx*f; S.cy=c0y+dy*f;
+    S.scale=Math.max(0.004, Math.min(12, W/w));
+    S.rot=rot0+(rot1-rot0)*p;
+  }, dur);
+}
+/* Zoom ancorato a un punto dello schermo, animato. Il centro d'arrivo si calcola
+   riusando `s2w` alla scala nuova invece di riscrivere la formula: è la stessa
+   correzione che fanno pinch e rotella, quindi non può divergere da loro. */
+function zoomVerso(px,py,ns,ms){
+  const s0=S.scale, cx0=S.cx, cy0=S.cy;
+  const before=s2w(px,py);
+  S.scale=Math.max(0.004,Math.min(12,ns));
+  const after=s2w(px,py);
+  const tx=S.cx+before[0]-after[0], ty=S.cy+before[1]-after[1], sc=S.scale;
+  S.scale=s0; S.cx=cx0; S.cy=cy0;
+  vaiA({cx:tx,cy:ty,scale:sc}, ms);
+}
+
+/* --- bordi del mondo ---
+   Trascinando oltre i dati si finisce nel nero, e il nero è indistinguibile da un
+   buco nella mappa: non si capisce se ci si è persi o se manca la regione. Il clamp
+   non è duro — durante il gesto si esce, al rilascio si rientra da solo. */
+function clampCam(){
+  if(S.mode!=='free' || !E.length || S.anim) return false;
+  const mx=(W/2)/S.scale, my=(H/2)/S.scale;      // mezza schermata di margine
+  const tx=Math.min(Math.max(S.cx, BB[0]-mx), BB[2]+mx);
+  const ty=Math.min(Math.max(S.cy, BB[1]-my), BB[3]+my);
+  const dx=tx-S.cx, dy=ty-S.cy;
+  if(Math.abs(dx)<0.5 && Math.abs(dy)<0.5) return false;
+  S.glide=null;                                  // arrivato al bordo, l'inerzia finisce
+  S.cx+=dx*0.18; S.cy+=dy*0.18;
+  return true;
+}
+
 let camT = 0;
 function cameraTick(now){
+  let anima=false;
+  /* L'animatore ha la precedenza sull'inerzia: se parte un volo mentre la mappa
+     sta ancora scivolando, il volo comanda e lo scivolamento si spegne. */
+  if(animTick(now)){ anima=true; S.glide=null }
+  else if(glideTick(now)) anima=true;
+  if(!ditoGiu && clampCam()) anima=true;
+  if(anima) S.need=true;
+  return cameraTickAuto(now) || anima;
+}
+function cameraTickAuto(now){
   /* In vista mappa si torna sempre a piombo: una mappa inclinata da esplorare è
      scomoda, e da piatta si ridisegna con la cache dei tracciati invece di
      proiettare tutto a mano. */
@@ -2790,6 +2962,10 @@ const bGps=document.getElementById('bGps'), bDemo=document.getElementById('bDemo
       bAudio=document.getElementById('bAudio'), iDemo=document.getElementById('iDemo');
 function setMode(m){
   const p=S.mode; S.mode=m;
+  /* Qualunque animazione di camera muore qui. Se l'inseguimento riprende il comando
+     mentre la mappa sta ancora scivolando per inerzia, i due si sommano e la mappa
+     insegue l'auto scivolando di lato: è l'unico incastro non ovvio dell'inerzia. */
+  S.glide=null; S.anim=null;
   if(p==='follow'&&m!=='follow')stopGps();
   if(p==='demo'&&m!=='demo')S.demo=null;
   bGps.classList.toggle('on',m==='follow');
@@ -3100,7 +3276,9 @@ renderLegend();
 */
 let PLACES=[], BM=[];      // riempiti dal boot, quando i dati sono arrivati
 const qEl=document.getElementById('q'), resEl=document.getElementById('results');
-function flyTo(x,y,z){ S.cx=x;S.cy=y;S.scale=z||1.2;S.rot=0;setMode('free');S.need=true }
+/* Ci si arriva volando, non teletrasportandosi: saltare di colpo dall'altra parte
+   della regione non fa capire se ci si è spostati o se è cambiata la mappa. */
+function flyTo(x,y,z){ setMode('free'); volo({cx:x, cy:y, scale:z||1.2, rot:0}); S.need=true }
 
 const nrm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
                   .toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -3558,7 +3736,9 @@ function nomePunto(x,y){
 const stopPress=()=>{ if(press){clearTimeout(press.t); press=null} };
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
-  if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),s:S.scale}}
+  if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),s:S.scale,attivo:false}}
+  // il dito ha sempre ragione: qualunque animazione in corso si ferma qui
+  ditoGiu=true; S.glide=null; S.anim=null; panSamp=[];
   stopPress();
   if(ptrs.size===1 && E.length){
     const sx=e.clientX, sy=e.clientY;
@@ -3578,32 +3758,50 @@ cv.addEventListener('pointermove',e=>{
   if(ptrs.size===1){
     const dx=e.clientX-prev[0], dy=e.clientY-prev[1];
     if(Math.hypot(dx,dy)>1.5 && S.mode!=='free') setMode('free');
+    panCampiona(performance.now(), e.clientX, e.clientY);
     const w0=s2w(prev[0],prev[1]), w1=s2w(e.clientX,e.clientY);
     S.cx-=w1[0]-w0[0]; S.cy-=w1[1]-w0[1]; S.need=true;
   }else if(ptrs.size===2&&pinch){
     const[a,b]=[...ptrs.values()], mid=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+    const dist=Math.hypot(a[0]-b[0],a[1]-b[1]);
+    /* Soglia d'ingresso dello zoom: finché le due dita non hanno cambiato distanza
+       di 0,1 livelli non si zooma. Senza, una scorsa a due dita — o semplicemente
+       appoggiare il pollice — cambia la scala di un soffio a ogni tocco. Alla
+       partenza la base si riazzera, così i primi 0,1 livelli non arrivano di scatto. */
+    if(!pinch.attivo){
+      if(Math.abs(Math.log2(dist/pinch.d))<0.1) return;
+      pinch.attivo=true; pinch.d=dist; pinch.s=S.scale;
+      panSamp=[];                          // non è più un pan: niente inerzia al rilascio
+    }
     const before=s2w(mid[0],mid[1]);
     S.zoomLibero=true;                     // da qui lo zoom è suo: non glielo tolgo più
-    S.scale=Math.max(0.004,Math.min(12,pinch.s*Math.hypot(a[0]-b[0],a[1]-b[1])/pinch.d));
+    S.scale=Math.max(0.004,Math.min(12,pinch.s*dist/pinch.d));
     const after=s2w(mid[0],mid[1]);
     S.cx+=before[0]-after[0]; S.cy+=before[1]-after[1]; S.need=true;
   }
 });
-const up=e=>{stopPress();ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=null;if(!ptrs.size)cv.classList.remove('drag')};
+const up=e=>{
+  stopPress(); ptrs.delete(e.pointerId);
+  if(ptrs.size<2) pinch=null;
+  if(!ptrs.size){
+    cv.classList.remove('drag'); ditoGiu=false;
+    panLancia(performance.now());     // da qui in poi la mappa prosegue da sola
+  }
+};
 cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
 cv.addEventListener('wheel',e=>{
   e.preventDefault();
-  const before=s2w(e.clientX,e.clientY);
   S.zoomLibero=true;
-  S.scale=Math.max(0.004,Math.min(12,S.scale*Math.exp(-e.deltaY*0.0016)));
-  const after=s2w(e.clientX,e.clientY);
-  S.cx+=before[0]-after[0]; S.cy+=before[1]-after[1]; S.need=true;
+  /* Prima ogni scatto cambiava la scala all'istante: da trackpad ne arrivano decine
+     al secondo e la mappa saltellava. Ora si insegue un obiettivo con un ease-out
+     corto, e gli scatti si sommano sull'obiettivo invece di accavallarsi sul valore. */
+  const base=(S.anim&&S.anim.zoomTarget)||S.scale;
+  const ns=Math.max(0.004,Math.min(12,base*Math.exp(-e.deltaY*0.0016)));
+  zoomVerso(e.clientX,e.clientY,ns,200);
+  if(S.anim) S.anim.zoomTarget=ns;
 },{passive:false});
 cv.addEventListener('dblclick',e=>{
-  const before=s2w(e.clientX,e.clientY);
-  S.scale=Math.min(12,S.scale*1.7);
-  const after=s2w(e.clientX,e.clientY);
-  S.cx+=before[0]-after[0]; S.cy+=before[1]-after[1]; S.need=true;
+  zoomVerso(e.clientX,e.clientY,Math.min(12,S.scale*1.7),300);
 });
 
 /* ============ avvio ============ */
