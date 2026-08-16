@@ -570,7 +570,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '105';
+const APPVER = '107';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -745,6 +745,22 @@ const SPESS = {
   curva: k => (k<=2 ? 4.4 : 3.8),    // tornante/1/2 più marcati del resto
   bbRetto: 1.8, bbCurva: 2.6,        // vista d'insieme (backbone)
 };
+/* IL CASING È STATO PROVATO E TOLTO il 2026-08-16 — non riproporlo senza rimisurare.
+   Il piano GMAPS lo dà come «la tecnica che più istantaneamente dà l'aspetto mappa
+   vera», e su Google lo è. Qui no, e il motivo è strutturale, non di taratura: il
+   casing è un bordo PIÙ SCURO del fondo, ma il fondo è già `#101418`, quasi nero, e
+   sotto non c'è spazio. Implementato per intero (due passate, prima tutti i bordi poi
+   tutti i riempimenti, in tutte e due le viste) e poi misurato contando i pixel:
+   occupava lo **0,8-1,9% dello schermo** con uno scarto di **8-10 livelli su 255**
+   dal fondo, cioè il 3-4% di luminanza. Invisibile.
+   Perché da Google funziona e qui no: là le strade sono chiare, larghe e fitte su
+   fondo medio, e il bordo serve a separarle dove si accavallano. Qui sono linee
+   sottili e sature su quasi-nero, già separatissime, e la rete fitta (le residenziali)
+   è disegnata come reticolo grigio che il casing non tocca nemmeno.
+   L'unica variante che potrebbe funzionare è opposta — un casing CHIARO che faccia da
+   corpo strada sotto il colore della curva — ma ingrasserebbe tutto e rischia di
+   annegare le curve, che sono il contenuto dell'app. Se un giorno si prova, si prova
+   così, e si misura con lo stesso conteggio di pixel. */
 /* LOD: quanto sono tinte le strade di rango 3-4 in funzione di quante celle si
    inquadrano. Allontanandosi svaniscono con continuità e a 400 celle sono già a
    zero, cioè PRIMA che a 420 scatti il passaggio al `backbone()` (solo rango 0-2):
