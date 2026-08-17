@@ -86,13 +86,20 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .results button:last-child{border-bottom:none}
   .results button:hover,.results button:focus{background:var(--panel2)}
   .results .k{font-size:10px;color:var(--ink2);text-transform:uppercase;letter-spacing:.08em;margin-left:6px}
-  /* ogni risultato ha due azioni: guardarlo (il nome) e andarci (la freccia). Un
-     tocco solo che facesse partire la navigazione sarebbe una trappola: cercare un
-     posto sulla mappa e volerci andare sono due intenzioni diverse. */
+  /* Il risultato è UN bottone solo: si tocca il nome e si parte, come su Waze. Il
+     bottone VAI a lato c'era per non confondere "guardare" con "andarci", ma in
+     macchina due bersagli da 46 px uno accanto all'altro sono un bersaglio sbagliato
+     su due — e chi cerca una via quasi sempre ci vuole andare. Guardare e basta
+     resta: pressione lunga sul risultato. */
   .results .rr{display:flex;align-items:stretch;border-bottom:1px solid var(--line)}
   .results .rr:last-child{border-bottom:none}
   .results .rr button{border-bottom:none}
-  .results .rr .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .results .rr .nm{flex:1;min-width:0;display:flex;align-items:center;gap:10px}
+  .results .rr .nm .txt{flex:1;min-width:0;overflow:hidden}
+  /* la freccia dice dove porta il tocco, senza essere un secondo bersaglio */
+  .results .rr .nm .fr{flex:none;width:22px;height:22px;border-radius:50%;
+    background:var(--accent);color:#0c1013;display:grid;place-items:center;
+    font-size:12px;line-height:1;font-weight:700}
   /* Due righe per risultato, come su qualsiasi navigatore vero: il nome della via
      non basta a distinguerla — di "Rue de l'Église" in Vallonia ce ne sono 180.
      Sotto ci va dove sta: CAP, comune, frazione. */
@@ -241,6 +248,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     padding:9px 8px;text-align:center;cursor:pointer;font-size:12px}
   .chip.on{background:var(--accent);border-color:var(--accent);color:#0c1013;font-weight:600}
   .chip b{display:block;font-family:var(--font-d);font-size:14px;letter-spacing:.04em;margin-bottom:2px}
+  /* chip della marcia di riferimento: piccole, una accanto all'altra, non larghe
+     come quelle delle auto — sono nove al massimo e devono stare su due righe */
+  .gsel{gap:6px;margin-top:2px}
+  .gsel .chip{flex:0 0 auto;min-width:0;padding:6px 11px;font-family:var(--font-d);
+    font-size:13px;letter-spacing:.03em}
   .slider{display:flex;align-items:center;gap:10px;margin-top:10px}
   .slider input{flex:1;accent-color:var(--accent)}
   .slider .val{font-family:var(--font-d);font-size:15px;min-width:74px;text-align:right;
@@ -409,9 +421,16 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <p style="margin-top:10px" id="carDesc"></p>
   <div id="gearBox">
     <h3><span data-lang="it">Rapporti</span><span data-lang="en">Ratios</span></h3>
+    <!-- La taratura si controlla GUIDANDO, quindi il punto di riferimento dev'essere
+         un punto in cui ci si può stare davvero: 2.000 giri in una marcia che scegli
+         tu. Prima era "km/h ogni 1000 giri in ultima", cioè un numero giusto ma
+         verificabile solo tenendo l'ultima marcia a mille giri — scomodo e dannoso. -->
+    <p id="calHint" style="margin-bottom:8px"></p>
+    <div class="row2 gsel" id="calGears"></div>
     <div class="slider">
       <input type="range" id="calSlider" min="25" max="85" step="0.5">
-      <div class="val"><span id="calVal">40</span> <small style="font-size:9px;color:var(--ink2)">km/h ×1000g in <span id="calGear">6ª</span></small></div>
+      <div class="val"><span id="calVal">72</span><small style="display:block;font-size:9px;
+        color:var(--ink2);letter-spacing:.06em">KM/H</small></div>
     </div>
     <div class="gears" id="gearTable"></div>
   </div>
@@ -425,13 +444,13 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <div class="disc" data-lang="it">La velocità di riferimento è √(accelerazione laterale × raggio):
     un valore <b>teorico</b>, che presume asfalto asciutto e pulito, gomme in ordine e strada
     libera. Non tiene conto di pendenza, sopraelevazione, ghiaia, umido all'ombra né di chi arriva
-    in senso opposto — e su strada aperta sono quelli a decidere. Con <b>Fondo chiuso</b> i numeri
+    in senso opposto — e su strada aperta sono quelli a decidere. Con <b>Race</b> i numeri
     diventano da percorso chiuso: sulla provinciale trattali come il tetto assoluto, non come
     obiettivo.</div>
   <div class="disc" data-lang="en">The reference speed is √(lateral acceleration × radius): a
     <b>theoretical</b> figure that assumes clean dry tarmac, good tyres and an empty road. It knows
     nothing about gradient, camber, gravel, damp patches in the shade or oncoming traffic — and on
-    an open road those are what decide. With <b>Closed road</b> the numbers are closed-road
+    an open road those are what decide. With <b>Race</b> the numbers are closed-road
     territory: on a public road treat them as the absolute ceiling, not a target.</div>
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span></button>
 </div></div>
@@ -468,11 +487,16 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>Ogni tratto è colorato per <b>raggio di curva</b> misurato sulla geometria reale.</li>
     <li>Con l'audio attivo le curve vengono <b>annunciate</b> circa 4 secondi prima, alla tua
       velocità, con la <b>marcia</b> giusta per l'auto che hai scelto: più vai forte, più l'annuncio anticipa.</li>
-    <li>Il bottone <b>3D</b> corica la mappa in guida e regola lo zoom da solo. Non segue la
+    <li>La mappa si <b>corica a due dita</b>: appoggiane due e falle scorrere su e giù, come su
+      Google Maps. Ruotandole giri la mappa; la <b>bussola</b> rimette nord in alto e la mappa a
+      piombo in un tocco. Da molto lontano la vista torna piatta da sola — inclinata non
+      servirebbe a niente e costerebbe soltanto.</li>
+    <li>Il bottone <b>3D</b> corica la mappa, e in guida regola anche lo zoom da solo. Non segue la
       velocità come fanno i navigatori: comanda la <b>curva che arriva</b>. Sul veloce si corica e
       allarga, perché serve vedere lontano; su una curva stretta e vicina <b>si rialza a piombo e
       stringe</b>, perché lì serve vedere la forma della curva — coricata te la nasconderebbe
-      dietro il cofano. Se pizzichi per zoomare, lo zoom torna tuo.</li>
+      dietro il cofano. Se pizzichi per zoomare o inclini a mano, comandi tu: il bottone 3D
+      premuto due volte ridà il comando all'automatismo.</li>
   </ul>
   <ul data-lang="en">
     <li>No route needed: the app <b>locks onto the road</b> you are on and reads the corners ahead,
@@ -481,19 +505,26 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>Every stretch is coloured by <b>corner radius</b> measured on the real geometry.</li>
     <li>With audio on, corners are <b>called</b> about 4 seconds ahead at your current speed, with
       the right <b>gear</b> for the car you picked: the faster you go, the earlier the call.</li>
-    <li>The <b>3D</b> button tilts the map while driving and sets the zoom on its own. It does not
+    <li>Tilt the map with <b>two fingers</b>: put two down and slide them up or down, the way
+      Google Maps does it. Twist them to rotate; the <b>compass</b> puts north back up and the map
+      back flat in one tap. Zoomed far out the view flattens on its own — tilted it would show
+      nothing and cost plenty.</li>
+    <li>The <b>3D</b> button tilts the map, and while driving it sets the zoom too. It does not
       follow speed the way satnavs do: the <b>corner ahead</b> is what rules. Fast and open, it
       lies down and widens, because you need to see far; with a tight corner close by it
       <b>stands back up and tightens</b>, because there you need the shape of the corner — tilted,
-      the nose of the car would hide it. Pinch to zoom and the zoom is yours again.</li>
+      the nose of the car would hide it. Pinch to zoom or tilt by hand and you are in charge:
+      tap 3D twice to hand it back to the automatics.</li>
   </ul>
   <h3><span data-lang="it">Portami là</span><span data-lang="en">Take me there</span></h3>
-  <p data-lang="it">Cerca un paese e tocca <b>VAI</b>, oppure <b>tieni premuto</b> un punto qualsiasi
+  <p data-lang="it">Cerca un posto e <b>tocca il risultato</b> (pressione lunga sul risultato = ci
+     guardi e basta, senza partire), oppure <b>tieni premuto</b> un punto qualsiasi
      della mappa: il percorso appare in viola e la striscia in alto dice quanto manca alla prossima
      svolta e in che via si entra. Se sbagli strada, ricalcola da solo dopo qualche secondo. Il
      percorso è scelto sul <b>tempo</b>, non sui chilometri: preferisce la statale a 90 alla
      stradina a 50, come faresti tu. I sensi unici sono rispettati.</p>
-  <p data-lang="en">Search for a town and tap <b>GO</b>, or <b>press and hold</b> anywhere on the map:
+  <p data-lang="en">Search for a place and <b>tap the result</b> (press and hold a result to just look
+     at it, without setting off), or <b>press and hold</b> anywhere on the map:
      the route shows up in purple and the strip at the top tells you how far the next turn is and
      which road you are turning into. Take a wrong turn and it recalculates by itself after a few
      seconds. The route is chosen on <b>time</b>, not distance: it prefers the 90 km/h main road to
@@ -570,7 +601,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '114';
+const APPVER = '118';
 let RAW = null;
 
 /* ============ regioni installate ============
@@ -832,6 +863,31 @@ function posGiun(j){
   const e=E[lista[0]];
   return e.j0===j ? [e.xy[0],e.xy[1]] : [e.xy[2*e.np-2], e.xy[2*e.np-1]];
 }
+/* ============ IL RANGO DELLA STRADA, IN UN POSTO SOLO ============
+   Il rango sta nel campo 3 dell'arco e in `process4.py` vale
+   0 trunk · 1 primary · 2 secondary · 3 tertiary · 4 unclassified · 5 residential.
+
+   Quei numeri erano scritti a mano in NOVE punti di questo file: costo del percorso,
+   esplorazione di A*, penalità d'ingresso, le due bande del disegno, il backbone, le
+   etichette di via, il punteggio del map matching, il peso nell'indice di ricerca.
+   Due di quei punti scrivevano anche il `4` a mano come «cima delle classificate».
+
+   Perché conta e non è pignoleria: appena si inserisce una classe nuova in cima —
+   e sta succedendo, perché autostrade e svincoli oggi mancano del tutto e sulla E411
+   l'app dice che la strada non esiste — tutti i confronti cambiano significato IN
+   SILENZIO. `unclassified` diventerebbe 5: disegnata come reticolo grigio
+   residenziale, ×3,5 di penalità nel routing, e fuori dal grafo oltre 3 km dagli
+   estremi. Nessun errore, nessun sintomo, te ne accorgi guidando.
+
+   Da qui in poi il numero sta scritto una volta sola. */
+const RANGO = {
+  minore: 5,     // da qui in su è "stradina": pagata cara e solo agli estremi
+  grigio: 5,     // da qui in su si disegna come reticolo, non come strada colorata
+  sfuma: 3,      // da qui in su sfuma col LOD allontanandosi
+  backbone: 2,   // fin qui si disegna nella vista d'insieme
+  cima: 4,       // la classificata più bassa: base dei punteggi che pesano il rango
+};
+
 /* Costo in secondi, non in metri: una statale a 90 batte una stradina a 50 anche
    se è più lunga, che è come sceglie un guidatore vero.
    Le residenziali (rango 5) esistono nel grafo per il primo e l'ultimo miglio —
@@ -876,7 +932,7 @@ function tempoArco(e){
 }
 function costo(e){
   const t = tempoArco(e);
-  return e.rank>=5 ? t*PEN_MINORE : t;
+  return e.rank>=RANGO.minore ? t*PEN_MINORE : t;
 }
 /* Divieti di svolta. La chiave è (giunzione, via da cui arrivi): allo stesso
    incrocio, venendo da una strada puoi girare e venendo da un'altra no. */
@@ -910,6 +966,21 @@ function svoltaVietata(jn, wDa, wA){
       concentra la ricerca verso la meta; il percorso può uscire teoricamente peggiore
       fino al peso scelto, in pratica di pochissimo. Lo fanno tutti i navigatori. */
 const RAGGIO_MINORI = 3000, PESO_H = 1.25;
+/* Velocità massima che una strada della rete può avere, in m/s. Serve SOLO
+   all'euristica di A*, che deve stimare un tempo che nessun percorso reale può
+   battere: se sovrastima, A* smette di essere ammissibile e può restituire un
+   percorso che non è il più veloce — senza dare nessun errore, e con `PESO_H` che
+   moltiplica lo sbaglio.
+   Qui il divisore era `30.5` scritto a mano, cioè 110 km/h, ma nei dati PUBBLICATI
+   ci sono già 1.231 archi a 120. Contati arco per arco sulla Vallonia:
+   30→24.306 · 50→188.345 · 70→9.370 · 90→55.757 · 100→59 · 110→54 · 120→1.231.
+   L'ammissibilità era quindi già rotta, prima che le autostrade entrassero nella
+   rete: il sintomo non è un errore, è un percorso appena peggiore.
+   130 km/h è il tetto che il generatore emette — `process4.py` clampa il maxspeed a
+   quel valore, esplicito compreso — quindi questo numero è vero per costruzione e
+   non per accordo fra due sessioni. Sbagliare per eccesso costa solo qualche nodo
+   esplorato in più. */
+const VMAX_RETE = 36.2;                       // 130,3 km/h
 function calcolaRotta(jDa, jA, limite=900000){
   const meta = posGiun(jA); if(!meta) return null;
   if(jDa===jA) return {archi:[], metri:0, secondi:0, visti:0};
@@ -919,7 +990,7 @@ function calcolaRotta(jDa, jA, limite=900000){
     (orig && (x-orig[0])*(x-orig[0]) + (y-orig[1])*(y-orig[1]) < R2) ||
     ((x-meta[0])*(x-meta[0]) + (y-meta[1])*(y-meta[1]) < R2);
   // tempo minimo in linea d'aria a 110 km/h: mai sovrastimato, quindi ammissibile
-  const h=j=>{ const p=posGiun(j); return p ? Math.hypot(p[0]-meta[0],p[1]-meta[1])/30.5 : 0 };
+  const h=j=>{ const p=posGiun(j); return p ? Math.hypot(p[0]-meta[0],p[1]-meta[1])/VMAX_RETE : 0 };
   const testa = s => { const e=E[s>>1]; return (s&1) ? e.j0 : e.j1 };
   const g=new Map(), prev=new Map(), chiuso=new Set();
   const q=new Coda();
@@ -942,7 +1013,7 @@ function calcolaRotta(jDa, jA, limite=900000){
     for(const id of (JUN.get(jn)||[])){
       const o=E[id];
       if(!percorribile(o,jn)) continue;
-      if(o.rank>=5){                          // stradine solo vicino ai due estremi
+      if(o.rank>=RANGO.minore){                          // stradine solo vicino ai due estremi
         const m=(o.np>>1)*2;
         if(!aiBordi(o.xy[m], o.xy[m+1])) continue;
       }
@@ -952,7 +1023,7 @@ function calcolaRotta(jDa, jA, limite=900000){
       // la penalità sta sulla SVOLTA: inversione a U cara, e imboccare una stradina
       // venendo da una strada vera si paga una volta sola, non a ogni suo tratto
       const pen = (id===e.id ? PEN_INVERSIONE : 0)
-                + (o.rank>=5 && e.rank<5 ? ENTRO_MINORE : 0);
+                + (o.rank>=RANGO.minore && e.rank<RANGO.minore ? ENTRO_MINORE : 0);
       const ng = gc + costo(o) + pen;
       if(ng < (g.get(t)??Infinity)){ g.set(t,ng); prev.set(t,s); q.push(t, ng+h(testa(t))*PESO_H) }
     }
@@ -1117,6 +1188,47 @@ function contaUscite(archi, kDa, kA){
   }
   return n;
 }
+/* ROTATORIA O RAMPA? Fin qui le distingueva solo il senso unico degli archi in
+   mezzo — ma uno svincolo autostradale è esattamente quello: archi corti a senso
+   unico che girano. Autostrade e svincoli stanno entrando nella rete (oggi mancano
+   del tutto: sulla E411 l'app dice che la strada non esiste), e senza un
+   discriminante l'app annuncerebbe «alla rotatoria, la seconda uscita» su una rampa.
+
+   Il discriminante è geometrico e non dipende da nessun tag: la rotatoria è un
+   ANELLO CHIUSO. Si percorre un pezzo dell'anello, e il pezzo che NON si percorre
+   riporta al punto d'ingresso; una rampa invece porta altrove e non torna. Si
+   cammina dall'uscita dell'ultimo arco del gruppo seguendo solo archi corti a senso
+   unico che non stanno nel gruppo, e si guarda se si ritorna all'ingresso. */
+function anelloChiuso(archi, kDa, kA){
+  const dentro=new Set();
+  for(let k=kDa;k<kA;k++) dentro.add(archi[k].e.id);
+  const a0=archi[kDa], jIn = a0.verso>0 ? a0.e.j0 : a0.e.j1;
+  const aN=archi[kA-1], jOut = aN.verso>0 ? aN.e.j1 : aN.e.j0;
+  /* Soglie tarate misurando, non a occhio. Su 523 gruppi fusi in 60 percorsi:
+     con 10 salti / 500 m / archi fino a 140 m si chiudevano 306 anelli, allargando
+     a 20 / 900 / 200 se ne chiudono 360 — cioè 54 rotatorie vere le stavo scartando —
+     e allargando ancora (40 / 2000 / 400) si scende a 359, quindi 20/900/200 è il
+     plateau: oltre non si guadagna e si rischia di chiudere anelli che non esistono.
+     I 164 che restano fuori anche col test larghissimo non sono rotatorie: sono
+     gruppi da 1-3 archi e 11-39 m, cioè scodinzoli a senso unico e scambi di
+     carreggiata. */
+  let nodo=jOut, L=0;
+  for(let h=0; h<20 && L<900; h++){
+    if(nodo===jIn) return true;
+    let next=null;
+    for(const id of (JUN.get(nodo)||[])){
+      if(dentro.has(id)) continue;
+      const c=E[id];
+      if(!c.ow || c.len>200) continue;
+      if(!percorribile(c,nodo)) continue;
+      next=c; break;
+    }
+    if(!next) return false;
+    dentro.add(next.id); L+=next.len;
+    nodo = next.j0===nodo ? next.j1 : next.j0;
+  }
+  return nodo===jIn;
+}
 function costruisciManovre(archi){
   const c0=[]; let cum=0;
   for(let k=0;k<archi.length;k++){ c0[k]=cum; cum+=archi[k].e.len }
@@ -1185,7 +1297,15 @@ function costruisciManovre(archi){
         u.rot=u.rot||rot;
         u.k=x.k;
         // si ricalcola a ogni fusione: l'anello cresce finché si gira
-        if(u.rot && u.rotIn!==undefined) u.uscita=contaUscite(archi, u.rotIn, u.k);
+        /* Il gruppo si fonde comunque — anche su una rampa tre istruzioni in 34 m
+           sono di troppo — ma solo un anello chiuso è una rotatoria, e solo lì si
+           annuncia l'uscita. Su una rampa `rot` cade e la frase torna quella della
+           svolta normale, che è quella giusta. `rampa` resta come appiglio per una
+           frase dedicata. */
+        if(u.rot && u.rotIn!==undefined){
+          if(anelloChiuso(archi, u.rotIn, u.k)){ u.uscita=contaUscite(archi, u.rotIn, u.k); u.rampa=false }
+          else { u.rot=false; u.rampa=true; delete u.uscita }
+        }
         continue;
       }
     }
@@ -1497,17 +1617,20 @@ const isAuto = () => !!CARS[S.car].auto;
    APERTA. I valori di prima (fino a 4,6) erano da fondo chiuso: su una provinciale
    non tengono conto di chi arriva in senso opposto, ghiaia e curve cieche. Quel
    valore resta, ma dichiarato per quello che e'. */
+/* Le CHIAVI restano quelle vecchie (calmo/strada/deciso/pista) anche se i nomi
+   mostrati sono cambiati in Tranquillo/Comfort/Sport/Race: sono la chiave salvata
+   in localStorage, e cambiarle butterebbe lo stile scelto sul telefono. */
 const STYLES = {
-  calmo:  {a:2.0, nm_it:'Tranquillo', nm_en:'Relaxed',
-           d_it:'Passeggeri a bordo, bagnato, buio, strada che non conosci.',
-           d_en:'Passengers aboard, wet, dark, a road you do not know.'},
-  strada: {a:2.6, nm_it:'Strada', nm_en:'Road',
-           d_it:'Andatura fluida su strada aperta: margine per traffico, fondo sporco e curve cieche.',
-           d_en:'Flowing pace on an open road: margin for traffic, dirty surface and blind corners.'},
-  deciso: {a:3.2, nm_it:'Deciso', nm_en:'Committed',
+  calmo:  {a:2.0, nm_it:'Tranquillo', nm_en:'Calm',
+           d_it:'Passeggeri a bordo, bagnato, buio, strada che non conosci. I numeri restano bassi apposta.',
+           d_en:'Passengers aboard, wet, dark, a road you do not know. The figures stay low on purpose.'},
+  strada: {a:2.6, nm_it:'Comfort', nm_en:'Comfort',
+           d_it:'Andatura fluida su strada aperta: margine per traffico, fondo sporco e curve cieche. È il modo di tutti i giorni.',
+           d_en:'Flowing pace on an open road: margin for traffic, dirty surface and blind corners. The everyday setting.'},
+  deciso: {a:3.2, nm_it:'Sport', nm_en:'Sport',
            d_it:'Asfalto asciutto e strada che conosci. Resta un uso stradale, non un tempo sul giro.',
            d_en:'Dry tarmac on a road you know. Still road use, not a lap time.'},
-  pista:  {a:4.6, nm_it:'Fondo chiuso', nm_en:'Closed road',
+  pista:  {a:4.6, nm_it:'Race', nm_en:'Race',
            d_it:'Numeri da strada chiusa. Su strada aperta sono il tetto assoluto, mai un obiettivo.',
            d_en:'Closed-road figures. On a public road they are the absolute ceiling, never a target.'},
 };
@@ -1549,6 +1672,7 @@ const T = {
     farApart:'Regioni molto lontane fra loro: le note restano corrette, il disegno si deforma un po\'. Meglio tenere attive solo quelle dove guidi.',
     tooMuch:mb=>'Molte mappe attive (~'+mb+' MB di memoria): sul telefono l\'app rischia di venire chiusa mentre guidi. Tieni attive solo le regioni dove stai andando — restano scaricate lo stesso.',
     inUse:'in uso', boost:'km/h in boost', at:'a', byLimit:'limite',
+    calRif:'Marcia di riferimento', calHint:g=>'A 2.000 giri in '+g+' il tachimetro segna:',
     legalOn:'La velocità di riferimento non supera mai il limite della strada: sulle curve larghe è il limite a comandare.',
     legalOff:'La velocità di riferimento ignora il limite: mostra solo quello che la curva permette. Da usare a fondo chiuso.',
     navGo:'VAI', navIn:'fra', navM:'metri', navNow:'ORA', navInto:'in', navMin:'MIN',
@@ -1608,6 +1732,7 @@ const T = {
     farApart:'Regions far apart: pacenotes stay correct, drawing gets slightly distorted. Better to keep active only the ones you drive in.',
     tooMuch:mb=>'A lot of active maps (~'+mb+' MB of memory): on a phone the app may get killed while you drive. Keep active only the regions you are heading to — they stay downloaded anyway.',
     inUse:'in use', boost:'km/h on boost', at:'at', byLimit:'limit',
+    calRif:'Reference gear', calHint:g=>'At 2,000 rpm in '+g+' the speedo reads:',
     legalOn:'The reference speed never exceeds the road limit: on open corners the limit is what rules.',
     legalOff:'The reference speed ignores the limit and shows only what the corner allows. For closed roads.',
     navGo:'GO', navIn:'in', navM:'meters', navNow:'NOW', navInto:'onto', navMin:'MIN',
@@ -1635,12 +1760,13 @@ const S = {
   cx:0, cy:0, scale:0.02, rot:0,
   pitch:0,            // inclinazione della camera: 0 = a piombo, ~1,05 rad = quasi radente
   d3:false,           // vista guida 3D: inclinazione + zoom automatici
+  pitchLibero:false,  // l'inclinazione l'hai messa tu (due dita o bottone): l'automatismo non ci mette più le mani
   zoomLibero:false,   // l'utente ha pizzicato: da qui in poi lo zoom è suo, non mio
   mode:'free', audio:false, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
   dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
-  car:'m5', cal:36, style:'strada', legal:true,
+  car:'m5', cal:36, calG:0, style:'strada', legal:true,   // calG = marcia su cui si legge la taratura (0 = decidila tu)
   snap:null,          // {e, i, t, dir, dist}
   nav:null,           // percorso attivo: {archi, c0, tot, man, mi, k, idx, dest, jA, path}
   navRipreso:false,   // il percorso salvato è già stato ripreso dopo una ricarica
@@ -1653,17 +1779,37 @@ try{
   if(st.car&&CARS[st.car])S.car=st.car;
   if(st.style&&STYLES[st.style])S.style=st.style;   // i vecchi 'd'/'n'/'a' cadono su 'strada'
   if(typeof st.cal==='number')S.cal=st.cal;
+  if(typeof st.calG==='number')S.calG=st.calG;
   if(typeof st.legal==='boolean')S.legal=st.legal;
   if(st.audio)S.audio=true;
   if(st.d3)S.d3=true;
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,legal:S.legal,audio:S.audio,d3:S.d3,lang:L}))}catch(e){}};
+  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,audio:S.audio,d3:S.d3,lang:L}))}catch(e){}};
 
 /* velocità (km/h) per 1000 giri, per marcia */
 function gearKmh(){ const c=CARS[S.car]; return c.g.map(r=>r*S.cal); }
 const rpmAt = (kmh,g) => kmh/gearKmh()[g-1]*1000;
+/* --- taratura del rapporto finale ---
+   `S.cal` resta quello di sempre (km/h ogni 1000 giri in ultima), perché è il numero
+   con cui lavora tutto il resto. Cambia solo COME lo si regola: il cursore si legge
+   come "a 2.000 giri in <marcia> vai a tot", che è un controllo che si fa guidando
+   normalmente. A 1.000 giri in ultima non ci si può stare, e infatti nessuno ce li
+   teneva per verificare il numero. 2.000 giri è un regime che tengono tutte e quattro
+   le auto in elenco, diesel compreso. */
+const RPM_RIF = 2000;
+const gLab = g => L==='it' ? g+'ª' : g+(g===1?'st':g===2?'nd':g===3?'rd':'th');
+/* Marcia su cui si legge il riferimento. Se non l'ha scelta lui, si prende la più
+   alta che a 2.000 giri sta sotto i 110 km/h: cioè la più lunga verificabile senza
+   andare a velocità da autostrada tedesca (in 9ª la C43 a 2.000 giri fa 136). */
+function marciaRif(){
+  const c=CARS[S.car];
+  if(S.calG>=1 && S.calG<=c.n) return S.calG;
+  for(let g=c.n; g>=1; g--) if(c.g[g-1]*S.cal*RPM_RIF/1000 <= 110) return g;
+  return 1;
+}
+const kmhRif = g => Math.round(CARS[S.car].g[g-1]*S.cal*RPM_RIF/1000);
 /* Marcia da pilota, cambio manuale:
    - la più ALTA che all'apice resta in coppia piena: niente cambio in curva
    - se anche in ultima non ci arriva (curva velocissima) -> marcia più lunga
@@ -1726,6 +1872,14 @@ addEventListener('resize',resize);resize();
    dove X è a destra e Y in avanti, in metri veri rispetto al centro. */
 const CAM = {c:1, s:0, cx:0, cy:0, f:800, R:800, sp:0, cp:1, on:false};
 const NEAR = 0.06;                       // si taglia sotto questa frazione di R
+/* Inclinazione: adesso è anche un GESTO, non solo un automatismo della guida.
+   `PITCH_MAX` a 60° perché oltre la vista radente non aggiunge strada e impasta il
+   fondo dell'inquadratura; `PITCH_DEF` è dove atterra il bottone 3D.
+   `PITCH_SCALA_MIN` è il punto sotto il quale la mappa torna a piombo da sola: in
+   vista inclinata ogni arco si proietta a mano, e da lassù sarebbero decine di
+   migliaia. Google Maps fa esattamente questo — l'inclinazione esiste solo da un
+   certo zoom in su. */
+const PITCH_MAX = 1.05, PITCH_DEF = 0.85, PITCH_SCALA_MIN = 0.25;
 function camAggiorna(){
   CAM.c=Math.cos(S.rot); CAM.s=Math.sin(S.rot);
   CAM.cx=S.cx; CAM.cy=S.cy;
@@ -1768,7 +1922,16 @@ function s2w(px,py){
 /* In vista inclinata il terreno visibile è un trapezio che va fino all'orizzonte:
    preso alla lettera darebbe decine di migliaia di celle. Si limita a quanto serve
    davvero vedere, che è la stessa distanza su cui è tarato lo zoom. */
-function vista3d(){ return Math.max(700, Math.min(4000, S.v*16+500)); }
+function vista3d(){
+  // in guida: quanto serve vedere davanti, tarato sulla velocità
+  if(S.mode!=='free') return Math.max(700, Math.min(4000, S.v*16+500));
+  /* In mappa la velocità non dice niente (è zero, o è quella dell'ultimo fix), e con
+     la vecchia formula la mappa inclinata da fermo si tagliava a 700 m. Qui comanda
+     lo zoom: quanto mondo sta in altezza sullo schermo, con un tetto — il costo
+     della proiezione a mano cresce con l'area inquadrata, e il tetto è ciò che
+     impedisce a una mappa inclinata di diventare una scansione di mezza regione. */
+  return Math.max(700, Math.min(2500, (H/S.scale)*1.5));
+}
 function viewBounds(){
   let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12;
   const pren=(x,y)=>{ if(x<x0)x0=x; if(y<y0)y0=y; if(x>x1)x1=x; if(y>y1)y1=y };
@@ -1849,7 +2012,7 @@ function tracciati3d(c0,c1,r0,r1){
       const Y=-ax*CAM.s+ay*CAM.c;
       if(Y>lim*1.25) continue;                 // troppo lontano per contare qualcosa
       const f=fasciaDi(Y*CAM.sp+CAM.R);
-      const banda = e.rank>=5 ? 0 : e.rank>=3 ? 2 : 1;
+      const banda = e.rank>=RANGO.grigio ? 0 : e.rank>=RANGO.sfuma ? 2 : 1;
       let a=0;
       for(let n=0;n<e.runs.length;n+=2){
         const cl=e.runs[n+1];
@@ -1897,7 +2060,7 @@ function cellPaths(kk){
   const grigia = () => (grey || (grey=new Path2D()));
   if(ids) for(const id of ids){
     const e=E[id], xy=e.xy, runs=e.runs;
-    const banda = e.rank>=5 ? 0 : e.rank>=3 ? 2 : 1;   // 0 grigia, 1 ossatura, 2 minori
+    const banda = e.rank>=RANGO.grigio ? 0 : e.rank>=RANGO.sfuma ? 2 : 1;  // 0 grigia, 1 ossatura, 2 minori
     let a=0;
     for(let m=0;m<runs.length;m+=2){
       const b=runs[m], cl=runs[m+1];
@@ -1931,7 +2094,7 @@ function backbone(){
   if(BACKBONE) return BACKBONE;
   const paths=CLS.map(()=>new Path2D());
   for(const e of E){
-    if(e.rank>2) continue;
+    if(e.rank>RANGO.backbone) continue;
     const xy=e.xy, runs=e.runs; let a=0;
     for(let m=0;m<runs.length;m+=2){
       const b=runs[m], cl=runs[m+1], P=paths[cl];
@@ -2641,14 +2804,17 @@ const easeOut = t => 1-Math.pow(1-t,3);
 /* Salto corto: interpolazione diretta. Lo zoom si interpola in logaritmo, se no la
    prima metà dell'animazione si mangia quasi tutto il cambio di scala. */
 function vaiA(to, ms){
-  const d={cx:S.cx, cy:S.cy, scale:S.scale, rot:S.rot};
+  const d={cx:S.cx, cy:S.cy, scale:S.scale, rot:S.rot, pitch:S.pitch};
   const g=(k)=> to[k]!==undefined ? to[k] : d[k];
-  const acx=g('cx'), acy=g('cy'), asc=g('scale'), arot=g('rot');
+  const acx=g('cx'), acy=g('cy'), asc=g('scale'), arot=g('rot'), api=g('pitch');
   const lz0=Math.log(d.scale), lz1=Math.log(asc);
   animaCamera(p=>{
     const t=easeOut(p);
     S.cx=d.cx+(acx-d.cx)*t; S.cy=d.cy+(acy-d.cy)*t;
     S.scale=Math.exp(lz0+(lz1-lz0)*t); S.rot=d.rot+(arot-d.rot)*t;
+    // l'inclinazione passa di qui come tutto il resto: alzarsi e coricarsi sono
+    // movimenti di camera, e devono avere la stessa curva degli altri
+    S.pitch=d.pitch+(api-d.pitch)*t;
   }, ms);
 }
 /* Salto lungo: traiettoria di van Wijk & Nuij. La camera si alza quanto basta a
@@ -2722,10 +2888,15 @@ function cameraTick(now){
   return cameraTickAuto(now) || anima;
 }
 function cameraTickAuto(now){
-  /* In vista mappa si torna sempre a piombo: una mappa inclinata da esplorare è
-     scomoda, e da piatta si ridisegna con la cache dei tracciati invece di
-     proiettare tutto a mano. */
-  if((S.mode==='free' || !S.d3) && S.pitch>0.001){
+  /* Da lontano si torna a piombo comunque, anche se l'inclinazione l'hai messa tu:
+     è il tetto di costo della vista inclinata, non una preferenza. Sotto quello
+     zoom il trapezio a terra diventa mezza regione da proiettare a mano. */
+  if(S.mode==='free' && S.pitchLibero && !S.anim && S.scale<PITCH_SCALA_MIN) S.pitchLibero=false;
+  /* Poi: la mappa torna piatta da sola SOLO se l'inclinazione non è tua. Prima
+     tornava a piombo sempre, ed è il motivo per cui il 3D esisteva solo in guida.
+     Ora due dita che inclinano vincono sull'automatismo, come il pinch vince
+     sullo zoom automatico: il dito ha sempre ragione. */
+  if(!S.pitchLibero && (S.mode==='free' || !S.d3) && S.pitch>0.001){
     S.pitch=Math.max(0, S.pitch-0.06);
     if(S.pitch<0.002) S.pitch=0;
     S.need=true;
@@ -2813,9 +2984,11 @@ function cameraTickAuto(now){
     const pitchT=1.02*(1-stretta)*Math.min(1, S.v/6);       // da fermi piatta
     if(stretta>0.35) scalaT*=1+stretta*0.5;                 // e sul tecnico stringe
     const kk=Math.min(1, k*0.75);                           // più lenta della camera:
-    const dpi=(pitchT-S.pitch)*kk;                          // se no pompa a ogni curva
-    S.pitch+=dpi;
-    if(Math.abs(dpi)>1e-4) cambiata=true;
+    if(!S.pitchLibero){                                     // se no pompa a ogni curva
+      const dpi=(pitchT-S.pitch)*kk;                        // (e se l'hai inclinata tu, comandi tu)
+      S.pitch+=dpi;
+      if(Math.abs(dpi)>1e-4) cambiata=true;
+    }
     if(!S.zoomLibero){
       const ds=(scalaT-S.scale)*kk*0.5;
       S.scale+=ds;
@@ -2840,6 +3013,7 @@ function loop(now){
   if(fpsT){ fpsN++; if(now-fpsT >= 1000){ fpsVisto = Math.round(fpsN*1000/(now-fpsT)); fpsN=0; fpsT=now } }
   else fpsT = now;
   if(cameraTick(now)) S.need=true;
+  sync3dBtn();
   if(S.need){S.need=false;draw()}
   requestAnimationFrame(loop);
 }
@@ -2925,7 +3099,7 @@ function matchRoad(x,y,hd){
     // preferisci strade di rango alto. Le residenziali ora sono nella rete e
     // vanno bene per agganciarsi quando ci sei davvero sopra, ma non devono
     // rubare l'aggancio alla provinciale quando ci passi accanto e basta
-    score += e.rank>=5 ? 9 : -(4-e.rank)*1.5;
+    score += e.rank>=RANGO.minore ? 9 : -(RANGO.cima-e.rank)*1.5;
     if(!best||score<best.score) best={e,i:pr.i,t:pr.t,d:pr.d,dir,score};
   }
   return best;
@@ -3529,12 +3703,31 @@ function setMode(m){
   S.need=true;
 }
 const b3d=document.getElementById('b3d');
+/* Il gettone dice se la mappa è coricata ADESSO, non più solo se l'automatismo di
+   guida è acceso: l'inclinazione adesso esiste anche in vista mappa, a due dita.
+   Si risincronizza a ogni fotogramma ma tocca il DOM solo quando cambia davvero. */
+let b3dOn=null;
+const d3Acceso = () => S.pitch>0.05 || (S.d3 && S.mode!=='free');
+function sync3dBtn(){
+  const v=d3Acceso();
+  if(v!==b3dOn){ b3dOn=v; b3d.classList.toggle('on',v) }
+}
 b3d.onclick=()=>{
-  S.d3=!S.d3; S.zoomLibero=false;          // riaccendendola lo zoom torna automatico
-  b3d.classList.toggle('on',S.d3); save(); S.need=true;
-  if(S.d3 && S.mode==='free') toast(tr().d3gps,4000);
+  if(d3Acceso()){
+    S.d3=false; S.pitchLibero=false; vaiA({pitch:0}, 320);
+  }else{
+    S.d3=true; S.zoomLibero=false;         // riaccendendola lo zoom torna automatico
+    if(S.mode==='free'){
+      /* In mappa il bottone inclina davvero, e se serve zooma quel tanto che basta:
+         sotto `PITCH_SCALA_MIN` la vista inclinata non è sostenibile, quindi invece
+         di rifiutare il gesto ci si avvicina — è quello che fa Google Maps. */
+      S.pitchLibero=true;
+      vaiA({pitch:PITCH_DEF, scale:Math.max(S.scale, PITCH_SCALA_MIN*1.25)}, 420);
+    }else S.pitchLibero=false;             // in guida torna a comandare la curva che arriva
+  }
+  save(); sync3dBtn(); S.need=true;
 };
-b3d.classList.toggle('on',S.d3);
+sync3dBtn();
 bGps.onclick=()=>S.mode==='follow'?setMode('free'):startGps();
 if(bDemo) bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
 bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
@@ -3551,7 +3744,14 @@ function applyLang(){
 }
 bLang.onclick=()=>{ L = L==='it'?'en':'it'; save(); applyLang(); renderLegend(); };
 bAudio.classList.toggle('on',S.audio);
-document.getElementById('compass').onclick=()=>{S.rot=0;S.need=true};
+/* La bussola rimette nord in alto E la mappa a piombo, in un tocco solo: è quello
+   che fa quella di Google Maps, ed è l'unica via d'uscita ovvia se ti sei ritrovato
+   la mappa storta o coricata senza volerlo. */
+document.getElementById('compass').onclick=()=>{
+  if(S.mode==='free'){ S.pitchLibero=false; vaiA({rot:0, pitch:0}, 320) }
+  else S.rot=0;
+  sync3dBtn(); S.need=true;
+};
 
 /* pannelli */
 const sheets={car:document.getElementById('sheetCar'),legend:document.getElementById('sheetLegend'),
@@ -3734,7 +3934,8 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{
 /* pannello auto */
 const carChips=document.getElementById('carChips'), styleChips=document.getElementById('styleChips'),
       gearTable=document.getElementById('gearTable'), calSlider=document.getElementById('calSlider'),
-      calVal=document.getElementById('calVal'), calGear=document.getElementById('calGear'),
+      calVal=document.getElementById('calVal'), calHint=document.getElementById('calHint'),
+      calGears=document.getElementById('calGears'),
       styleDesc=document.getElementById('styleDesc'), carDesc=document.getElementById('carDesc'),
       gearBox=document.getElementById('gearBox'), legalChk=document.getElementById('legalChk'),
       legalDesc=document.getElementById('legalDesc');
@@ -3750,7 +3951,9 @@ function renderCar(){
     const c=CARS[k], b=document.createElement('button');
     b.className='chip'+(k===S.car?' on':'');
     b.innerHTML='<b>'+c.nm+'</b>'+c.sub+(k===S.car?'<br>'+tr().inUse:'');
-    b.onclick=()=>{S.car=k; if(c.ref)S.cal=c.ref; renderCar(); save(); updateNote(); S.need=true};
+    // cambiando auto la marcia di riferimento si ricalcola: la 7ª di una 9 marce non
+    // vuol dire niente su una 5 marce, e tenerla ferma darebbe un numero assurdo
+    b.onclick=()=>{S.car=k; if(c.ref)S.cal=c.ref; S.calG=0; renderCar(); save(); updateNote(); S.need=true};
     carChips.appendChild(b);
   }
   carDesc.textContent=CARS[S.car]['d_'+L];
@@ -3766,20 +3969,38 @@ function renderCar(){
   // con l'automatico non c'è nessuna marcia da consigliare: via rapporti e tabella
   gearBox.hidden = isAuto();
   if(!isAuto()){
-    calSlider.value=S.cal; calVal.textContent=S.cal.toFixed(0);
-    calGear.textContent=CARS[S.car].n+'ª';
+    calSlider.value=S.cal;
     // con 9 rapporti su un telefono nove colonne sarebbero 35 px l'una e non si
     // legge niente: da 7 in su si lascia decidere alla griglia quante ce ne stanno
     gearTable.style.gridTemplateColumns = CARS[S.car].n > 6
       ? 'repeat(auto-fit,minmax(62px,1fr))' : 'repeat('+CARS[S.car].n+',1fr)';
-    gearTable.innerHTML=gearTableHtml();
+    renderCal();
   }
   legalChk.checked=S.legal;
   legalDesc.textContent=tr()[S.legal?'legalOn':'legalOff'];
 }
+/* Il cursore, la frase sopra e le chip della marcia dicono la stessa cosa e devono
+   cambiare insieme: un solo posto che le riscrive tutte. */
+function renderCal(){
+  const c=CARS[S.car], gr=marciaRif();
+  calHint.textContent=tr().calHint(gLab(gr));
+  calVal.textContent=kmhRif(gr);
+  calGears.innerHTML='';
+  for(let g=1; g<=c.n; g++){
+    const b=document.createElement('button');
+    b.className='chip'+(g===gr?' on':'');
+    b.textContent=gLab(g); b.title=tr().calRif;
+    b.onclick=()=>{ S.calG=g; save(); renderCal() };
+    calGears.appendChild(b);
+  }
+  gearTable.innerHTML=gearTableHtml();
+}
 legalChk.onchange=()=>{S.legal=legalChk.checked; save(); renderCar(); updateNote(); S.need=true};
-calSlider.oninput=()=>{S.cal=+calSlider.value;calVal.textContent=S.cal.toFixed(0);
-  gearTable.innerHTML=gearTableHtml(); save(); updateNote()};
+/* Il cursore muove sempre `S.cal` (km/h ogni 1000 giri in ultima), solo che chi
+   guarda legge il numero alla marcia di riferimento: le due cose sono legate da un
+   fattore fisso, quindi il passo del cursore resta lineare e non c'è nessuna
+   conversione da tenere allineata a mano. */
+calSlider.oninput=()=>{S.cal=+calSlider.value; renderCal(); save(); updateNote()};
 renderCar();
 
 /* legenda */
@@ -3954,7 +4175,7 @@ function indiceDaRete(r){
     const a = visti.get(nn);
     if(a && Math.hypot(a[0]-x, a[1]-y) < 4000) continue;
     visti.set(nn, [x,y]);
-    ixAdd(e.via, '', x, y, (4-(e.rank||3))*0.13, 2, -1, -1, -1, r.id, -1);
+    ixAdd(e.via, '', x, y, (RANGO.cima-(e.rank||3))*0.13, 2, -1, -1, -1, r.id, -1);
   }
 }
 function assicuraIndice(){
@@ -4248,21 +4469,45 @@ function rigaRis(r){
     }
     if(IX.tipo[id]===2) z=2.2;
   }
+  const txt=document.createElement('span'); txt.className='txt';
   const t1=document.createElement('span'); t1.className='via'; t1.textContent=nome;
-  b.appendChild(t1);
+  txt.appendChild(t1);
   if(sub){ const t2=document.createElement('span'); t2.className='dove'; t2.textContent=sub;
-           b.appendChild(t2) }
+           txt.appendChild(t2) }
+  b.appendChild(txt);
+  const fr=document.createElement('span'); fr.className='fr'; fr.textContent='›';
+  fr.setAttribute('aria-hidden','true');
+  b.appendChild(fr);
+  b.title=tr().navGo;
   const chiudi=()=>{ resEl.classList.remove('show'); qEl.value=''; qEl.blur() };
-  b.onclick=()=>{ flyTo(x,y,z); chiudi() };
-  const g=document.createElement('button'); g.className='go';
-  g.textContent=tr().navGo; g.title=tr().navGo;
-  g.onclick=()=>{ chiudi(); avviaNav(x,y,nome) };
-  row.appendChild(b); row.appendChild(g); resEl.appendChild(row);
+  /* Tocco = ci vado. Pressione lunga = ci guardo e basta, senza far partire niente:
+     è lo stesso gesto che sulla mappa sceglie una destinazione, quindi non è un
+     comando nuovo da imparare, solo lo stesso gesto dall'altra parte. */
+  let lungo=null, fatta=false, px=0, py=0;
+  const stop=()=>{ if(lungo){clearTimeout(lungo); lungo=null} premuto=false };
+  b.addEventListener('pointerdown',e=>{
+    fatta=false; px=e.clientX; py=e.clientY; premuto=true;
+    lungo=setTimeout(()=>{ lungo=null; premuto=false; fatta=true;
+      if(navigator.vibrate) navigator.vibrate(18);
+      flyTo(x,y,z); chiudi();
+    }, 450);
+  });
+  // scorrere l'elenco non è una pressione lunga: il dito che si muove la annulla
+  b.addEventListener('pointermove',e=>{ if(lungo && Math.hypot(e.clientX-px,e.clientY-py)>9) stop() });
+  b.addEventListener('pointerup',stop);
+  b.addEventListener('pointercancel',stop);
+  b.addEventListener('pointerleave',stop);
+  b.onclick=()=>{ if(fatta){ fatta=false; return } stop(); chiudi(); avviaNav(x,y,nome) };
+  row.appendChild(b); resEl.appendChild(row);
 }
 
 qEl.onfocus=()=>{ assicuraIndice(); renderResults(qEl.value) };
 qEl.oninput=()=>renderResults(qEl.value);
-qEl.onblur=()=>setTimeout(()=>resEl.classList.remove('show'),180);
+/* `premuto` = c'è un dito appoggiato su un risultato. Senza, il tocco toglie il
+   fuoco alla casella e 180 ms dopo l'elenco si chiude DA SOLO: una pressione lunga
+   da 450 ms sparirebbe sotto le dita, e anche solo scorrere l'elenco lo chiuderebbe. */
+let premuto=false;
+qEl.onblur=()=>setTimeout(()=>{ if(!premuto) resEl.classList.remove('show') },180);
 
 /* gesti mappa */
 const ptrs=new Map(); let pinch=null;
@@ -4282,7 +4527,16 @@ function nomePunto(x,y){
 const stopPress=()=>{ if(press){clearTimeout(press.t); press=null} };
 cv.addEventListener('pointerdown',e=>{
   cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,[e.clientX,e.clientY]);
-  if(ptrs.size===2){const[a,b]=[...ptrs.values()];pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]),s:S.scale,attivo:false}}
+  if(ptrs.size===2){
+    const[a,b]=[...ptrs.values()];
+    /* Tre gesti sulle stesse due dita, come su Google Maps: allontanarle/avvicinarle
+       = zoom, ruotarle = rotazione, farle scorrere INSIEME su e giù = inclinazione.
+       Si decide una volta sola quale dei tre è, alla prima soglia superata, e poi
+       non si cambia più idea: mescolarli fa ballare la mappa a ogni tremolio. */
+    pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1]), s:S.scale, attivo:false, modo:null,
+           ang0:Math.atan2(b[1]-a[1], b[0]-a[0]), rot0:S.rot,
+           y0:[a[1],b[1]], my0:(a[1]+b[1])/2, pitch0:S.pitch};
+  }
   // il dito ha sempre ragione: qualunque animazione in corso si ferma qui
   ditoGiu=true; S.glide=null; S.anim=null; panSamp=[];
   stopPress();
@@ -4310,18 +4564,52 @@ cv.addEventListener('pointermove',e=>{
   }else if(ptrs.size===2&&pinch){
     const[a,b]=[...ptrs.values()], mid=[(a[0]+b[0])/2,(a[1]+b[1])/2];
     const dist=Math.hypot(a[0]-b[0],a[1]-b[1]);
-    /* Soglia d'ingresso dello zoom: finché le due dita non hanno cambiato distanza
-       di 0,1 livelli non si zooma. Senza, una scorsa a due dita — o semplicemente
-       appoggiare il pollice — cambia la scala di un soffio a ogni tocco. Alla
-       partenza la base si riazzera, così i primi 0,1 livelli non arrivano di scatto. */
-    if(!pinch.attivo){
-      if(Math.abs(Math.log2(dist/pinch.d))<0.1) return;
-      pinch.attivo=true; pinch.d=dist; pinch.s=S.scale;
+    const dLog=Math.log2(dist/pinch.d);
+    let dAng=Math.atan2(b[1]-a[1],b[0]-a[0])-pinch.ang0;
+    while(dAng>Math.PI)dAng-=2*Math.PI; while(dAng<-Math.PI)dAng+=2*Math.PI;
+    const dy1=a[1]-pinch.y0[0], dy2=b[1]-pinch.y0[1];
+    /* Quale dei tre gesti è. Le soglie:
+       · zoom — 0,1 livelli, com'era: senza, appoggiare il pollice cambia la scala di
+         un soffio a ogni tocco;
+       · inclinazione — due dita nello STESSO verso verticale, almeno 16 px ciascuna,
+         parallele (scarto sotto 36 px) e senza cambiare distanza;
+       · rotazione — soglia in RADIANTI ricavata da una soglia in PIXEL, come fa
+         MapLibre: `50/distanza` sono 25 px di spostamento tangenziale per dito, cioè
+         20° con le dita a 140 px, e sempre meno man mano che si allargano. Una
+         soglia angolare fissa e piccola non funziona, ed è stato misurato qui: due
+         dita a 140 px, una che parte 20 px prima dell'altra — cosa che succede
+         SEMPRE, nessuno appoggia due dita nello stesso istante — fanno già 8° di
+         angolo apparente, e l'inclinazione finiva scambiata per una rotazione. */
+    if(!pinch.modo){
+      const rotMin=Math.max(0.25, 50/Math.max(60,pinch.d));
+      const inclina = dy1*dy2>0 && Math.min(Math.abs(dy1),Math.abs(dy2))>16 &&
+                      Math.abs(dy1-dy2)<36 && Math.abs(dLog)<0.12;
+      if(inclina){ pinch.modo='pitch'; pinch.my0=mid[1]; pinch.pitch0=S.pitch }
+      else if(Math.abs(dLog)>=0.1 || Math.abs(dAng)>=rotMin){
+        pinch.modo='mappa'; pinch.d=dist; pinch.s=S.scale;   // base riazzerata: niente scatto iniziale
+        pinch.ang0=Math.atan2(b[1]-a[1],b[0]-a[0]); pinch.rot0=S.rot; dAng=0;
+      } else return;
       panSamp=[];                          // non è più un pan: niente inerzia al rilascio
+      pinch.attivo=true;
+    }
+    if(pinch.modo==='pitch'){
+      /* Verso: dita in su = mappa che si corica, come su Google Maps e Waze.
+         0,0035 rad/px vuol dire piatto→60° in circa 300 px, cioè un terzo di
+         schermo: abbastanza da farci una regolazione fine, poco da doverlo
+         ripetere due volte. */
+      S.pitch=Math.max(0, Math.min(PITCH_MAX, pinch.pitch0 + (pinch.my0-mid[1])*0.0035));
+      // sotto quello zoom la vista inclinata non è sostenibile: si zooma prima
+      if(S.mode==='free' && S.scale<PITCH_SCALA_MIN) S.pitch=0;
+      S.pitchLibero = S.pitch>0.02;
+      S.need=true; return;
     }
     const before=s2w(mid[0],mid[1]);
     S.zoomLibero=true;                     // da qui lo zoom è suo: non glielo tolgo più
     S.scale=Math.max(0.004,Math.min(12,pinch.s*dist/pinch.d));
+    /* La rotazione vale solo in vista mappa: in inseguimento la mappa la orienta la
+       direzione di marcia a ogni fotogramma, e girarla a mano vorrebbe dire
+       combattere con quella riga. */
+    if(S.mode==='free') S.rot=pinch.rot0+dAng;
     const after=s2w(mid[0],mid[1]);
     S.cx+=before[0]-after[0]; S.cy+=before[1]-after[1]; S.need=true;
   }
