@@ -601,7 +601,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '120';
+const APPVER = '121';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3445,14 +3445,35 @@ function disegnaNavIcona(ang){
    Il percorso non deve sparire mentre guidi. Si salva la sola DESTINAZIONE in
    lon/lat, non il percorso: gli indici interni degli archi cambiano a ogni
    ricarica, mentre un punto sulla terra no. Si ricalcola al primo aggancio buono. */
-const CHIAVE_ROTTA='copilota-rotta';
+/* Sta in `localStorage` e NON in `sessionStorage` (cambiato il 2026-08-17). Lo storage
+   di sessione vive quanto la scheda: sopravvive di sicuro a una ricarica, ma se il
+   processo che disegna viene ucciso per memoria — o se un giorno l'app girerà dentro
+   un guscio nativo — non è affatto detto che ci sia ancora, e quel dubbio non si
+   risolve leggendo la documentazione. `localStorage` è scritto su disco, quindi
+   sopravvive al kill e anche alla chiusura dell'app.
+   Il prezzo di quella robustezza è che adesso il ricordo non scade da solo, e senza
+   difesa ti ritroveresti la destinazione di tre giorni fa alla partenza a freddo: per
+   questo accanto si salva l'ORA, e si riprende solo entro `ROTTA_MAX`. Un crash e una
+   riapertura stanno dentro un minuto; una nuova uscita, no. */
+const CHIAVE_ROTTA='copilota-rotta', ROTTA_MAX=15*60*1000;
+let rottaT=0;                                  // ultima volta che il ricordo è stato rinfrescato
 function ricordaDest(x,y,nome){
   try{ const [lon,lat]=toLL(x,y);
-       sessionStorage.setItem(CHIAVE_ROTTA, JSON.stringify({lon,lat,n:nome})) }catch(e){}
+       localStorage.setItem(CHIAVE_ROTTA, JSON.stringify({lon,lat,n:nome,t:Date.now()})) }catch(e){}
 }
-function scordaDest(){ try{ sessionStorage.removeItem(CHIAVE_ROTTA) }catch(e){} }
+function scordaDest(){
+  try{ localStorage.removeItem(CHIAVE_ROTTA); sessionStorage.removeItem(CHIAVE_ROTTA) }catch(e){}
+}
 function destRicordata(){
-  try{ const s=sessionStorage.getItem(CHIAVE_ROTTA); return s?JSON.parse(s):null }catch(e){ return null }
+  try{
+    // `sessionStorage` si legge ancora per un giro: chi aveva un percorso attivo
+    // durante l'aggiornamento non se lo vede sparire
+    const s=localStorage.getItem(CHIAVE_ROTTA) || sessionStorage.getItem(CHIAVE_ROTTA);
+    if(!s) return null;
+    const d=JSON.parse(s);
+    if(d && d.t && Date.now()-d.t > ROTTA_MAX){ scordaDest(); return null }
+    return d;
+  }catch(e){ return null }
 }
 function fermaNav(msg){
   S.nav=null; scordaDest(); document.body.classList.remove('navon');
@@ -3527,6 +3548,11 @@ function tempoRestante(fatto){
 function tickNav(){
   const nv=S.nav; if(!nv) return;
   const t0=tr();
+  /* L'ora del ricordo si rinfresca finché il percorso è vivo, al massimo una volta al
+     minuto. Scritta solo all'avvio, un viaggio di un'ora sarebbe scaduto mentre lo
+     stavi ancora facendo: `t` deve voler dire «l'ultima volta che ero in strada»,
+     non «quando ho impostato la destinazione». */
+  if(Date.now()-rottaT > 60000){ rottaT=Date.now(); ricordaDest(nv.dest.x, nv.dest.y, nv.dest.n) }
   navEl.classList.add('show');
   const pr=progressoNav();
 
