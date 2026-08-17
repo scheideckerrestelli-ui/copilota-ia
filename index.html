@@ -601,8 +601,21 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '118';
+const APPVER = '120';
 let RAW = null;
+/* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
+   regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
+   nella Cache API convivono dataset v2 e v3 per giorni, perché l'app legge dalla
+   cache prima della rete e le mappe si riscaricano una per una. */
+const RMETA = Object.create(null);
+/* I campi nuovi si tengono in INSIEMI, non in proprietà sugli archi. Sono pochi
+   archi su tanti — in Vallonia 12.226 rotatorie e 6.367 rampe su 280.091 — e tre
+   proprietà in più su ogni oggetto arco costerebbero megabyte di heap per un dato
+   che riguarda il 7% della rete. L'heap è la valuta scarsa di quest'app: un fotogramma
+   costa 0,1 ms su 16,7, ma una regione sola pesa già 217 MB e un iPhone SE 3 muore
+   verso i 100. */
+const ROTONDA = new Set();       // id arco marcato junction=roundabout (campo 12)
+const CLSARCO = new Map();       // id arco -> 1 rampa, 2 autostrada (campo 14)
 
 /* ============ regioni installate ============
    Le mappe non sono più un unico file: c'è un regions.json di manifesto e un
@@ -980,7 +993,21 @@ const RAGGIO_MINORI = 3000, PESO_H = 1.25;
    quel valore, esplicito compreso — quindi questo numero è vero per costruzione e
    non per accordo fra due sessioni. Sbagliare per eccesso costa solo qualche nodo
    esplorato in più. */
-const VMAX_RETE = 36.2;                       // 130,3 km/h
+let VMAX_RETE = 36.2;                         // 130,3 km/h finché non lo dicono i dati
+/* Dal dataset v3 il tetto è DICHIARATO in `meta.msMax`, quindi si legge invece di
+   fidarsi di un accordo fra chi genera e chi consuma. Se una sola regione attiva non
+   lo dichiara — è vecchia, e il suo massimo non si sa — si resta larghi: sbagliare
+   per eccesso costa qualche nodo esplorato in più, sbagliare per difetto rompe
+   l'ammissibilità e fa restituire percorsi non ottimi senza dare errori. */
+function aggiornaVmax(){
+  let m=0;
+  for(const id of RSTATE.att){
+    const mt=RMETA[id];
+    if(!mt || !mt.msMax){ VMAX_RETE=36.2; return }
+    m=Math.max(m, mt.msMax);
+  }
+  if(m) VMAX_RETE = m/3.6;
+}
 function calcolaRotta(jDa, jA, limite=900000){
   const meta = posGiun(jA); if(!meta) return null;
   if(jDa===jA) return {archi:[], metri:0, secondi:0, visti:0};
@@ -1199,6 +1226,19 @@ function contaUscite(archi, kDa, kA){
    riporta al punto d'ingresso; una rampa invece porta altrove e non torna. Si
    cammina dall'uscita dell'ultimo arco del gruppo seguendo solo archi corti a senso
    unico che non stanno nel gruppo, e si guarda se si ritorna all'ingresso. */
+/* 1 = almeno un arco del gruppo è marcato rotatoria · 0 = la regione HA il campo e
+   nessun arco è marcato, quindi non è una rotatoria · -1 = la regione è vecchia e il
+   campo non esiste, quindi decide la geometria. Regione per regione, mai globale. */
+function tagRotatoria(archi, kDa, kA){
+  let sa=false;
+  for(let k=kDa;k<kA;k++){
+    const e=archi[k].e;
+    if(ROTONDA.has(e.id)) return 1;
+    const mt=RMETA[e.rg];
+    if(mt && mt.v>=3) sa=true;
+  }
+  return sa ? 0 : -1;
+}
 function anelloChiuso(archi, kDa, kA){
   const dentro=new Set();
   for(let k=kDa;k<kA;k++) dentro.add(archi[k].e.id);
@@ -1303,7 +1343,15 @@ function costruisciManovre(archi){
            svolta normale, che è quella giusta. `rampa` resta come appiglio per una
            frase dedicata. */
         if(u.rot && u.rotIn!==undefined){
-          if(anelloChiuso(archi, u.rotIn, u.k)){ u.uscita=contaUscite(archi, u.rotIn, u.k); u.rampa=false }
+          /* Il TAG batte la geometria dove c'è: `junction=roundabout` è la
+             trascrizione diretta di OSM, mentre l'anello chiuso è una deduzione.
+             Controprova sui dati v3: su 6.367 rampe solo 4 hanno il tag acceso — gli
+             svincoli ad anello veri, a trombetta — e nessuno dei 2.063 falsi positivi
+             ce l'ha. L'euristica resta come ripiego per i dataset vecchi e per dove
+             OSM non tagga. */
+          const tg=tagRotatoria(archi, u.rotIn, u.k);
+          const rotonda = tg===1 ? true : tg===0 ? false : anelloChiuso(archi, u.rotIn, u.k);
+          if(rotonda){ u.uscita=contaUscite(archi, u.rotIn, u.k); u.rampa=false }
           else { u.rot=false; u.rampa=true; delete u.uscita }
         }
         continue;
@@ -1388,7 +1436,13 @@ function buildEdges(rid, map){
   const jn = RAW.jn || null;
   const J = jn ? (i => gjun(jn[i])) : (i => gjun(rid+':'+i));   // dataset v0.6: chiavi locali
   for (let k=0;k<RAW.edges.length;k++){
-    const [poly, runs, cflat, rank, len, j0, j1, ms, wid, ow, nomeIdx] = RAW.edges[k];
+    const arr = RAW.edges[k];
+    const [poly, runs, cflat, rank, len, j0, j1, ms, wid, ow, nomeIdx] = arr;
+    /* Coda dell'arco, presente solo dai dataset v3: si legge per LUNGHEZZA, così un
+       dataset vecchio non produce `undefined` e uno nuovo si legge senza cambiare una
+       riga. 11 = indice del ref, 12 = rotatoria, 13 = andamento, 14 = classe. */
+    const rotondaTag = arr.length>12 ? arr[12] : 0;
+    const clsTag     = arr.length>14 ? arr[14] : 0;
     map[k] = -1;
     if (wid!==undefined){
       // La proprietà è PER REGIONE, non per arco: una via lunga si spezza in molti
@@ -1424,6 +1478,8 @@ function buildEdges(rid, map){
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                // il nome sta nel dizionario della sua regione, non in un campo per arco
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : ''};
+    if(rotondaTag===1) ROTONDA.add(e.id);
+    if(clsTag) CLSARCO.set(e.id, clsTag);
     map[k] = e.id;                       // indice locale -> globale, serve agli autovelox
     E.push(e);
     if (!JUN.has(gj0)) JUN.set(gj0,[]); JUN.get(gj0).push(e.id);
@@ -4705,6 +4761,7 @@ async function boot(){
       requestAnimationFrame(()=>setTimeout(fin,0));
       setTimeout(fin,400);
     });
+    RMETA[r.id] = RAW.meta;            // prima di buildEdges: dice se la coda esiste
     const map = new Int32Array(RAW.edges.length);   // indice arco locale -> globale
     buildEdges(r.id, map); buildGrey(); buildCams(map); buildRestr();
     for(const p of RAW.places){
@@ -4720,6 +4777,7 @@ async function boot(){
     RAW = null;                      // il JSON grezzo non serve piu': lascialo al GC
   }
 
+  aggiornaVmax();                     // il tetto di velocità lo dicono i dati, non il codice
   const kmN = att.reduce((a,r)=>a+r.km,0), ncN = att.reduce((a,r)=>a+r.curve,0);
   const km=kmN.toLocaleString('it-IT'), nc=ncN.toLocaleString('it-IT'),
         ne=E.length.toLocaleString('it-IT');
