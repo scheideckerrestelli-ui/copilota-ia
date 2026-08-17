@@ -606,7 +606,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '135';
+const APPVER = '138';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1997,10 +1997,7 @@ const T = {
     logTit:'Cosa è andato storto (resta qui, non ti interrompe in guida):',
     logSfratto:'le mappe scaricate NON sono protette: il telefono può cancellarle quando ha bisogno di spazio',
     tooMuch:mb=>'Molte mappe attive (~'+mb+' MB di memoria): sul telefono l\'app rischia di venire chiusa mentre guidi. Tieni attive solo le regioni dove stai andando — restano scaricate lo stesso.',
-    inUse:'in uso', boost:'km/h in boost', at:'a', byLimit:'limite',
-    vtopCap:'km/h · tetto', vtopOver:'oltre la v. max',
-    vtopLim:'limitatore elettronico', vtopAero:'potenza contro aerodinamica e attrito',
-    vtopNote:(v,p)=>'Velocità massima stimata: '+v+' km/h ('+p+'). Le fasce si fermano lì.',
+    inUse:'in uso', at:'a', byLimit:'limite',
     calRif:'Marcia di riferimento', calHint:g=>'A 2.000 giri in '+g+' il tachimetro segna:',
     legalOn:'La velocità di riferimento non supera mai il limite della strada: sulle curve larghe è il limite a comandare.',
     legalOff:'La velocità di riferimento ignora il limite: mostra solo quello che la curva permette. Da usare a fondo chiuso.',
@@ -2063,10 +2060,7 @@ const T = {
     logTit:'What went wrong (it stays here, it will not interrupt you while driving):',
     logSfratto:'downloaded maps are NOT protected: the phone may delete them when it needs space',
     tooMuch:mb=>'A lot of active maps (~'+mb+' MB of memory): on a phone the app may get killed while you drive. Keep active only the regions you are heading to — they stay downloaded anyway.',
-    inUse:'in use', boost:'km/h on boost', at:'at', byLimit:'limit',
-    vtopCap:'km/h · capped', vtopOver:'beyond top speed',
-    vtopLim:'electronic limiter', vtopAero:'power vs drag and rolling resistance',
-    vtopNote:(v,p)=>'Estimated top speed: '+v+' km/h ('+p+'). Gear ranges stop there.',
+    inUse:'in use', at:'at', byLimit:'limit',
     calRif:'Reference gear', calHint:g=>'At 2,000 rpm in '+g+' the speedo reads:',
     legalOn:'The reference speed never exceeds the road limit: on open corners the limit is what rules.',
     legalOff:'The reference speed ignores the limit and shows only what the corner allows. For closed roads.',
@@ -3819,10 +3813,12 @@ function avviaNav(x,y,nome){
   if(!r || !r.archi.length){ toast(t0.navNone,5500); return }
   installaRotta(part, r, {x,y,n:nome||t0.navDest}, jA);
   ricordaDest(x, y, S.nav.dest.n);
-  /* I limiti si dicono all'avvio, non si nascondono in un pannello: il percorso può
-     proporre una svolta vietata perché le relazioni `restriction` di OSM non sono
-     nei dati, e le autostrade non sono nella rete. */
-  toast(t0.navStart(S.nav.dest.n)+' · '+kmTxt(S.nav.tot)+' · '+t0.navWarn, 8000);
+  /* All'avvio si dice SOLO dove si va e quanto manca: il vecchio `navWarn` era un muro
+     di testo di 8 secondi nel momento in cui parti, e per due terzi era pure falso —
+     i divieti di svolta sono nei dati da v84 (`r.solo`, giunzioni tradotte a riga 1529)
+     e le autostrade dal dataset v3 (`CLSARCO`, campo 14). I limiti veri che restano
+     (accessi privati, "la segnaletica vince") stanno nel pannello Info, a scomparsa. */
+  toast(t0.navStart(S.nav.dest.n)+' · '+kmTxt(S.nav.tot), 6000);
   tickNav();
 }
 function ricalcolaNav(){
@@ -4466,18 +4462,17 @@ function gearTableHtml(){
   /* Il tetto (vTop) si applica QUI, alla presentazione, e non dentro gearKmh:
      gearKmh e' il rapporto fisico giri->km/h da cui la taratura risale ai giri,
      e limarlo falserebbe cursore e marcia consigliata. */
-  const t=gearKmh(), lo=boostOf(), hi=rpmLimOf(), top=vTop(0), c=CARS[S.car];
+  const t=gearKmh(), lo=boostOf(), hi=rpmLimOf(), top=vTop(0);
+  /* Niente testo esplicativo nelle celle ne' sotto la tabella: al volante serve la
+     marcia e la fascia, non il perche' del numero (regola di Tiago, 2026-08-17).
+     Restano il numero e l'unita'; il tetto si legge dal fatto che la fascia si ferma. */
   const celle=t.map((v,i)=>{
     const a=Math.round(v*lo/1000), b=Math.round(v*hi/1000);
-    if(a>=top) return '<div style="opacity:.45"><b>'+(i+1)+'ª</b>&gt; '+top+
-      '<br><span style="opacity:.6">'+tr().vtopOver+'</span></div>';
-    const capped=b>top;
-    return '<div><b>'+(i+1)+'ª</b>'+a+'–'+(capped?top:b)+
-      '<br><span style="opacity:.6">'+(capped?tr().vtopCap:tr().boost)+'</span></div>';
+    if(a>=top) return '<div style="opacity:.45"><b>'+(i+1)+'ª</b>&gt; '+top+'</div>';
+    return '<div><b>'+(i+1)+'ª</b>'+a+'–'+Math.min(b,top)+
+      '<br><span style="opacity:.6">km/h</span></div>';
   }).join('');
-  const perche = c.vlim && vTop(0)===c.vlim ? tr().vtopLim : tr().vtopAero;
-  return celle+'<div style="grid-column:1/-1;opacity:.55;font-size:.85em;padding-top:2px">'+
-    tr().vtopNote(top, perche)+'</div>';
+  return celle;
 }
 function renderCar(){
   carChips.innerHTML='';
