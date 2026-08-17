@@ -601,7 +601,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '124';
+const APPVER = '125';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1008,6 +1008,29 @@ function aggiornaVmax(){
   }
   if(m) VMAX_RETE = m/3.6;
 }
+/* ============ STATO DI A* IN ARRAY TIPIZZATI ============
+   Lo stato è un intero — indice arco × 2 + verso — quindi si può indicizzare
+   direttamente, e `g`/`prev`/`chiuso` erano invece tre Map/Set con chiavi numeriche
+   boxate. Misurato da un'altra sessione sulla Lombardia: pavimento 395 MB, e DURANTE
+   il calcolo del percorso fino a **620 MB**, cioè +225 MB transitori, perché gli
+   stati esplorati crescono più che linearmente con la distanza (30.779 stati per i
+   51 km Milano-Bergamo). Il picco arrivava nel momento peggiore: quando l'utente
+   chiede la rotta, magari già in viaggio.
+
+   Qui il costo è fisso e pagato una volta sola: 16 byte per stato, riusati a ogni
+   calcolo — 9 MB per la Vallonia, 20 per la Lombardia intera.
+
+   Il trucco per non azzerare un milione di celle a ogni chiamata è la GENERAZIONE:
+   un contatore che sale, e uno stato conta come visto solo se la sua marca è quella
+   del giro corrente. Senza, ripulire costerebbe più di quel che si risparmia. */
+let AG=null, APREV=null, AGEN=null, ACHIU=null, agen=0;
+function statiPronti(n){
+  const serve=n*2;
+  if(AG && AG.length>=serve) return;
+  AG=new Float32Array(serve); APREV=new Int32Array(serve);
+  AGEN=new Int32Array(serve); ACHIU=new Int32Array(serve);
+  agen=0;
+}
 function calcolaRotta(jDa, jA, limite=900000){
   const meta = posGiun(jA); if(!meta) return null;
   if(jDa===jA) return {archi:[], metri:0, secondi:0, visti:0};
@@ -1019,24 +1042,27 @@ function calcolaRotta(jDa, jA, limite=900000){
   // tempo minimo in linea d'aria a 110 km/h: mai sovrastimato, quindi ammissibile
   const h=j=>{ const p=posGiun(j); return p ? Math.hypot(p[0]-meta[0],p[1]-meta[1])/VMAX_RETE : 0 };
   const testa = s => { const e=E[s>>1]; return (s&1) ? e.j0 : e.j1 };
-  const g=new Map(), prev=new Map(), chiuso=new Set();
+  statiPronti(E.length);
+  agen++;
+  const gGet = s => AGEN[s]===agen ? AG[s] : Infinity;
+  const gSet = (s,v) => { AGEN[s]=agen; AG[s]=v };
   const q=new Coda();
   for(const id of (JUN.get(jDa)||[])){
     const e=E[id];
     if(!percorribile(e,jDa)) continue;
     const s = id*2 + (e.j0===jDa ? 0 : 1);
     const c = costo(e);
-    if(c < (g.get(s)??Infinity)){ g.set(s,c); q.push(s, c+h(testa(s))*PESO_H) }
+    if(c < gGet(s)){ gSet(s,c); APREV[s]=-1; q.push(s, c+h(testa(s))*PESO_H) }
   }
   let visti=0, fine=-1;
   while(q.size){
     const s=q.pop();
-    if(chiuso.has(s)) continue;
-    chiuso.add(s);
+    if(ACHIU[s]===agen) continue;
+    ACHIU[s]=agen;
     if(++visti>limite) return null;
     const jn=testa(s);
     if(jn===jA){ fine=s; break }
-    const e=E[s>>1], gc=g.get(s);
+    const e=E[s>>1], gc=gGet(s);
     for(const id of (JUN.get(jn)||[])){
       const o=E[id];
       if(!percorribile(o,jn)) continue;
@@ -1046,20 +1072,20 @@ function calcolaRotta(jDa, jA, limite=900000){
       }
       if(svoltaVietata(jn, e.wid, o.wid)) continue;
       const t = id*2 + (o.j0===jn ? 0 : 1);
-      if(chiuso.has(t)) continue;
+      if(ACHIU[t]===agen) continue;
       // la penalità sta sulla SVOLTA: inversione a U cara, e imboccare una stradina
       // venendo da una strada vera si paga una volta sola, non a ogni suo tratto
       const pen = (id===e.id ? PEN_INVERSIONE : 0)
                 + (o.rank>=RANGO.minore && e.rank<RANGO.minore ? ENTRO_MINORE : 0);
       const ng = gc + costo(o) + pen;
-      if(ng < (g.get(t)??Infinity)){ g.set(t,ng); prev.set(t,s); q.push(t, ng+h(testa(t))*PESO_H) }
+      if(ng < gGet(t)){ gSet(t,ng); APREV[t]=s; q.push(t, ng+h(testa(t))*PESO_H) }
     }
   }
   if(fine<0) return null;
   const archi=[]; let s=fine;
-  while(s!==undefined){
+  while(s>=0){                        // -1 = capolinea: lo stato di partenza
     archi.push({e:E[s>>1], verso:(s&1)?-1:1});
-    s = prev.get(s);
+    s = APREV[s];
     if(archi.length>20000) break;
   }
   archi.reverse();
