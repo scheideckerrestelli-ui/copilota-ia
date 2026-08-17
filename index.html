@@ -601,7 +601,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '121';
+const APPVER = '123';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1726,6 +1726,7 @@ const T = {
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
     hereOn:n=>'Sei in '+n+': attiva la mappa dal pannello Mappe.',
     farApart:'Regioni molto lontane fra loro: le note restano corrette, il disegno si deforma un po\'. Meglio tenere attive solo quelle dove guidi.',
+    applicaDopo:'Le mappe che hai acceso o spento si caricano quando tocchi Fatto: puoi sceglierne piu\' d\'una senza uscire dal pannello.',
     tooMuch:mb=>'Molte mappe attive (~'+mb+' MB di memoria): sul telefono l\'app rischia di venire chiusa mentre guidi. Tieni attive solo le regioni dove stai andando — restano scaricate lo stesso.',
     inUse:'in uso', boost:'km/h in boost', at:'a', byLimit:'limite',
     calRif:'Marcia di riferimento', calHint:g=>'A 2.000 giri in '+g+' il tachimetro segna:',
@@ -1786,6 +1787,7 @@ const T = {
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
     hereOn:n=>'You are in '+n+': activate the map from the Maps panel.',
     farApart:'Regions far apart: pacenotes stay correct, drawing gets slightly distorted. Better to keep active only the ones you drive in.',
+    applicaDopo:'Maps you switched on or off load when you tap Done: you can pick several without leaving this panel.',
     tooMuch:mb=>'A lot of active maps (~'+mb+' MB of memory): on a phone the app may get killed while you drive. Keep active only the regions you are heading to — they stay downloaded anyway.',
     inUse:'in use', boost:'km/h on boost', at:'at', byLimit:'limit',
     calRif:'Reference gear', calHint:g=>'At 2,000 rpm in '+g+' the speedo reads:',
@@ -3466,8 +3468,15 @@ function scordaDest(){
 }
 function destRicordata(){
   try{
-    // `sessionStorage` si legge ancora per un giro: chi aveva un percorso attivo
-    // durante l'aggiornamento non se lo vede sparire
+    /* `sessionStorage` si legge ancora per un giro: chi aveva un percorso attivo
+       durante l'aggiornamento non se lo vede sparire. **DA TOGLIERE DOPO IL
+       2026-08-19**, e la data è UNA sola apposta: un debito con due scadenze è un
+       debito con zero scadenze, perché ognuno aspetta che scatti l'altra. (Il numero
+       di shell qui non serve: con quattro sessioni che pubblicano, sale da solo senza
+       che sia passato il tempo che conta.) Serve a una finestra di minuti, non di
+       mesi, e un ramo di compatibilità senza data di morte diventa una nota falsa
+       scritta in codice: fra tre mesi si leggono due storage e non si capisce quale
+       vince. */
     const s=localStorage.getItem(CHIAVE_ROTTA) || sessionStorage.getItem(CHIAVE_ROTTA);
     if(!s) return null;
     const d=JSON.parse(s);
@@ -3858,7 +3867,15 @@ function mostraPerf(){
     setTimeout(scrivi, 1000); };
   scrivi();
 }
-function closeSheets(){ for(const n in sheets) sheets[n].classList.remove('show') }
+function closeSheets(){
+  /* Chiudere il pannello Mappe è anche il momento in cui si APPLICA quello che si è
+     scelto dentro: vedi `applicaMappe()`. Va fatto qui e non sul solo bottone Fatto,
+     perché da un foglio si esce in tre modi — bottone, tocco fuori, Esc — e uscire
+     dalla porta di servizio non deve lasciare l'app con mappe accese a metà. */
+  const eraMappe = sheets.maps && sheets.maps.classList.contains('show');
+  for(const n in sheets) sheets[n].classList.remove('show');
+  if(eraMappe) applicaMappe();
+}
 /* su iOS Safari `position:fixed;bottom:0` finisce sotto la barra del browser: riservo lo
    spazio solo quando NON siamo nella PWA installata (lì la barra non c'è). */
 (function(){
@@ -3896,6 +3913,27 @@ const mapList=document.getElementById('mapList'), mapStore=document.getElementBy
 const MB = n => (n/1e6).toFixed(1).replace('.',',')+' MB';
 let hereId = null;                 // regione in cui il GPS dice che siamo
 
+/* Accendere o spegnere una regione cambia gli indici della rete da cima a fondo, e
+   ricostruirli a caldo è più fragile che ripartire: per questo si ricarica. Ma
+   ricaricare SUBITO, a ogni tocco, buttava fuori dal pannello chi ne stava attivando
+   tre — Fiandre, Vallonia, Bruxelles — costringendolo a rientrare ogni volta.
+   Quindi la scelta si accumula nel pannello e si applica all'uscita: `RSTATE` viene
+   già salvato a ogni tocco (se il telefono chiude l'app la scelta non si perde), e la
+   ricarica scatta una volta sola, quando si chiude.
+   La firma di riferimento è quella con cui l'app è PARTITA, non l'ultima vista: così
+   accendere e rispegnere la stessa regione non provoca nessuna ricarica inutile. */
+const attFirma = () => RSTATE.att.slice().sort().join(',');
+let ATT_BOOT = null;                 // la fissa `segnaAvvioMappe()` dentro il boot
+function segnaAvvioMappe(){ ATT_BOOT = attFirma() }
+// finché la firma d'avvio non è stata presa non c'è niente da applicare: meglio non
+// ricaricare che ricaricare a vuoto
+const daApplicare = () => ATT_BOOT !== null && attFirma() !== ATT_BOOT;
+function applicaMappe(){
+  if(!daApplicare()) return false;
+  location.reload();
+  return true;
+}
+
 function renderMaps(){
   if(!mapList) return;
   mapList.innerHTML='';
@@ -3929,7 +3967,6 @@ function renderMaps(){
           if(!RSTATE.att.length){
             RSTATE.att=[r.id];
             if(!rsave()) return toast(tr().noSave, 9000);
-            return location.reload();
           }
           renderMaps(); showStore();
         }catch(err){
@@ -3938,11 +3975,11 @@ function renderMaps(){
         }
         return;
       }
-      // attivare o disattivare cambia gli indici della rete da cima a fondo:
-      // ricostruirli a caldo è più fragile che ripartire, e i dati sono già in cache
+      // la scelta si salva subito ma si APPLICA all'uscita dal pannello: vedi
+      // `applicaMappe()`. Così se ne possono accendere tre di fila senza uscire.
       RSTATE.att = att ? RSTATE.att.filter(x=>x!==r.id) : RSTATE.att.concat(r.id);
       if(!rsave()) return toast(tr().noSave, 9000);
-      location.reload();
+      renderMaps(); showStore();
     };
     row.appendChild(bt);
 
@@ -3950,9 +3987,9 @@ function renderMaps(){
       const del=document.createElement('button');
       del.className='rdel'; del.textContent='🗑'; del.title=tr().delMap;
       del.onclick=async()=>{
-        const eraAttiva=RSTATE.att.includes(r.id);
+        // anche cancellare una regione attiva aspetta l'uscita: si sta ancora
+        // sistemando la lista, non è il momento di ripartire
         await removeRegion(r.id);
-        if(eraAttiva) return location.reload();
         renderMaps(); showStore();
       };
       row.appendChild(del);
@@ -3970,6 +4007,14 @@ function renderMaps(){
     w.style.color='#ff8a1e';
     w.textContent = tr().tooMuch(Math.round(mbAtt*6.5));
     mapList.appendChild(w);
+  }
+  /* Con la ricarica differita, fra il tocco e l'effetto passa del tempo: senza una
+     riga che lo dica sembrerebbe che il bottone non abbia fatto niente. */
+  if(daApplicare()){
+    const a=document.createElement('p'); a.className='disc';
+    a.style.color='#4fd6ff';
+    a.textContent = tr().applicaDopo;
+    mapList.appendChild(a);
   }
   // avviso onesto: con regioni lontane le note restano giuste, il disegno si deforma
   if(att.length>1){
@@ -4737,6 +4782,12 @@ async function boot(){
   RSTATE.inst = RSTATE.inst.filter(id=>rById(id));
   RSTATE.att  = RSTATE.att.filter(id=>rById(id) && RSTATE.inst.includes(id));
   rsave();
+  /* La firma di riferimento si prende QUI, non dove è dichiarata: là il codice gira
+     mentre il file viene letto, cioè prima di `rload()`, e usciva sempre vuota —
+     con l'effetto che chiudere il pannello Mappe senza aver toccato niente
+     ricaricava l'app per nulla. Va presa dopo la lettura E dopo la potatura delle
+     regioni sparite dal manifesto, se no la potatura stessa conta come modifica. */
+  segnaAvvioMappe();
   /* Una mappa tolta dal manifesto (la Vallonia orientale, finita dentro la
      Vallonia) sparisce dall'elenco ma la sua cache resterebbe lì a occupare
      decine di MB per sempre: si butta. */
