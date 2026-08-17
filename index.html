@@ -606,7 +606,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '138';
+const APPVER = '139';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -938,6 +938,7 @@ const RANGO = {
   sfuma: 3,      // da qui in su sfuma col LOD allontanandosi
   backbone: 2,   // fin qui si disegna nella vista d'insieme
   cima: 4,       // la classificata più bassa: base dei punteggi che pesano il rango
+  veloce: 0,     // scorrimento veloce: autostrada, superstrada e le loro rampe
 };
 
 /* Costo in secondi, non in metri: una statale a 90 batte una stradina a 50 anche
@@ -1411,14 +1412,14 @@ function costruisciManovre(archi){
        In paese una via mantiene il nome anche svoltando ad angolo retto, quindi
        sopra i ~50° si annuncia lo stesso. */
     if(a.e.via && b.e.via===a.e.via && A<0.9) continue;
-    let tipo=null;
+    let tipo=null, silente=false;
     if(A>0.38) tipo=tipoDaAngolo(ang);
     else {
       /* Quasi dritto: conta solo se alla giunzione c'è un'altra strada che esce
          quasi uguale. È lì che si sbaglia — non nelle svolte nette. Il lato si
          decide rispetto all'ALTRO ramo, non rispetto a dritto: se sono tutti e due
          a destra, "tieni la destra" sarebbe falso. */
-      let alt=null;
+      let alt=null, altRank=-1;
       for(const id of (JUN.get(jn)||[])){
         if(id===a.e.id||id===b.e.id) continue;
         const o=E[id]; let oh;
@@ -1428,12 +1429,32 @@ function costruisciManovre(archi){
         if(!percorribile(o,jn)) continue;          // se non ci si può entrare non è un bivio
         const oa=angDiff(oh,usc);
         if(Math.abs(oa)>0.95) continue;
-        if(alt===null || Math.abs(oa)<Math.abs(alt)) alt=oa;
+        if(alt===null || Math.abs(oa)<Math.abs(alt)){ alt=oa; altRank=o.rank }
       }
-      if(alt!==null) tipo = ang>alt ? 'sxk' : 'dxk';
+      if(alt!==null){
+        tipo = ang>alt ? 'sxk' : 'dxk';
+        /* ...ma un bivio è tale solo se i due rami si somigliano. Se il nostro esce
+           molto più dritto dell'altro, o l'altro è una strada nettamente più piccola,
+           quella non è una biforcazione: è una laterale, e noi stiamo solo tirando
+           dritto sulla stessa strada. Prima si annunciava lo stesso, e su una strada
+           con molti innesti la voce parlava a ogni giunzione — la lamentela di Tiago
+           del 17-08: «su una strada dove devo semplicemente continuare dritto su
+           quella strada non c'è bisogno che me lo dica ogni volta che c'è una
+           potenziale giunzione».
+           Non si CANCELLA, si MARCA. Cancellarla farebbe scalare gli indici, e la
+           voce avanza per indice (`nv.mi`) con le chiavi del già-detto costruite su
+           quello: dopo un ricalcolo una manovra verrebbe riannunciata o saltata, un
+           difetto che si sente solo guidando e che sembrerebbe della voce. Marcata,
+           la voce la salta, gli indici restano fermi e il disegno sa di non doverci
+           mettere la freccia.
+           Le due soglie: 0,30 rad ≈ 17° di scarto fra i due rami; il ramo "molto più
+           piccolo" è due classi sotto (rango più alto = strada minore). */
+        const contesa = Math.abs(alt) - A;    // quanto l'altro ramo è più storto del nostro
+        if(contesa>0.30 || (altRank>b.e.rank+1 && contesa>0.12)) silente=true;
+      }
     }
     if(!tipo) continue;
-    grezze.push({k:k+1, cum:c0[k+1], ang, tipo, via:b.e.via||''});
+    grezze.push({k:k+1, cum:c0[k+1], ang, tipo, via:b.e.via||'', silente});
   }
   /* Manovre attaccate e nello STESSO verso = un gesto solo: la rotatoria (entra,
      gira, esce) dava tre istruzioni in 34 metri. Si sommano gli angoli, e la somma
@@ -1441,9 +1462,15 @@ function costruisciManovre(archi){
      verso lascia invece separati gli incroci sfalsati, dove sinistra-poi-destra
      sono davvero due manovre e la somma sarebbe zero. */
   const man=[];
+  /* Le manovre silenti non partecipano alla fusione, né come sorgente né come
+     bersaglio: fondere un gesto vero dentro una prosecuzione ne cambierebbe angolo e
+     tipo, e il conteggio delle uscite in rotatoria si sposterebbe. Per questo si tiene
+     l'indice dell'ultima NON silente invece dell'ultima inserita — una silente in
+     mezzo a due manovre vicine, altrimenti, impedirebbe la loro fusione. */
+  let iu=-1;
   for(const x of grezze){
-    const u=man[man.length-1];
-    if(u && x.cum-u.cum<45){
+    const u = iu>=0 ? man[iu] : null;
+    if(u && !x.silente && x.cum-u.cum<45){
       /* Stesso verso: è un gesto solo spezzato in due archi. */
       let unisci = u.ang*x.ang>0, rot=false;
       if(!unisci){
@@ -1487,6 +1514,7 @@ function costruisciManovre(archi){
       }
     }
     man.push(x);
+    if(!x.silente) iu=man.length-1;
   }
   return {man, c0, tot:cum};
 }
@@ -1498,13 +1526,110 @@ function indiceArchi(archi){
   }
   return m;
 }
-function pathRotta(archi){
-  const p=new Path2D();
+/* `pathRotta` è stato TOLTO il 2026-08-17: `geomRotta` ne ha preso l'unico uso.
+   Non è stato lasciato lì «che male fa»: disegnava gli archi nell'ordine dei loro
+   vertici IGNORANDO il verso di marcia, e senza raccordo degli spigoli. Per una linea
+   ferma è indifferente, ma chi in futuro l'avesse ripescato per una freccia o per una
+   distanza avrebbe avuto il percorso al contrario, e senza nessun errore. È la stessa
+   trappola delle due copie di `path` chiusa lo stesso giorno: la seconda copia non
+   sbaglia oggi, sbaglia il giorno che qualcuno la sceglie. */
+
+/* ============ geometria del percorso ============
+   Prima ogni arco si disegnava per conto suo, nell'ordine dei suoi vertici e senza
+   guardare il verso di marcia. Per una linea ferma è indifferente, ma servivano tre
+   cose che un mucchio di archi slegati non può dare:
+     (a) la direzione VERA di marcia, per orientare le frecce di manovra;
+     (b) le distanze cumulate lungo il percorso, per tagliare il disegno a partire da
+         DOVE SEI invece che dall'inizio di un arco alle spalle;
+     (c) un posto solo dove arrotondare gli spigoli.
+   Quindi: una polilinea unica, in ordine di marcia, con `cum` accanto. */
+function polilineaRotta(archi){
+  const px=[], py=[];
   for(const a of archi){
-    const e=a.e; p.moveTo(e.xy[0],e.xy[1]);
-    for(let i=1;i<e.np;i++) p.lineTo(e.xy[2*i],e.xy[2*i+1]);
+    const e=a.e, n=e.np;
+    if(a.verso>0) for(let i=0;i<n;i++){ px.push(e.xy[2*i]); py.push(e.xy[2*i+1]) }
+    else          for(let i=n-1;i>=0;i--){ px.push(e.xy[2*i]); py.push(e.xy[2*i+1]) }
   }
-  return p;
+  /* Due archi consecutivi condividono il nodo della giunzione: senza togliere il
+     doppione l'arrotondamento ci vede un segmento di lunghezza zero, la direzione
+     esce da una divisione per zero e lo spigolo resta. */
+  const qx=[], qy=[];
+  for(let i=0;i<px.length;i++){
+    const n=qx.length;
+    if(n && Math.abs(px[i]-qx[n-1])<0.05 && Math.abs(py[i]-qy[n-1])<0.05) continue;
+    qx.push(px[i]); qy.push(py[i]);
+  }
+  return [qx,qy];
+}
+/* Raccordo quadratico, NON una spline interpolante.
+   Una Catmull-Rom passa per tutti i punti ma esce dal loro guscio convesso: in curva
+   manderebbe la fascia viola FUORI dalla carreggiata, che è peggio dello spigolo che
+   si vuole togliere. La Bézier quadratica sta dentro il triangolo dei tre punti per
+   costruzione — al peggio taglia l'angolo un po' troppo, mai lo scavalca.
+   Il raccordo si limita a un terzo della gamba più corta: due spigoli vicini non si
+   mangiano a vicenda e su una polilinea fitta non succede niente. */
+const RACC_MAX=14, RACC_ANG=0.07;          // 14 m, e sotto i ~4° lo spigolo non si vede
+function ammorbidisci(qx,qy){
+  const n=qx.length;
+  if(n<3) return [qx,qy];
+  const ox=[qx[0]], oy=[qy[0]];
+  for(let i=1;i<n-1;i++){
+    const ax=qx[i-1],ay=qy[i-1], bx=qx[i],by=qy[i], cx=qx[i+1],cy=qy[i+1];
+    const u1x=bx-ax,u1y=by-ay, u2x=cx-bx,u2y=cy-by;
+    const l1=Math.hypot(u1x,u1y), l2=Math.hypot(u2x,u2y);
+    if(l1<0.1||l2<0.1) continue;
+    const ang=Math.abs(angDiff(Math.atan2(u2y,u2x), Math.atan2(u1y,u1x)));
+    if(ang<RACC_ANG){ ox.push(bx); oy.push(by); continue }
+    const r=Math.min(RACC_MAX, l1/3, l2/3);
+    const p0x=bx-u1x/l1*r, p0y=by-u1y/l1*r;
+    const p2x=bx+u2x/l2*r, p2y=by+u2y/l2*r;
+    // più lo spigolo è chiuso, più punti servono per non rivederlo spezzato
+    const np = ang>1.2 ? 5 : ang>0.5 ? 4 : 3;
+    ox.push(p0x); oy.push(p0y);
+    for(let s=1;s<np;s++){
+      const t=s/np, w=1-t;
+      ox.push(w*w*p0x + 2*w*t*bx + t*t*p2x);
+      oy.push(w*w*p0y + 2*w*t*by + t*t*p2y);
+    }
+    ox.push(p2x); oy.push(p2y);
+  }
+  ox.push(qx[n-1]); oy.push(qy[n-1]);
+  return [ox,oy];
+}
+function geomRotta(archi, tot){
+  const [qx,qy]=polilineaRotta(archi);
+  const [ox,oy]=ammorbidisci(qx,qy);
+  const n=ox.length, xy=new Float32Array(n*2), cum=new Float32Array(n);
+  for(let i=0;i<n;i++){ xy[2*i]=ox[i]; xy[2*i+1]=oy[i] }
+  for(let i=1;i<n;i++) cum[i]=cum[i-1]+Math.hypot(ox[i]-ox[i-1], oy[i]-oy[i-1]);
+  const path=new Path2D();
+  if(n){ path.moveTo(xy[0],xy[1]); for(let i=1;i<n;i++) path.lineTo(xy[2*i],xy[2*i+1]) }
+  const lung=n?cum[n-1]:0;
+  /* Tagliare gli angoli accorcia di qualche metro su tutto il percorso. Il progresso
+     però si misura sugli archi grezzi: `k` riporta l'uno sull'altro, così la finestra
+     di disegno e le frecce restano al loro posto invece di scivolare avanti. */
+  return {xy, np:n, cum, path, lung, k: tot>0 ? lung/tot : 1};
+}
+/* NB: si chiama `indiceLungo` e non `cerca` perché `cerca(t)` esiste già in fondo al
+   file — è la ricerca indirizzi. Le dichiarazioni di funzione sono issate e vince
+   l'ULTIMA: chiamandola `cerca` questa spariva e al suo posto rispondeva la ricerca
+   indirizzi, con `g.cum` passato come stringa da cercare. Nessun errore in console,
+   percorso semplicemente non disegnato. */
+function indiceLungo(cum, d){              // primo indice con cum >= d, dentro i bordi
+  const hi=cum.length-1;
+  if(hi<0) return 0;
+  if(d<=cum[0]) return 0;
+  if(d>=cum[hi]) return hi;
+  let lo=0, h=hi;
+  while(lo<h){ const m=(lo+h)>>1; if(cum[m]<d) lo=m+1; else h=m }
+  return lo;
+}
+function puntoA(g, d){                     // metri lungo il percorso -> punto nel mondo
+  const i=indiceLungo(g.cum, d);
+  if(i<=0) return [g.xy[0], g.xy[1]];
+  const a=g.cum[i-1], b=g.cum[i], t=b>a?(d-a)/(b-a):0;
+  return [g.xy[2*i-2]+(g.xy[2*i]  -g.xy[2*i-2])*t,
+          g.xy[2*i-1]+(g.xy[2*i+1]-g.xy[2*i-1])*t];
 }
 
 function decodePoly(str){                       // -> Float32Array [x,y,...] in metri locali
@@ -1971,6 +2096,11 @@ const T = {
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale',5:'Strada di paese'},
     roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo',
+    /* `roads[]` è indicizzato dal RANGO, e le autostrade entrano come rango 0 come le
+       trunk: quindi un'autostrada uscirebbe come «Statale». La distinzione arriva dal
+       campo `cls` dell'arco (1 rampa, 2 autostrada), non dal rango — chi disegna l'HUD
+       legge queste due quando `cls > 0`. */
+    clsAuto:'Autostrada', clsRampa:'Svincolo',
     localCall:'Strada locale', localSub:'strada urbana: nessuna nota di curva, limite dedotto',
     gWords:['prima','seconda','terza','quarta','quinta','sesta','settima','ottava','nona'],
     cWords:['tornante','uno','due','tre','quattro','cinque','sei'],
@@ -2019,7 +2149,6 @@ const T = {
     navUscite:['prima','seconda','terza','quarta','quinta','sesta'],
     navUscitaPre:'la ', navUscitaPost:' uscita',
     d3gps:'La vista 3D si accende quando guidi: avvia il GPS.',
-    navWarn:'Nei dati non ci sono i divieti di svolta né gli accessi privati, e le autostrade non sono nella rete: la segnaletica vince sempre su di me.',
     navDest:'destinazione',
   },
   en: {
@@ -2034,6 +2163,7 @@ const T = {
     off:'Off mapped roads', offSub:'get closer to a mapped road to resume pacenotes',
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road',5:'Residential street'},
     roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active',
+    clsAuto:'Motorway', clsRampa:'Slip road',
     localCall:'Local road', localSub:'urban street: no corner calls, limit inferred',
     gWords:['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth'],
     cWords:['hairpin','one','two','three','four','five','six'],
@@ -2079,7 +2209,6 @@ const T = {
     navUscite:['first','second','third','fourth','fifth','sixth'],
     navUscitaPre:'take the ', navUscitaPost:' exit',
     d3gps:'The 3D view kicks in while driving: start GPS.',
-    navWarn:'The data has no turn restrictions and no private access, and motorways are not in the network: road signs always beat me.',
     navDest:'destination',
   },
 };
@@ -2471,9 +2600,9 @@ function disegnaPiano(c0,c1,r0,r1){
      curve proprio lungo la strada che stai facendo, cioè cancellava la cosa per cui
      esiste l'app. Sotto, e più largo delle strade, resta una fascia viola ai lati e
      il colore della curva si legge tutto. */
-  if(S.nav){
-    ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=pw(20); ctx.stroke(S.nav.path);
-    ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=pw(12); ctx.stroke(S.nav.path);
+  if(S.nav && S.nav.geo){
+    ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=pw(20); ctx.stroke(S.nav.geo.path);
+    ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=pw(12); ctx.stroke(S.nav.geo.path);
   }
 
   if(nCells<=420){
@@ -2543,12 +2672,20 @@ function disegna3d(c0,c1,r0,r1){
   ctx.lineCap='round'; ctx.lineJoin='round';
   const T=tracciati3d(c0,c1,r0,r1);
   // il percorso sotto la rete, come nella vista piana: se no copre le curve
-  if(S.nav){
-    const nv=S.nav, P=new Path2D(), lim=vista3d()*1.6, da=Math.max(0,nv.k-2);
-    for(let j=da;j<nv.archi.length;j++){
-      if(nv.c0[j]-nv.c0[da]>lim) break;
-      traccia(P, nv.archi[j].e.xy, 0, nv.archi[j].e.np-1);
-    }
+  if(S.nav && S.nav.geo && S.nav.geo.np>1){
+    /* IL BUDGET SI MISURA DA DOVE SEI, non dall'inizio di un arco alle spalle.
+       Prima partiva da `nv.c0[nv.k-2]` e tagliava a `lim` metri da lì: su strade con
+       archi lunghi — le autostrade, ma basta una provinciale senza incroci — i due
+       archi già percorsi si mangiavano tutto il budget e davanti non restava viola.
+       Poi si entrava nell'arco successivo, la finestra si liberava di colpo e il
+       percorso ricompariva. È esattamente il difetto che si vedeva guidando: «invece
+       di essere viola non c'è niente per un po' e poi riappare».
+       Adesso la finestra è [posizione − 140 m, posizione + lim]: la coda dietro serve
+       solo a non lasciare un buco sotto il segnaposto, e non costa budget davanti. */
+    const nv=S.nav, g=nv.geo, lim=vista3d()*1.6, f=(nv.fatto||0)*g.k;
+    const i0=indiceLungo(g.cum, f-140), i1=indiceLungo(g.cum, f+lim);
+    const P=new Path2D();
+    traccia(P, g.xy, i0, i1);
     ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=20; ctx.stroke(P);
     ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=12; ctx.stroke(P);
   }
@@ -3011,8 +3148,52 @@ function disegnaEtichette(now){
 }
 
 /* roba in spazio schermo, uguale nelle due viste */
+/* ============ frecce di manovra ============
+   Un gallone bianco sul percorso dove si svolta o si esce davvero, come fanno i
+   navigatori: la striscia in alto dice la manovra a parole, la freccia dice DOVE.
+   Tre scelte, e ognuna copre un difetto:
+   · solo le manovre UDIBILI — una prosecuzione marcata `silente` non è un gesto, e
+     mettercela sopra rifarebbe a schermo il rumore appena tolto dalla voce;
+   · in spazio schermo, con l'angolo preso proiettando un punto più avanti: in vista
+     inclinata l'angolo del mondo non è quello dello schermo, e una freccia ruotata
+     con l'angolo sbagliato indica una direzione che non esiste;
+   · disegnate SOPRA la rete. Il percorso sta sotto apposta, per non coprire i colori
+     delle curve, ma una freccia coperta dalla strada non si vede — e sono poche. */
+function disegnaFrecce(){
+  const nv=S.nav; if(!nv||!nv.geo||!nv.man||nv.geo.np<2) return;
+  if(S.scale<0.06) return;                       // da lontano sarebbero coriandoli
+  const g=nv.geo, f=(nv.fatto||0)*g.k;
+  const lim = CAM.on ? vista3d()*1.6 : (H/S.scale)*1.1;
+  let n=0;
+  for(let m=nv.mi; m<nv.man.length && n<6; m++){
+    const mn=nv.man[m];
+    if(mn.silente) continue;
+    const d=mn.cum*g.k;
+    if(d < f-25) continue;
+    if(d > f+lim) break;
+    const p0=puntoA(g,d), p1=puntoA(g, Math.min(g.lung, d+16));
+    const s0=w2s(p0[0],p0[1]); if(!s0) continue;
+    const s1=w2s(p1[0],p1[1]); if(!s1) continue;
+    if(s0[0]<-30||s0[1]<-30||s0[0]>W+30||s0[1]>H+30) continue;
+    const ang=Math.atan2(s1[1]-s0[1], s1[0]-s0[0]);
+    // la prima manovra piena, le successive smorzate: l'occhio deve cadere su quella
+    ctx.globalAlpha = n===0 ? 1 : 0.55;
+    ctx.save();
+    ctx.translate(s0[0],s0[1]); ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(10,0); ctx.lineTo(-6.5,-8); ctx.lineTo(-3,0); ctx.lineTo(-6.5,8);
+    ctx.closePath();
+    ctx.lineJoin='round';
+    ctx.strokeStyle='rgba(10,13,16,.75)'; ctx.lineWidth=3.4; ctx.stroke();
+    ctx.fillStyle='#ffffff'; ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha=1;
+    n++;
+  }
+}
 function disegnaSopra(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(S.nav) disegnaFrecce();
   if(S.scale>0.14){
     const r=S.scale>0.8?11:8;
     for(const c of CAMS){
@@ -3262,15 +3443,20 @@ function cameraTickAuto(now){
      la fine dell'arco, e allora è più onesto mostrare la posizione vera. */
   let hdStrada=null;
   if(S.snap && S.snap.e){
-    const e=S.snap.e, pr=projectOn(e,tx,ty);
+    /* Si proietta il FIX, non il punto estrapolato, e poi si CAMMINA sulla strada per
+       i metri fatti da quel fix in qua. Prima si proiettava direttamente
+       l'estrapolazione sul solo arco agganciato, e siccome `projectOn` ritaglia ai
+       capi dell'arco, vicino a una giunzione il segnaposto si fermava e poi saltava
+       avanti: vedi `avanzaSuStrada`. Proiettando il fix, che è un punto vero e non
+       estrapolato, la guardia dei 40 m scatta solo quando si è davvero fuori strada. */
+    const e=S.snap.e, pr=projectOn(e,S.pos[0],S.pos[1]);
     if(pr.d<40){
-      const i=pr.i, ax=e.xy[2*i], ay=e.xy[2*i+1];
-      tx = ax+(e.xy[2*i+2]-ax)*pr.t;
-      ty = ay+(e.xy[2*i+3]-ay)*pr.t;
+      const w=avanzaSuStrada(e, S.snap.dir, pr.i, pr.t, (S.v||0)*dt);
+      tx=w[0]; ty=w[1];
       /* E anche il verso: la direzione del GPS balla a bassa velocità e faceva
          oscillare tutta la mappa, perché in inseguimento la rotazione la comanda lei.
          Quella della strada è ferma per costruzione. */
-      if(S.v>2) hdStrada = segHeading(e,i) + (S.snap.dir<0 ? Math.PI : 0);
+      if(S.v>2) hdStrada = w[2];
     }
   }
   /* `k` è la frazione di strada che la posizione mostrata copre verso quella vera in
@@ -3481,6 +3667,49 @@ function nextEdge(e,dir){
   return best;
 }
 
+/* Prosecuzione da una giunzione: se c'è un percorso, è lui a saperlo. Agli incroci
+   nessuna euristica può indovinare dove si andrà, e la rotta invece lo sa già. */
+function prossimoArco(e,dir){
+  const nv=S.nav;
+  if(nv && nv.idx){
+    const c=nv.idx.get(e.id);
+    if(c) for(const k of c)
+      if(nv.archi[k].verso===dir && k+1<nv.archi.length)
+        return {e:nv.archi[k+1].e, dir:nv.archi[k+1].verso};
+  }
+  return nextEdge(e,dir);
+}
+/* Cammina `metri` in avanti partendo da (i,t) sull'arco `e` percorso nel verso `dir`,
+   ATTRAVERSANDO le giunzioni. Ritorna [x, y, direzione].
+
+   Serve perché `projectOn` blocca la proiezione ai due capi dell'arco (`t` è ritagliato
+   a [0,1] su ogni segmento). Il segnaposto veniva calcolato proiettando il punto
+   ESTRAPOLATO sul solo arco agganciato: a pochi metri dalla fine dell'arco la
+   proiezione si incollava alla giunzione, il segnaposto restava fermo mentre l'auto
+   andava, e ripartiva di scatto quando il fix successivo spostava l'aggancio all'arco
+   dopo. Gli archi sono spezzati a OGNI incrocio, quindi in paese succedeva ogni
+   centinaio di metri: è lo scatto che si vedeva. E quando lo scarto superava i 40 m
+   la guardia lasciava cadere l'aggancio, con un salto secco alla posizione grezza.
+   Camminando sul grafo il punto passa le giunzioni da solo e va a velocità costante. */
+function avanzaSuStrada(e, dir, i, t, metri){
+  let cur=e, cd=dir||1;
+  let d=distAlong(e,i,t);
+  if(cd<0) d=e.len-d;                       // distanza percorsa NEL VERSO DI MARCIA
+  let resta=Math.max(0,metri), giri=0;
+  while(resta>0 && giri++<6){
+    const spazio=cur.len-d;
+    if(resta<=spazio){ d+=resta; break }
+    resta-=spazio;
+    const nx=prossimoArco(cur,cd);
+    if(!nx){ d=cur.len; break }
+    cur=nx.e; cd=nx.dir||1; d=0;
+  }
+  // rimessa in ordine di indice, che è quello in cui `posAt` legge la geometria
+  const dm = cd>0 ? d : cur.len-d;
+  const p = posAt(cur, Math.max(0, Math.min(cur.len, dm)));
+  return [p[0], p[1], segHeading(cur,p[2]) + (cd<0?Math.PI:0)];
+}
+
 /* ============ lookahead ============ */
 function buildAhead(){
   S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[];
@@ -3570,28 +3799,165 @@ function drawIcon(cls,right){
   ni.lineTo(px+Math.cos(hd-2.6)*ah, py+Math.sin(hd-2.6)*ah);
   ni.stroke();
 }
-const voices={it:null,en:null};
-if('speechSynthesis' in window){
-  const pick=()=>{
-    const vs=speechSynthesis.getVoices();
-    voices.it=vs.find(v=>/^it/i.test(v.lang))||null;
-    voices.en=vs.find(v=>/^en/i.test(v.lang))||null;
-  };
-  pick(); speechSynthesis.onvoiceschanged=pick;
+/* ============ voce: clip pre-generate, non speechSynthesis ============
+
+   Su iOS Safari la Web Speech API espone SOLO le voci preinstallate: le
+   Enhanced/Premium che si scaricano da Impostazioni non compaiono in
+   `getVoices()` (risposta di un frameworks engineer Apple nei forum ufficiali).
+   In italiano si resta su «Alice» compatta qualunque cosa faccia il codice di
+   scelta — e infatti il vecchio `vs.find(v=>/^it/.test(v.lang))` pescava proprio
+   quella, che è la prima in ordine alfabetico. Non era una svista da correggere:
+   era un tetto della piattaforma.
+
+   Quindi il vocabolario è chiuso e pre-generato: uno sprite `.m4a` per lingua più
+   un indice con gli offset, riprodotto con Web Audio. 70 clip, ~0,7 MB per lingua,
+   nessuna RAM a runtime, nessuna latenza di sintesi, e funziona offline.
+
+   Le parole vengono dagli onboard italiani trascritti, non da ipotesi: «attenzione»
+   come prefisso, «più»/«meno» attaccati al numero, «apre»/«chiude», «in» per legare
+   due curve che fluiscono l'una nell'altra e «poi» quando c'è uno stacco. */
+const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, sorgente:null};
+
+async function caricaVoce(lang){
+  if(VOCE.buf[lang]) return true;
+  try{
+    const [j,a] = await Promise.all([
+      fetch('voce-'+lang+'.json').then(r=>r.ok?r.json():Promise.reject(r.status)),
+      fetch('voce-'+lang+'.m4a').then(r=>r.ok?r.arrayBuffer():Promise.reject(r.status)),
+    ]);
+    VOCE.ctx = VOCE.ctx || new (window.AudioContext||window.webkitAudioContext)();
+    VOCE.idx[lang] = j.clip;
+    VOCE.buf[lang] = await VOCE.ctx.decodeAudioData(a);
+    return true;
+  }catch(e){ console.warn('voce non caricata ('+lang+'):', e); return false }
 }
-function say(t){
-  if(!S.audio||!('speechSynthesis' in window))return;
+
+/* iOS non lascia partire l'audio fuori da un gesto: il primo tocco che accende il
+   copilota apre il contesto e lo tiene aperto. Senza questo la prima nota è muta. */
+function svegliaVoce(){
+  if(!VOCE.ctx) VOCE.ctx = new (window.AudioContext||window.webkitAudioContext)();
+  if(VOCE.ctx.state==='suspended') VOCE.ctx.resume();
+}
+
+/* Durata di una frase PRIMA di pronunciarla: serve al gestore annunci per sapere
+   quando iniziare, invece di partire a un anticipo fisso e finire dentro la curva.
+   A ritmo da copilota una nota concatenata dura ~4 s, che a 110 all'ora sono 134 m. */
+const GAP = 0.03;
+function durataFrase(chiavi){
+  const ix = VOCE.idx[L]; if(!ix) return 0;
+  let t=0; for(const k of chiavi){ const c=ix[k]; if(c) t += c.d + GAP; }
+  return t;
+}
+
+/* Suona una sequenza di clip. Ritorna la durata totale, 0 se non ha suonato. */
+function dilo(chiavi, urgente){
+  if(!S.audio) return 0;
+  const buf=VOCE.buf[L], ix=VOCE.idx[L];
+  if(!buf||!ix) return 0;
+  svegliaVoce();
+  /* Solo un annuncio urgente interrompe quello in corso. La curva severa batte la
+     manovra: sbagliare strada si rimedia, una curva no. */
+  if(urgente && VOCE.sorgente){ try{VOCE.sorgente.forEach(s=>s.stop())}catch(e){} }
+  if(!urgente && VOCE.fino > VOCE.ctx.currentTime) return 0;   // sta già parlando
+  const t0 = Math.max(VOCE.ctx.currentTime, urgente?0:VOCE.fino||0) + 0.02;
+  let t=t0; const nodi=[];
+  for(const k of chiavi){
+    const c=ix[k]; if(!c) continue;
+    const s=VOCE.ctx.createBufferSource();
+    s.buffer=buf; s.connect(VOCE.ctx.destination);
+    s.start(t, c.t, c.d); nodi.push(s);
+    t += c.d + GAP;
+  }
+  VOCE.sorgente=nodi; VOCE.fino=t;
+  return t-t0;
+}
+VOCE.fino = 0;
+
+/* Messaggi RARI di interfaccia (conferma che l'audio è acceso, ricalcolo): restano
+   sulla voce di sistema. Non sono note di guida, si sentono una volta ogni tanto, e
+   metterli nel vocabolario chiuso significherebbe rigenerare due sprite per una
+   frase che non incide sulla guida. È l'ibrido che la ricerca consigliava: clip per
+   ciò che si sente di continuo, sintesi per il resto. */
+function sayUI(t){
+  if(!S.audio || !('speechSynthesis' in window)) return;
   const u=new SpeechSynthesisUtterance(t);
-  u.lang = L==='it'?'it-IT':'en-GB';
-  if(voices[L])u.voice=voices[L]; u.rate=1.08; speechSynthesis.speak(u);
+  u.lang = L==='it'?'it-IT':'en-GB'; u.rate=1.08;
+  speechSynthesis.speak(u);
 }
+
+/* ---- costruzione della frase ----
+   La marcia NON si dice più. È una mescolanza di due scuole di pacenote che nessun
+   equipaggio vero fa: la scala 1-6 descrive la FORMA della strada, il sistema in
+   marcia alla McRae usa il numero COME marcia — o l'una o l'altro, mai insieme.
+   Misurato: «seconda» costava 1,27 s su 1,95 di frase, per l'informazione meno
+   urgente e già presente a schermo. Il copilota di Rovanperä ha tolto marcia e
+   velocità dalle note per lo stesso motivo. `bestGear` resta e alimenta il riquadro. */
 const isRight = a => a.c.dir ? a.dir<0 : a.dir>0;
 const sideOf = a => tr().sideW[isRight(a)?0:1];
-function phrase(a,withGear){
+
+/* La marcia SI dice, dopo la curva e staccata: «destra tre, seconda».
+   Col cambio automatico no — lì la sceglie l'auto e il riquadro a schermo è già
+   nascosto, quindi dirla sarebbe un'informazione che il pilota non può usare.
+   Il vocabolario arriva alla NONA perché la C43 ha il 9G-TRONIC; le chiavi `g.1..g.9`
+   esistono identiche nelle due lingue, quindi il caso che qui ha già prodotto
+   «undefined» due volte (a 7 e a 9 rapporti, allungando una lingua sola) non può
+   ripresentarsi: se una clip mancasse, `dilo()` la salta invece di dire una parola
+   sbagliata. */
+function chiaviCurva(a, conMarcia){
+  const ch = ['c.'+(isRight(a)?0:1)+'.'+a.c.c];
+  if(conMarcia && !isAuto()){
+    const g = bestGear(curveKmh(a.c.r, a.e, a.dir, a.c.d0));
+    if(VOCE.idx[L] && VOCE.idx[L]['g.'+g]) ch.push('g.'+g);
+  }
+  return ch;
+}
+
+/* In autostrada le note di curva sono rumore: si tace. Il campo `cls` dell'arco
+   vale 0 normale, 1 rampa, 2 autostrada, e arriva dai dataset `meta.v >= 3`.
+   Lettura difensiva: sui dataset vecchi vale 0 e il comportamento non cambia.
+   Sulle RAMPE invece la voce serve eccome — in Vallonia le rampe (6.367) sono più
+   numerose degli archi di autostrada (4.122), e a Bruxelles il rapporto è 4 a 1. */
+const mutoQui = a => (a.e && a.e.cls|0) === 2;
+
+/* Una curva che si passa senza togliere gas non si chiama: nei pacenote veri quella
+   nota non esiste. Il filtro usa `curveKmh`, cioè la STESSA velocità di riferimento
+   che il riquadro mostra e che dipende da `latA()` — stile di guida × tenuta
+   dell'auto. Usare un numero mio al posto di quella farebbe tacere la voce su una
+   curva che lo schermo dichiara impegnativa: sembrerebbe un difetto dei dati e
+   sarebbe un difetto qui. Conseguenza voluta: chi guida in modalità tranquilla
+   sente meno note di chi guida in «fondo chiuso», perché per lui più curve sono
+   davvero irrilevanti. */
+function piatta(a){
+  if(S.v < 8) return false;                      // da fermi non si filtra niente
+  const kmh = curveKmh(a.c.r, a.e, a.dir, a.c.d0);
+  return kmh >= S.v*3.6 + 8;
+}
+/* Su strada a scorrimento veloce le curve larghe non sono curve, sono pieghe: a 130
+   una classe 5 (raggio 140-250 m) o 6 (250-450 m) si prende senza togliere il piede, e
+   annunciarla è rumore che svaluta gli annunci veri. Tiago, guidando: «sulle autostrade
+   e superstrade avvisa solo le curve dalla 4 in poi, la 5 e la 6 sono veramente molto
+   ampie, credo siano inutili».
+
+   Perché `piatta()` non bastava: quel filtro tace quando la curva si prende più veloce
+   di come stai andando, ma in autostrada la velocità di riferimento e quella vera sono
+   vicine — a 130 su una classe 5 il margine non arriva agli 8 km/h che chiede, e la nota
+   partiva. Qui il criterio è categorico e non dipende dall'andatura.
+
+   Il taglio è sul RANGO 0, che da quando le autostrade sono nella rete contiene
+   motorway, trunk e le loro rampe: esattamente le strade dove il raggio grande è la
+   norma. Sulle statali (rango 1) non si tocca niente: lì una curva da 200 m conta.
+
+   E NON tocca il colore sulla mappa: quello resta informazione da guardare quando
+   vuoi, non un'interruzione. Si tace, non si nasconde. */
+const CLASSE_MUTA_VELOCE = 5;          // da questa classe in su (più ampia) non si annuncia
+function troppoAmpia(a){
+  return a.e.rank===RANGO.veloce && a.c.c>=CLASSE_MUTA_VELOCE;
+}
+
+/* Testo per lo SCHERMO: resta leggibile anche quando la voce tace. */
+function phrase(a){
   const s=sideOf(a), t0=tr();
-  let t = a.c.c===0 ? (t0.hairW+s) : (s+' '+t0.cWords[a.c.c]);
-  if(withGear && !isAuto()) t += ', '+t0.gWords[bestGear(curveKmh(a.c.r, a.e, a.dir, a.c.d0))-1];
-  return t;
+  return a.c.c===0 ? (t0.hairW+s) : (s+' '+t0.cWords[a.c.c]);
 }
 
 function updateNote(){
@@ -3612,7 +3978,12 @@ function updateNote(){
     const leadCam=Math.max(250, S.v*15);   // ~15 s all'arrivo (pattern TomTom)
     if(cam0.dist<=leadCam && !S.said.has(cam0.key)){
       S.said.add(cam0.key);
-      say(t0.camVoice+(cam0.cam.ms?', '+t0.lim+' '+cam0.cam.ms:''));
+      /* L'autovelox è URGENTE: interrompe la nota di curva in corso. È l'unico
+         canale che lo fa insieme alla curva severa — gli altri si accodano. */
+      const ch=['a.autovelox'];
+      const lim=cam0.cam.ms;
+      if(lim && VOCE.idx[L] && VOCE.idx[L]['a.lim.'+lim]) ch.push('a.limite','a.lim.'+lim);
+      dilo(ch, true);
     }
   }
   // il banner mostra l'autovelox quando è la cosa più vicina davanti
@@ -3664,21 +4035,50 @@ function updateNote(){
   }
   drawIcon(a.c.c, isRight(a));
 
-  // annuncio: ~4 s prima (min 90 m), con concatenamento
-  const lead=Math.max(90, S.v*4.2);
+  /* ---- quando parlare ----
+     Tre correzioni rispetto al `max(90, v*4.2)` di prima, tutte misurate.
+
+     (a) L'anticipo include la DURATA DELLA FRASE. A ritmo da copilota una nota
+         concatenata dura ~4 s: a 110 all'ora sono 134 m, e con un anticipo fisso
+         la voce finiva dentro la curva invece che prima.
+     (b) Il pavimento non è più in metri ma in SECONDI. I 90 m fissi, sotto i
+         77 km/h, facevano crescere l'anticipo senza limite: 6,5 s a 50 all'ora,
+         10,8 a 30, 32 a 10 — fuori dal ritmo di un copilota, che deve dire la nota
+         abbastanza presto da dare tempo ma non così presto da farla dimenticare.
+     (c) Si somma la distanza di frenata per scendere alla velocità della curva:
+         è il modo in cui ragiona un copilota vero, che tara la chiamata sulla
+         velocità che si aspetta di tenere. */
+  const vRif = curveKmh(a.c.r, a.e, a.dir, a.c.d0)/3.6;
+  const frenata = S.v>vRif ? (S.v*S.v - vRif*vRif)/(2*3.0) : 0;   // 3 m/s², prudente
+  const parlato = durataFrase(chiaviCurva(a, true)) || 1.2;
+  const lead = Math.min(S.v*9, Math.max(S.v*2.2, S.v*(parlato+1.4) + frenata));
   /* Dopo un buco di segnale la voce TACE finché la posizione non è di nuovo
      credibile (vedi `S.gpsBuco`). È la trappola peggiore di tutta questa parte:
      uscendo da una galleria il primo fix è quasi sempre sporco, e riagganciare
      subito vuol dire annunciare una curva sulla strada sbagliata. Una nota mancata
      si perdona, una nota falsa no — meglio un rientro lento e muto che uno pronto e
      bugiardo. La mappa intanto continua a seguirti: si zittisce la voce, non l'app. */
-  if(!a.inside && a.dist<=lead && !S.said.has(a.key) && !S.gpsBuco){
+  if(!a.inside && a.dist<=lead && !S.said.has(a.key) && !S.gpsBuco && !mutoQui(a) && !piatta(a) && !troppoAmpia(a)){
     const now=performance.now();
     if(now-S.lastSaid>900){
       S.said.add(a.key); S.lastSaid=now;
-      let t=phrase(a,true);
-      if(b && b.dist-a.dist<190){ S.said.add(b.key); t+=', e poi '+phrase(b,false) }
-      say(t);
+      /* La marcia si dice solo sulla PRIMA curva della nota: metterla anche sulla
+         seconda farebbe «destra tre seconda in sinistra quattro terza», che è un
+         elenco di numeri, non una nota. */
+      let ch=chiaviCurva(a, true);
+      /* Concatenamento in SECONDI, non in metri. I 190 m fissi erano l'unica soglia
+         del file che non scalava con la velocità: a 80 all'ora valgono 8,5 s
+         (ragionevole), a 30 ne valgono 22,9 — la seconda curva finiva in un «poi»
+         quando era ancora lontanissima nel tempo.
+         «in» quando le due curve fluiscono l'una nell'altra e l'assetto della prima
+         condiziona la seconda; «poi» quando c'è uno stacco. Sono due informazioni di
+         guida diverse, e prima si dicevano tutte e due con «e poi». */
+      if(b && !piatta(b) && !mutoQui(b) && !troppoAmpia(b) && (b.dist-a.dist) <= Math.max(45, S.v*3.2)){
+        S.said.add(b.key);
+        const legato = (b.dist-a.dist) <= Math.max(30, S.v*1.4);
+        ch = ch.concat([legato?'k.in':'k.poi'], chiaviCurva(b, false));
+      }
+      dilo(ch, false);
     }
   }
   // stessa logica della cache dei tracciati: svuotare tutto vorrebbe dire che una
@@ -3797,8 +4197,13 @@ function installaRotta(part, r, dest, jA){
   if(part.e && (!archi.length || archi[0].e.id!==part.e.id || archi[0].verso!==part.verso))
     archi=[{e:part.e, verso:part.verso||1}, ...archi];
   const m=costruisciManovre(archi);
+  const g=geomRotta(archi, m.tot);
   S.nav={archi, c0:m.c0, tot:m.tot, man:m.man, mi:0, k:0,
-         idx:indiceArchi(archi), dest, jA, path:pathRotta(archi),
+         /* Il tracciato del percorso sta in UN posto solo, `geo.path`. Teneva anche un
+            `path` accanto, uguale: funzionava, ma è la trappola classica delle due
+            copie — un ricalcolo che aggiorna `geo` e non `path` disegnerebbe il
+            percorso vecchio senza nessun errore in console. */
+         idx:indiceArchi(archi), dest, jA, geo:g, fatto:0,
          fuori:0, secondi:r.secondi, sn:++NAVSN};
   document.body.classList.add('navon');
   S.need=true;
@@ -3843,6 +4248,11 @@ function progressoNav(){
   nv.k=k;
   const a=nv.archi[k], d=distAlong(a.e,S.snap.i,S.snap.t);
   const fatto = nv.c0[k] + (a.verso>0 ? d : a.e.len-d);
+  /* Il progresso si tiene anche sul nodo: il disegno gira a ogni fotogramma, il
+     progresso solo a ogni fix, e quando l'aggancio manca questa resta l'ultima
+     posizione buona nota. Senza, il percorso disegnato non saprebbe da dove partire
+     nei fotogrammi in cui `progressoNav` non ha risposto. */
+  nv.fatto = fatto;
   return {fatto, restano:Math.max(0, nv.tot-fatto)};
 }
 function tempoRestante(fatto){
@@ -3881,12 +4291,26 @@ function tickNav(){
      Orvieto è su strade che nella rete annotata non ci sono — quindi si controlla
      anche la distanza dal punto vero. */
   if(pr.restano<70 || (S.pos && Math.hypot(S.pos[0]-nv.dest.x, S.pos[1]-nv.dest.y)<70)){
-    say(t0.navTurn.arr); fermaNav(t0.navArr); return;
+    dilo(['n.arr'], true); fermaNav(t0.navArr); return;
   }
 
   while(nv.mi<nv.man.length && nv.man[nv.mi].cum - pr.fatto < -20) nv.mi++;
   const mn = nv.man[nv.mi] || null;
   const dm = mn ? Math.max(0, mn.cum - pr.fatto) : pr.restano;
+  /* Le manovre marcate `silente` restano nella lista ma non si annunciano: sono le
+     prosecuzioni sulla stessa strada attraverso una giunzione, che il riconoscimento
+     a monte segna invece di cancellare. Restano perché la voce avanza per INDICE
+     (`nv.mi`) e le chiavi del già-detto sono costruite su quello: togliendole, gli
+     indici scalerebbero e dopo un ricalcolo una manovra verrebbe riannunciata o
+     saltata — un difetto che si vede solo guidando e che sembrerebbe della voce.
+
+     La distanza per la VOCE è quella della prossima manovra UDIBILE, non della
+     prossima e basta: se no l'app direbbe «fra trecento metri» riferito a qualcosa
+     che poi non annuncia, e resterebbe zitta. Lo schermo continua a usare `dm`. */
+  let iv = nv.mi;
+  while(nv.man[iv] && nv.man[iv].silente) iv++;
+  const mv = nv.man[iv] || null;                      // manovra da dire
+  const dv = mv ? Math.max(0, mv.cum - pr.fatto) : pr.restano;
   /* In rotatoria si annuncia l'USCITA, non il lato: la rotonda si percorre in un
      verso solo, e dire «gira a sinistra» invita a farla al contrario. Se per qualche
      motivo l'uscita non si è potuta contare si ricade sul lato, che è comunque meglio
@@ -3902,15 +4326,34 @@ function tickNav(){
   navMin.textContent = minTxt(tempoRestante(pr.fatto));
   disegnaNavIcona(mn ? mn.ang : 0);
 
-  if(mn){
+  if(mv){
     const lontano=Math.max(260, S.v*13), vicino=Math.max(50, S.v*3);
-    const kf='nf'+nv.sn+':'+nv.mi, kv='nv'+nv.sn+':'+nv.mi;
+    const kf='nf'+nv.sn+':'+iv, kv='nv'+nv.sn+':'+iv;
+    const mn = mv, dm = dv;      // da qui in giù si ragiona sulla manovra UDIBILE
     const now=performance.now();
+    /* La frase della manovra in clip. Precedenza ORDINATA, non esclusiva: prima la
+       rotatoria vera (tag OSM `junction=roundabout`, dato autorevole), poi la rampa,
+       poi il caso normale. Esistono archi che sono TUTTI E DUE — gli svincoli ad
+       anello, 4 in Vallonia — e lì la frase giusta è quella della rotatoria. Con
+       «se rampa allora svincolo» si sbaglierebbero proprio quelli, cioè i punti dove
+       sbagliare la frase ti fa uscire dalla parte storta. */
+    const clsArco = (mn.e && mn.e.cls|0) || 0;
+    let ch;
+    if(mn.rot && mn.uscita>=1) ch=['n.rot','n.usc.'+Math.min(mn.uscita,6)];
+    else if(mn.rot)            ch=['n.rot', 'n.'+mn.tipo];
+    else if(clsArco===1)       ch=['n.svincolo','n.uscita'];
+    else                       ch=['n.'+mn.tipo];
+    ch = ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]);
     if(dm<=vicino && !S.said.has(kv)){
-      S.said.add(kv); S.said.add(kf); S.lastSaid=now; say(frase);
+      S.said.add(kv); S.said.add(kf); S.lastSaid=now;
+      dilo(ch, false);
     } else if(dm<=lontano && !S.said.has(kf) && now-S.lastSaid>900){
       S.said.add(kf); S.lastSaid=now;
-      say(t0.navIn+' '+Math.round(dm/50)*50+' '+t0.navM+' '+frase);
+      /* La distanza si dice solo se il numero tondo esiste nel vocabolario: le
+         clip sono un insieme chiuso, e chiedere una chiave che non c'è farebbe
+         semplicemente saltare la parola senza avvisare. */
+      const d50='d.'+Math.round(dm/50)*50;
+      dilo((VOCE.idx[L]&&VOCE.idx[L][d50] ? [d50,'d.metri'] : []).concat(ch), false);
     }
   }
 }
@@ -4197,8 +4640,20 @@ b3d.onclick=()=>{
 sync3dBtn();
 bGps.onclick=()=>S.mode==='follow'?setMode('free'):startGps();
 if(bDemo) bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
+/* Questo tocco è anche l'unico momento in cui iOS lascia aprire il contesto audio:
+   fuori da un gesto utente il primo suono viene scartato in silenzio. Da qui si
+   sveglia il contesto e si scarica lo sprite della lingua attiva. */
 bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
-  if(S.audio)say(tr().voiceOn); save() };
+  if(S.audio){
+    svegliaVoce();
+    /* «copilota attivo» è la PRIMA cosa che si sente, quindi è la peggiore da
+       lasciare alla voce di sistema: sentirla con la compatta di iOS vanificherebbe
+       tutto il resto proprio nel momento che fa da biglietto da visita. Ha una clip
+       sua, `x.attivo`. La sintesi resta solo se lo sprite non si è caricato — cioè
+       niente rete al primo avvio e cache vuota. */
+    caricaVoce(L).then(ok => ok ? dilo(['x.attivo'], true) : sayUI(tr().voiceOn));
+  }
+  save() };
 const bLang=document.getElementById('bLang');
 function applyLang(){
   bLang.textContent = L==='it' ? 'EN' : 'IT';
@@ -4207,6 +4662,12 @@ function applyLang(){
   document.getElementById('gearLab').textContent = tr().gear;
   renderCar(); updateNote(); renderMaps(); showStore(); setBrandSub();
   if(S.nav) tickNav();          // la striscia è tutta testo tradotto
+  /* Il copilota cambia VOCE insieme alla lingua: sono due sprite con due timbri
+     diversi. Le chiavi però sono identiche per costruzione nelle due lingue, quindi
+     il codice che le chiede non sa nemmeno quale lingua è attiva. È la difesa
+     contro il baco di casa uscito due volte (a 7 e a 9 marce): non si può allungare
+     un vocabolario e dimenticare l'altro. */
+  if(S.audio) caricaVoce(L);
   S.need=true;
 }
 bLang.onclick=()=>{ L = L==='it'?'en':'it'; save(); applyLang(); renderLegend(); };
