@@ -601,7 +601,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '123';
+const APPVER = '124';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1576,8 +1576,26 @@ function edgeLimit(e){
    nell'accelerazione laterale insieme allo stile. Le chiavi m5/m6 restano quelle
    vecchie per non buttare via l'auto gia' salvata sul telefono. */
 const CARS = {
+  /* Parametri FISICI per il tetto di velocita' (vTop piu' sotto): la velocita'
+     massima non e' un dato di rapporti — rapporto x giri darebbe 456 km/h alla 9ª
+     della C43 — ma il punto dove la potenza alle ruote pareggia aerodinamica,
+     rotolamento e pendenza. Quindi si CALCOLA, non si dichiara:
+       cv  = potenza al motore (CV); per la C43 preparata il valore e' prudente e
+             va confermato al banco
+       kg  = massa in ordine di marcia con guidatore
+       cda = Cd x area frontale (m²): quanto buca l'aria. CLA Shooting Brake e'
+             la piu' scivolosa (Cd 0,23 dichiarato), la Fiesta la peggiore
+       crr = attrito di rotolamento (gomme stradali 0,011-0,013)
+       vlim = limitatore elettronico in km/h, dove c'e' (C43: 250 di serie —
+              se la mappa l'ha tolto, correggere qui) [poco sicuro]
+     Controprova del modello sui dati di targa: CLA 136 CV -> 225 calcolati vs
+     220 dichiarati · Fiesta 101 CV -> 184 vs 183 · MiTo QV di serie 170 CV ->
+     220 vs 219 (e' cosi' che e' stato tarato il suo cda: 0,70, corta e tozza).
+     La MiTo preparata esce a 274, ma il cambio finisce prima: in 5ª a 7.500
+     giri fa 270, quindi il tetto suo lo fanno i rapporti, non l'aria. */
   m5: {nm:'Alfa MiTo', sub:'stage 3+ · 320 CV · 350 Nm · 5 marce',
        auto:false, n:5, g:[0.235,0.411,0.605,0.795,1.0], ref:36,
+       cv:320, kg:1240, cda:0.70, crr:0.012,
        boost:3700, rpmLim:7500, grip:1.00,
        d_it:"Full stage 3+, turbo TD04, 320 CV e 350 Nm, cambio manuale a 5 marce, full boost "+
             "da 3.700 a 7.500 giri. La marcia consigliata è la più alta che all'apice resta in "+
@@ -1592,6 +1610,7 @@ const CARS = {
           normalizzati sulla 7ª. Coi paddle la marcia la sceglie chi guida, quindi si suggerisce.
           Fascia utile da diesel OM651 (2.000-4.600), non da turbo benzina. */
        auto:false, n:7, ref:59, grip:0.85, boost:2000, rpmLim:4600,
+       cv:136, kg:1555, cda:0.50, crr:0.011,
        g:[0.1244,0.1976,0.3125,0.4576,0.6186,0.7947,1.0],
        d_it:"Di serie: 2.143 cm³ diesel, 136 CV, 300 Nm già pieni a 1.400 giri, doppia frizione "+
             "7G-DCT a 7 rapporti, 1.555 kg. Con i paddle al volante la marcia la scegli tu, quindi "+
@@ -1612,6 +1631,7 @@ const CARS = {
           il V6 biturbo ha coppia già a 2.000, ma in guida allegra sotto i 3.000 non
           risponde come vuoi. Coi paddle la marcia la scegli tu, quindi si suggerisce. */
        auto:false, n:9, ref:68, grip:1.05, boost:3000, rpmLim:6700,
+       cv:470, kg:1735, cda:0.66, crr:0.012, vlim:250,
        g:[0.1123,0.1855,0.2671,0.3665,0.4967,0.6010,0.6948,0.8382,1.0],
        d_it:"3.0 V6 biturbo M276, 4MATIC, cambio AMG a 9 rapporti coi paddle. Preparazione in "+
             "corso: aspirazione Weistec High Flow, scarico Supersprint completo, downpipe 200 "+
@@ -1639,6 +1659,7 @@ const CARS = {
           Fascia utile da turbo piccolo: 170 Nm già a 1.400 giri e pieni fino a 4.500,
           quindi si parte da 1.800 e non da 3.000 come sui turbo grossi. */
        auto:false, n:6, ref:46, grip:0.95, boost:1800, rpmLim:6000,
+       cv:101, kg:1130, cda:0.69, crr:0.012,
        g:[0.1647,0.2998,0.4648,0.6456,0.8122,1.0],
        d_it:"999 cm³ tre cilindri turbo EcoBoost, 101 CV, 170 Nm da 1.400 a 4.500 giri, "+
             "manuale a 6 marce, poco più di 1.100 kg. È l'opposto della MiTo: la coppia c'è "+
@@ -1657,6 +1678,7 @@ const CARS = {
             "belt was replaced at 100,000 km — the known weak point of this engine."},
   m6: {nm:'Altra auto', sub:'cambio manuale 6 marce',
        auto:false, n:6, g:[0.190,0.3325,0.490,0.6425,0.810,1.0], ref:40,
+       cv:150, kg:1300, cda:0.68, crr:0.012,
        boost:3000, rpmLim:6500, grip:0.92,
        d_it:"Profilo generico per un'altra auto a cambio manuale: sei rapporti, coppia utile fra "+
             "3.000 e 6.500 giri. Tara il rapporto finale col cursore qui sotto.",
@@ -1668,6 +1690,25 @@ const CARS = {
 const boostOf = () => CARS[S.car].boost || 3000;
 const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
 const isAuto = () => !!CARS[S.car].auto;
+
+/* Velocita' massima raggiungibile (km/h): il punto dove la potenza alle ruote
+   pareggia le resistenze. Equilibrio risolto per bisezione su
+     eta*P = 1/2*rho*CdA*v³ + m*g*(crr + pendenza)*v
+   con eta = 0,85 di trasmissione e rho = 1,225. `slope` e' la pendenza in
+   frazione (0,06 = 6%%): oggi i dataset non portano quote, quindi l'app la
+   passa sempre a 0 — il parametro sta qui perche' quando gli archi avranno la
+   pendenza (DEM nel generatore, si accoda a una rigenerazione) il tetto in
+   salita si accende cambiando UNA chiamata, non questa formula.
+   Il limitatore elettronico (`vlim`), dove c'e', taglia sotto il valore fisico.
+   NON entra mai in costo()/tempoArco(): il percorso non dipende dall'auto. */
+function vTop(slope){
+  const c=CARS[S.car], P=(c.cv||150)*735.5*0.85,
+        k=0.5*1.225*(c.cda||0.68), r=(c.kg||1300)*9.81*((c.crr||0.012)+(slope||0));
+  let lo=10, hi=200;                       // m/s
+  for(let i=0;i<40;i++){ const v=(lo+hi)/2; (k*v*v*v + r*v > P) ? hi=v : lo=v; }
+  const fis=lo*3.6;
+  return Math.round(c.vlim ? Math.min(c.vlim, fis) : fis);
+}
 
 /* Stile di guida = accelerazione laterale di riferimento in m/s2, tarata per STRADA
    APERTA. I valori di prima (fino a 4,6) erano da fondo chiuso: su una provinciale
@@ -1729,6 +1770,9 @@ const T = {
     applicaDopo:'Le mappe che hai acceso o spento si caricano quando tocchi Fatto: puoi sceglierne piu\' d\'una senza uscire dal pannello.',
     tooMuch:mb=>'Molte mappe attive (~'+mb+' MB di memoria): sul telefono l\'app rischia di venire chiusa mentre guidi. Tieni attive solo le regioni dove stai andando — restano scaricate lo stesso.',
     inUse:'in uso', boost:'km/h in boost', at:'a', byLimit:'limite',
+    vtopCap:'km/h · ferma alla v. max', vtopOver:'oltre la v. max',
+    vtopLim:'limitatore elettronico', vtopAero:'potenza contro aerodinamica e attrito',
+    vtopNote:(v,p)=>'Velocità massima stimata: '+v+' km/h ('+p+'). Le fasce si fermano lì.',
     calRif:'Marcia di riferimento', calHint:g=>'A 2.000 giri in '+g+' il tachimetro segna:',
     legalOn:'La velocità di riferimento non supera mai il limite della strada: sulle curve larghe è il limite a comandare.',
     legalOff:'La velocità di riferimento ignora il limite: mostra solo quello che la curva permette. Da usare a fondo chiuso.',
@@ -1790,6 +1834,9 @@ const T = {
     applicaDopo:'Maps you switched on or off load when you tap Done: you can pick several without leaving this panel.',
     tooMuch:mb=>'A lot of active maps (~'+mb+' MB of memory): on a phone the app may get killed while you drive. Keep active only the regions you are heading to — they stay downloaded anyway.',
     inUse:'in use', boost:'km/h on boost', at:'at', byLimit:'limit',
+    vtopCap:'km/h · stops at top speed', vtopOver:'beyond top speed',
+    vtopLim:'electronic limiter', vtopAero:'power vs drag and rolling resistance',
+    vtopNote:(v,p)=>'Estimated top speed: '+v+' km/h ('+p+'). Gear ranges stop there.',
     calRif:'Reference gear', calHint:g=>'At 2,000 rpm in '+g+' the speedo reads:',
     legalOn:'The reference speed never exceeds the road limit: on open corners the limit is what rules.',
     legalOff:'The reference speed ignores the limit and shows only what the corner allows. For closed roads.',
@@ -1874,6 +1921,7 @@ const kmhRif = g => Math.round(CARS[S.car].g[g-1]*S.cal*RPM_RIF/1000);
    - tornanti: se la 2ª tiene si preferisce alla 1ª (trazione in uscita)
    Le soglie sono relative alla fascia utile dell'auto scelta, non più fisse sulla MiTo. */
 function bestGear(kmh){
+  kmh=Math.min(kmh, vTop(0));   // sopra la v. max dell'auto non esiste una marcia giusta
   const t=gearKmh(), n=t.length, lo=boostOf()-50, hi=rpmLimOf()-600;
   let pick=null;
   for(let g=n; g>=1; g--){
@@ -4067,10 +4115,21 @@ const carChips=document.getElementById('carChips'), styleChips=document.getEleme
       gearBox=document.getElementById('gearBox'), legalChk=document.getElementById('legalChk'),
       legalDesc=document.getElementById('legalDesc');
 function gearTableHtml(){
-  const t=gearKmh(), lo=boostOf(), hi=rpmLimOf();
-  return t.map((v,i)=>
-    '<div><b>'+(i+1)+'ª</b>'+Math.round(v*lo/1000)+'–'+Math.round(v*hi/1000)+
-    '<br><span style="opacity:.6">'+tr().boost+'</span></div>').join('');
+  /* Il tetto (vTop) si applica QUI, alla presentazione, e non dentro gearKmh:
+     gearKmh e' il rapporto fisico giri->km/h da cui la taratura risale ai giri,
+     e limarlo falserebbe cursore e marcia consigliata. */
+  const t=gearKmh(), lo=boostOf(), hi=rpmLimOf(), top=vTop(0), c=CARS[S.car];
+  const celle=t.map((v,i)=>{
+    const a=Math.round(v*lo/1000), b=Math.round(v*hi/1000);
+    if(a>=top) return '<div style="opacity:.45"><b>'+(i+1)+'ª</b>&gt; '+top+
+      '<br><span style="opacity:.6">'+tr().vtopOver+'</span></div>';
+    const capped=b>top;
+    return '<div><b>'+(i+1)+'ª</b>'+a+'–'+(capped?top:b)+
+      '<br><span style="opacity:.6">'+(capped?tr().vtopCap:tr().boost)+'</span></div>';
+  }).join('');
+  const perche = c.vlim && vTop(0)===c.vlim ? tr().vtopLim : tr().vtopAero;
+  return celle+'<div style="grid-column:1/-1;opacity:.55;font-size:.85em;padding-top:2px">'+
+    tr().vtopNote(top, perche)+'</div>';
 }
 function renderCar(){
   carChips.innerHTML='';
