@@ -601,7 +601,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '125';
+const APPVER = '126';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -929,9 +929,40 @@ const PEN_MINORE = 3.5, ENTRO_MINORE = 40, PEN_INVERSIONE = 60;
    `len/limite`, e l'euristica resta la linea d'aria a 110 km/h — quindi continua a
    non sovrastimare mai, che è la condizione per non rompere la ricerca. */
 const A_LAT_ROTTA = 3.0;                    // m/s², guidatore normale
+/* CALIBRAZIONE PER CLASSE DI STRADA — il pezzo che raddrizza le SCELTE, non l'ETA.
+   Misurato da una sessione che ha confrontato 420 tratte lombarde con OSRM e Valhalla,
+   partenza e arrivo identici: il copilota sceglie percorsi lunghi come i loro (rapporto
+   distanza 1,002) ma li crede più rapidi — e il gonfiaggio NON è uniforme fra classi.
+   Un errore non uniforme non produce solo un'ETA sbagliata: **ribalta la classifica fra
+   due alternative**, quindi fa scegliere la strada peggiore. Il caso peggiore del loro
+   campione: Castel Goffredo→Mede, 195 km creduti 120 minuti contro 163 km in 135 di
+   OSRM, con lo 0,6% di percorso in comune.
+
+   Letto per quello che dice, il difetto NON è «ottimista ovunque»: è che **sopravvaluta
+   le strade minori rispetto alle grandi**, ed è precisamente il motivo per cui infila
+   stradine invece di restare sulla nazionale.
+
+   I fattori sono normalizzati sul gonfiaggio medio pesato sui km (1,218), così l'ETA
+   complessiva del percorso mediano NON cambia e cambia solo la classifica. Scelta
+   deliberata: questa è l'app di uno che guida forte, e allineare il livello assoluto a
+   un guidatore medio è un'altra decisione, da prendere a parte.
+
+   Una deviazione dalla tabella ricevuta, e il motivo: rifacendo la normalizzazione anche
+   col metro di Valhalla, i due riferimenti concordano sulla DIREZIONE della correzione
+   su tutte le classi tranne `secondary`, dove OSRM la vuole più veloce (1,127) e Valhalla
+   più lenta (0,962). Lì la correzione non ha una forchetta, ha un **segno incerto**:
+   resta 1. Le classi di cui fidarsi senza riserve sono `trunk` (19.290 km, riferimenti
+   al 4%) e `unclassified` (1.054 km, riferimenti al 100%); `residential` ha 147 km
+   spalmati su 348 tratte, cioè 0,4 km per tratta — stima mal condizionata, e il valore
+   scelto è comunque il più mite fra i due metri (0,59 contro lo 0,43 di Valhalla). */
+const CAL_CLASSE = [0.98, 1.15, 1.00, 0.99, 0.75, 0.59];   // per rango, 0=trunk … 5=residential
 function tempoArco(e){
   if(e._t!==undefined) return e._t;
-  const lim = Math.max(20, edgeLimit(e).v)/3.6;        // m/s
+  /* Il tetto resta `VMAX_RETE`: senza, un fattore maggiore di 1 potrebbe far salire la
+     velocità effettiva sopra il massimo che l'euristica di A* assume, e l'ammissibilità
+     salterebbe di nuovo — proprio il difetto corretto stamattina. */
+  const cal = CAL_CLASSE[e.rank] || 1;
+  const lim = Math.min(VMAX_RETE, Math.max(20, edgeLimit(e).v)*cal/3.6);   // m/s
   let t=0, curvo=0;
   for(const c of e.curves){
     const d0=Math.max(0,c.d0), d1=Math.min(e.len,c.d1);
