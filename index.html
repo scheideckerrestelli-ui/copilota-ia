@@ -601,7 +601,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '126';
+const APPVER = '127';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -955,13 +955,46 @@ const A_LAT_ROTTA = 3.0;                    // m/s², guidatore normale
    al 4%) e `unclassified` (1.054 km, riferimenti al 100%); `residential` ha 147 km
    spalmati su 348 tratte, cioè 0,4 km per tratta — stima mal condizionata, e il valore
    scelto è comunque il più mite fra i due metri (0,59 contro lo 0,43 di Valhalla). */
-const CAL_CLASSE = [0.98, 1.15, 1.00, 0.99, 0.75, 0.59];   // per rango, 0=trunk … 5=residential
+/* I FATTORI NON SONO UNIVERSALI: vanno PER PAESE. Misurato su due campioni da 420
+   tratte ciascuno, stesso metodo e stesso riferimento (OSRM), Lombardia e Belgio:
+
+     colonna A          trunk  primary  second.  tertiary  unclass.  resid.
+     Lombardia (IT)     0,982   1,149    1,127     0,990     0,747    0,585
+     Belgio    (BE)     0,998   1,023    1,052     0,954     0,884    0,923
+
+   In Belgio la correzione sta TUTTA fra 0,88 e 1,05: l'errore c'è (ottimismo del 25%,
+   praticamente identico a quello lombardo) ma è quasi UNIFORME fra le classi. In
+   Lombardia va da 0,585 a 1,149. Applicare i fattori lombardi al Belgio introdurrebbe
+   una distorsione che lì non esiste — su `unclassified` e `residential` si sbaglierebbe
+   di parecchio e nella direzione sbagliata.
+
+   E il meccanismo si vede due volte, che è la parte convincente: sovrapposizione dei
+   percorsi con OSRM **0,926 in Belgio contro 0,795 in Lombardia**, con il tempo
+   complessivo sbagliato allo stesso identico modo nei due paesi (0,790 e 0,796). Stesso
+   router, stesso ottimismo, non-uniformità diversa → accordo sui percorsi diverso. Non
+   è una correlazione, è il meccanismo osservato in due esperimenti naturali.
+
+   `secondary` resta 1 in tutti e due: il campione belga usa lo STESSO riferimento del
+   lombardo, quindi non è una conferma indipendente — dice che OSRM è coerente con sé
+   stesso, non che ha ragione. L'ambiguità è fra OSRM (la vuole più veloce) e Valhalla
+   (più lenta), e la scioglierà un terzo metro o le tracce GPS di Tiago, che sono
+   l'unica verità vera. Con 2.200-2.900 km in gioco è la riga da non muovere al buio.
+
+   La granularità è il PAESE e non la regione perché è lì che sta la causa: i limiti di
+   default cambiano per paese (e dentro il Belgio per regione: 70 in Fiandre, 90 in
+   Vallonia, 30 a Bruxelles). Se un domani servisse più fine, si aggiunge una riga. */
+const CAL_BE = new Set(['brussels','flanders','wallonia','wallonia_de','belgium']);
+const CAL_PAESE = {
+  it: [0.98, 1.15, 1.00, 0.99, 0.75, 0.59],
+  be: [1.00, 1.02, 1.00, 0.95, 0.88, 0.92],
+};
+const calDi = e => (CAL_BE.has(e.rg) ? CAL_PAESE.be : CAL_PAESE.it)[e.rank] || 1;
 function tempoArco(e){
   if(e._t!==undefined) return e._t;
   /* Il tetto resta `VMAX_RETE`: senza, un fattore maggiore di 1 potrebbe far salire la
      velocità effettiva sopra il massimo che l'euristica di A* assume, e l'ammissibilità
      salterebbe di nuovo — proprio il difetto corretto stamattina. */
-  const cal = CAL_CLASSE[e.rank] || 1;
+  const cal = calDi(e);
   const lim = Math.min(VMAX_RETE, Math.max(20, edgeLimit(e).v)*cal/3.6);   // m/s
   let t=0, curvo=0;
   for(const c of e.curves){
