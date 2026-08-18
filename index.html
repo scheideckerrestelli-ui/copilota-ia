@@ -42,6 +42,38 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
        tranne nella app installata (vedi sotto). */
     --gapalto:0px;
     --alto:calc(max(8px, env(safe-area-inset-top)) + var(--gapalto));
+    /* Colori che prima erano scritti a mano dentro le regole: qui perche' il tema
+       chiaro li deve poter scambiare tutti in un posto solo. */
+    --velo:rgba(20,26,32,.97); --velo2:rgba(20,26,32,.98);
+    --suaccento:#0c1013; --linea2:#1e262e; --bordo2:#2b3640;
+    --fondo2:#151b22; --fondo3:#1a2129; --pericolo:#ff5a5a;
+    --evidenza:rgba(79,214,255,.06);
+  }
+  /* ============ tema chiaro ============
+     Non e' l'inverso del tema scuro: e' l'inverso del CORPO STRADA.
+     Misurato il 2026-08-18 col rapporto di contrasto WCAG. Il primo tentativo —
+     fondo chiaro e colori delle curve invariati sopra — e' sbagliato e si vede dai
+     numeri: la classe 4 (giallo) contro un fondo #e9eef3 fa 1,11, cioe' sparisce.
+     Ma i colori delle curve NON toccano mai il fondo: si disegnano sopra il corpo
+     strada, che e' piu' largo di loro (7,6 px contro 5,6-6,4). Quello che conta e'
+     il contrasto contro il CORPO, e li' basta invertirlo.
+       oggi (scuro):  corpo #39434d su fondo #101418  ->  1,84
+                      peggiore colore di curva sul corpo -> 2,82
+       chiaro:        corpo #2b3540 su fondo #e9eef3   -> 10,67
+                      peggiore colore di curva sul corpo -> 3,48
+     Cioe' il tema chiaro NON e' un compromesso: la strada si stacca dal fondo sei
+     volte meglio, e le curve si leggono meglio di adesso. Il tema scuro resta il
+     predefinito perche' di notte abbaglia meno, non perche' si veda meglio.
+     Le classi di curva, l'arancione d'allarme, il rosso di fuori limite e gli
+     scudetti stradali NON cambiano mai: sono il linguaggio della mappa e un
+     cartello vero, e un colore che cambia significato col tema e' un bug. */
+  :root[data-tema="chiaro"]{
+    --bg:#e9eef3; --panel:#ffffff; --panel2:#f3f7fa; --line:#c6d0da;
+    --ink:#16202a; --ink2:#5a6774; --accent:#0b6fd0;
+    --velo:rgba(255,255,255,.97); --velo2:rgba(255,255,255,.98);
+    --suaccento:#ffffff; --linea2:#dde5ec; --bordo2:#c2ccd6;
+    --fondo2:#eef2f6; --fondo3:#e2eaf1; --pericolo:#c62828;
+    --evidenza:rgba(11,111,208,.09);
   }
   /* Nella app aggiunta alla schermata Home, sull'iPhone, la striscia subito sotto
      l'isola dinamica spegne quello che ci finisce dentro: marchio, EN e bussola
@@ -70,14 +102,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      essere larga quanto serve invece che spremuta in un terzo di schermo. */
   .top .search{max-width:none}
   .top > *{pointer-events:auto}
-  .brand{background:rgba(20,26,32,.97);border:1px solid var(--line);border-radius:11px;
+  .brand{background:var(--velo);border:1px solid var(--line);border-radius:11px;
          padding:7px 11px;flex:none}
   .brand h1{font-family:var(--font-d);font-size:15px;letter-spacing:.06em;text-transform:uppercase;
             font-weight:600;line-height:1;white-space:nowrap}
   .brand h1 span{color:var(--accent)}
   .brand .sub{font-size:10px;color:var(--ink2);margin-top:3px;font-variant-numeric:tabular-nums}
   .search{position:relative;flex:1;min-width:0;max-width:280px}
-  .search input{width:100%;background:rgba(20,26,32,.97);border:1px solid var(--line);
+  .search input{width:100%;background:var(--velo);border:1px solid var(--line);
     border-radius:11px;padding:10px 12px;color:var(--ink);font-size:13.5px}
   .search input::placeholder{color:var(--ink2)}
   .results{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel);
@@ -101,7 +133,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .results .rr .nm .txt{flex:1;min-width:0;overflow:hidden}
   /* la freccia dice dove porta il tocco, senza essere un secondo bersaglio */
   .results .rr .nm .fr{flex:none;width:22px;height:22px;border-radius:50%;
-    background:var(--accent);color:#0c1013;display:grid;place-items:center;
+    background:var(--accent);color:var(--suaccento);display:grid;place-items:center;
     font-size:12px;line-height:1;font-weight:700}
   /* Due righe per risultato, come su qualsiasi navigatore vero: il nome della via
      non basta a distinguerla — di "Rue de l'Église" in Vallonia ce ne sono 180.
@@ -123,25 +155,25 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
         display:flex;flex-direction:column;align-items:center;gap:13px;z-index:5}
   .rail{display:flex;flex-direction:column;gap:7px}
   .rbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);
-        background:rgba(20,26,32,.97);cursor:pointer;display:grid;place-items:center;
+        background:var(--velo);cursor:pointer;display:grid;place-items:center;
         }
   .rbtn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;
             stroke-linecap:round;stroke-linejoin:round}
-  .rbtn.on{background:var(--accent);border-color:var(--accent);color:#0c1013}
+  .rbtn.on{background:var(--accent);border-color:var(--accent);color:var(--suaccento)}
   /* Bussola e 3D stanno insieme in alto a destra, come su Google Maps: l'ago
      rimette a nord, il gettone sotto inclina la vista. Erano due comandi in due
      posti diversi (l'ago qui, il 3D in fondo alla colonna a destra) e per accendere
      la vista guida bisognava sapere dov'era il bottone. */
   .cwrap{display:flex;flex-direction:column;align-items:center;gap:4px}
   .compass{width:44px;height:44px;
-    border-radius:50%;border:1px solid var(--line);background:rgba(20,26,32,.97);
+    border-radius:50%;border:1px solid var(--line);background:var(--velo);
     display:grid;place-items:center;cursor:pointer}
   .compass svg{width:23px;height:23px}
   .c3d{width:44px;height:21px;border-radius:11px;border:1px solid var(--line);
-    background:rgba(20,26,32,.97);color:var(--ink2);cursor:pointer;
+    background:var(--velo);color:var(--ink2);cursor:pointer;
     font-family:var(--font-d);font-size:10px;letter-spacing:.09em;line-height:1;
     display:grid;place-items:center;padding:0}
-  .c3d.on{background:var(--accent);border-color:var(--accent);color:#0c1013}
+  .c3d.on{background:var(--accent);border-color:var(--accent);color:var(--suaccento)}
   .scalebar{position:fixed;right:10px;bottom:max(10px,env(safe-area-inset-bottom));
     font-size:10.5px;color:var(--ink2);text-align:right;font-variant-numeric:tabular-nums;
     pointer-events:none}
@@ -154,7 +186,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      i navigatori, quindi non c'è niente da imparare. */
   .nav{position:fixed;left:8px;right:8px;top:calc(var(--alto) + 54px);
     max-width:660px;margin:0 auto;display:none;align-items:center;gap:10px;z-index:7;
-    background:rgba(20,26,32,.98);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
+    background:var(--velo2);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
   .nav.show{display:flex}
   .nav canvas{width:46px;height:46px;flex:none}
   .nav .txt{min-width:0;flex:1}
@@ -174,7 +206,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* ---- banner nota ---- */
   .note{position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom));
     transform:translateX(-50%);display:none;align-items:center;gap:12px;
-    background:rgba(20,26,32,.98);border:1px solid var(--line);border-radius:16px;
+    background:var(--velo2);border:1px solid var(--line);border-radius:16px;
     padding:9px 14px 9px 10px;max-width:min(96vw,660px);z-index:6}
   .note.show{display:flex}
   .note canvas{width:58px;height:58px;flex:none}
@@ -212,7 +244,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .hud{position:fixed;left:8px;bottom:max(10px,env(safe-area-inset-bottom));display:none;
        flex-direction:column;gap:6px;z-index:5}
   .hud.show{display:flex}
-  .tile{background:rgba(20,26,32,.97);border:1px solid var(--line);border-radius:11px;
+  .tile{background:var(--velo);border:1px solid var(--line);border-radius:11px;
         padding:6px 10px;text-align:center}
   .tile .v{font-family:var(--font-d);font-weight:600;font-size:23px;line-height:1;
            font-variant-numeric:tabular-nums}
@@ -249,7 +281,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .row2{display:flex;gap:8px;flex-wrap:wrap}
   .chip{flex:1;min-width:96px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;
     padding:9px 8px;text-align:center;cursor:pointer;font-size:12px}
-  .chip.on{background:var(--accent);border-color:var(--accent);color:#0c1013;font-weight:600}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:var(--suaccento);font-weight:600}
   .chip b{display:block;font-family:var(--font-d);font-size:14px;letter-spacing:.04em;margin-bottom:2px}
   /* chip della marcia di riferimento: piccole, una accanto all'altra, non larghe
      come quelle delle auto — sono nove al massimo e devono stare su due righe */
@@ -264,7 +296,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .gears div{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 2px;
     text-align:center;font-size:10px;color:var(--ink2);font-variant-numeric:tabular-nums}
   .gears div b{display:block;font-family:var(--font-d);font-size:14px;color:var(--ink)}
-  .btn{width:100%;padding:11px;border-radius:11px;border:none;background:var(--accent);color:#0c1013;
+  .btn{width:100%;padding:11px;border-radius:11px;border:none;background:var(--accent);color:var(--suaccento);
     font-family:var(--font-d);font-size:14px;letter-spacing:.07em;text-transform:uppercase;
     font-weight:600;cursor:pointer;margin-top:16px}
   .btn.ghost{background:none;border:1px solid var(--line);color:var(--ink)}
@@ -315,32 +347,32 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* righe del pannello Impostazioni */
   #sheetSet .brand{background:none;border:0;padding:0;margin-bottom:16px}
   .setrow{display:flex;align-items:center;gap:10px;padding:11px 0;
-    border-bottom:1px solid #1e262e;font-size:14.5px}
+    border-bottom:1px solid var(--linea2);font-size:14.5px}
   .setrow > span{flex:1}
   .setrow .setval{width:auto;height:auto;padding:8px 14px;font-family:var(--font-d);
     font-size:13px;letter-spacing:.06em;color:var(--accent)}
   .setnav{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;
-    background:none;border:0;border-bottom:1px solid #1e262e;color:var(--ink);
+    background:none;border:0;border-bottom:1px solid var(--linea2);color:var(--ink);
     font:inherit;font-size:14.5px;text-align:left;cursor:pointer}
   .setnav svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;
     stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--ink2)}
   .setnav > span{flex:1}
   .setnav i{font-style:normal;color:var(--ink2);font-size:18px;line-height:1}
   .setnav[hidden]{display:none}
-  .rrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1e262e}
+  .rrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--linea2)}
   .rrow:last-of-type{border-bottom:0}
   .rrow .rnm{flex:1;min-width:0}
   .rrow .rnm b{display:block;font-size:15px;line-height:1.25}
   .rrow .rnm span{font-size:11.5px;color:var(--ink2);letter-spacing:.02em}
-  .rrow .rbt{flex:none;border:1px solid #2b3640;border-radius:9px;padding:8px 12px;
-    font:inherit;font-size:12.5px;background:#151b22;color:var(--ink);cursor:pointer;
+  .rrow .rbt{flex:none;border:1px solid var(--bordo2);border-radius:9px;padding:8px 12px;
+    font:inherit;font-size:12.5px;background:var(--fondo2);color:var(--ink);cursor:pointer;
     min-width:92px;text-align:center;font-variant-numeric:tabular-nums}
-  .rrow .rbt.on{background:var(--accent);color:#08121a;border-color:var(--accent);font-weight:600}
+  .rrow .rbt.on{background:var(--accent);color:var(--suaccento);border-color:var(--accent);font-weight:600}
   .rrow .rbt:disabled{opacity:.6;cursor:default}
   .rrow .rdel{flex:none;width:34px;height:34px;border:0;background:none;color:var(--ink2);
     cursor:pointer;font-size:17px;line-height:1;border-radius:8px}
-  .rrow .rdel:hover{color:#ff5a5a;background:#1a2129}
-  .rrow.daattivare{background:rgba(79,214,255,.06);border-radius:9px;padding-left:8px;padding-right:8px}
+  .rrow .rdel:hover{color:var(--pericolo);background:var(--fondo3)}
+  .rrow.daattivare{background:var(--evidenza);border-radius:9px;padding-left:8px;padding-right:8px}
   .rrow .rbt.vai{border-color:var(--accent);color:var(--accent);font-weight:600}
   .rrow.here .rnm b::after{content:' ●';color:var(--accent);font-size:11px;vertical-align:2px}
 </style>
@@ -441,6 +473,10 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <div class="setrow">
     <span data-lang="it">Lingua e voce</span><span data-lang="en">Language and voice</span>
     <button class="rbtn setval" id="bLang" title="Language">EN</button>
+  </div>
+  <div class="setrow">
+    <span data-lang="it">Aspetto</span><span data-lang="en">Appearance</span>
+    <button class="rbtn setval" id="bTema" title="Tema / Theme"></button>
   </div>
   <button class="setnav" id="bMaps" hidden>
     <svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"></path><path d="M9 4.5v12.7M15 6.8v12.7"></path></svg>
@@ -637,7 +673,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '144';
+const APPVER = '147';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -848,7 +884,36 @@ const CLS = [
   {col:'#2fce7a', nm:'6', wd:'sei',     rg:'250 – 450 m'},
   {col:'#47525c', nm:'RETTO', wd:'',    rg:'oltre 450 m'},
 ];
-const ACCENT='#4fd6ff', BG='#101418', INK2='#8b98a5';
+/* Colori del DISEGNO che cambiano col tema. Quello che NON sta qui non cambia mai:
+   le classi di curva (CLS), l'arancione d'allarme, il rosso di fuori limite, gli
+   scudetti stradali e il cartello del limite. Sono il linguaggio della mappa e dei
+   cartelli veri: un colore che cambia significato col tema e' un baco, non un tema.
+   Il perche' dei valori chiari sta nella nota del foglio di stile: si tara sul
+   CORPO STRADA, non sul fondo. */
+const TEMI = {
+  scuro:  {bg:'#101418', corpo:'#39434d', grigia:'#1b2229', ink2:'#8b98a5',
+           accent:'#4fd6ff', inkVia:'#c8d2db', inkPaese:'#c3ccd4', inkFioco:'#6b7783',
+           inkForte:'#e8edf2', ombra:'rgba(0,0,0,.55)', bordoPos:'rgba(246,251,255,.95)',
+           anello:'rgba(10,13,16,.75)', alone:'79,214,255'},
+  chiaro: {bg:'#e9eef3', corpo:'#2b3540', grigia:'#aeb9c4', ink2:'#5a6774',
+           accent:'#0b6fd0', inkVia:'#33404c', inkPaese:'#16202a', inkFioco:'#79848f',
+           inkForte:'#16202a', ombra:'rgba(20,30,40,.28)', bordoPos:'rgba(16,24,32,.92)',
+           anello:'rgba(255,255,255,.85)', alone:'11,111,208'}
+};
+let TC = TEMI.scuro;   // TC = tema corrente (T e' gia' preso dalle traduzioni)
+let ACCENT=TC.accent, BG=TC.bg, INK2=TC.ink2;
+/* Cambia il tema OVUNQUE con una chiamata: le variabili CSS le scambia l'attributo
+   sulla radice, i colori del canvas queste tre righe. Non c'e' niente da ridisegnare
+   a mano perche' i colori si applicano al momento del disegno, non nei Path2D in
+   cache — quelli sono geometria. */
+function applicaTema(nome){
+  const k = (nome==='chiaro') ? 'chiaro' : 'scuro';
+  TC = TEMI[k]; ACCENT=TC.accent; BG=TC.bg; INK2=TC.ink2; CORPO=TC.corpo;
+  document.documentElement.dataset.tema = k;
+  const m=document.querySelector('meta[name="theme-color"]');
+  if(m) m.content = TC.bg;               // la barra di sistema, se no resta scura sopra il chiaro
+  S.need=true;
+}
 /* Un solo posto per gli spessori del tratto, letto dalle DUE strade di disegno
    (`disegnaPiano` e `disegna3d`). Prima erano numeri scritti a mano in tutti e due:
    bastava correggerne uno per far divergere la vista piana da quella inclinata, e
@@ -881,7 +946,7 @@ const SPESS = {
    contenuto della tecnica: agli incroci i corpi si fondono invece di tagliarsi a
    vicenda. E l'ordine per classe resta dentro la passata dei colori, quindi un
    tornante continua a stare sopra un rettilineo. */
-const CORPO='#39434d';
+let CORPO=TC.corpo;   // lo scambia applicaTema()
 /* LOD: quanto sono tinte le strade di rango 3-4 in funzione di quante celle si
    inquadrano. Allontanandosi svaniscono con continuità e a 400 celle sono già a
    zero, cioè PRIMA che a 420 scatti il passaggio al `backbone()` (solo rango 0-2):
@@ -1708,6 +1773,36 @@ const SENZA_CURVE = Object.freeze([]);
 const WOWN = new Map();       // id via OSM -> {rid, intera}
 const GSEEN = new Set(), CSEEN = new Set(), PSEEN = new Set();
 const VIE = {};   // regione -> dizionario dei nomi di via
+const RIF = {};   // regione -> numeri di strada gia' normalizzati (vedi normRif)
+/* Il campo `ref` di OSM non e' un numero di strada: e' quello che ci ha scritto chi
+   ha mappato. Accanto ai numeri veri ci finiscono nomi di via ("Ospedale",
+   "Voetweg", "Turnhoutsebaan"), codici amministrativi valloni ("N.004.065", che su
+   un cartello non compaiono mai) e sigle composte lombarde ("SPexSS498" =
+   provinciale ex statale 498, "SPBS345" = provinciale 345 di Brescia).
+   Disegnarli tali e quali metterebbe sulla mappa uno scudetto che dice "Ospedale".
+   Scartare tutto cio' che non e' gia' pulito costa il 23% della Lombardia, e non
+   sono scarti: SPexSS498 e SPBS345 sono strade vere e grosse. Quindi si normalizza.
+   Misurato il 2026-08-18 su sei regioni (Bruxelles, Vallonia, Fiandre, Lombardia,
+   Piemonte, Toscana): 341.823 archi numerati, 334.189 con scudetto = 97,8%.
+   Il residuo non e' un numero solo (A11/A12, SP11/B) o non e' un numero affatto
+   (Fi-Pi-Li): resta senza scudetto e la strada mostra il nome come prima.
+   Lo spazio segue il cartello vero: "SS 36" e "SP 17" ce l'hanno, "A4" "E411"
+   "N4" "R0" no. */
+const RIF_PROV='BS|BG|CR|MN|MI|LO|PV|VA|CO|LC|SO|TO|CN|AL|AT|BI|NO|VB|VC|FI|PI|LI|SI|AR|GR|PT|PO|MS|LU';
+const RIF_ITA=new Set(['SS','SP','SR','SC','RA','NSA']);
+const RIF_EX=new RegExp('^(SP|SC|SS|SR) ?ex ?(?:SS|SP|SR|BS|NSA)? ?','i');
+const RIF_PR=new RegExp('^(SP|SC) ?(?:'+RIF_PROV+') ?(?=[0-9IVX])','i');
+const RIF_OK=/^([A-Z]{1,3}) ?([0-9]{1,4}|[IVX]{1,6}) ?(bis|ter|dir|racc|var|[a-z])?$/i;
+function normRif(r){
+  if(!r) return '';
+  let x=String(r).split(/\s+/).join(' ').trim();
+  if(x.indexOf('.')>=0) return '';               // N.004.065 e simili: mai su un cartello
+  x=x.replace(/^(?:EX|Ex|ex) ?/,'').replace(RIF_EX,'$1 ').replace(RIF_PR,'$1 ')
+     .replace(/ ?(?:Variante|variante|var)$/,' var');
+  const m=RIF_OK.exec(x); if(!m) return '';
+  const pre=m[1].toUpperCase();
+  return pre+(RIF_ITA.has(pre)?' ':'')+m[2].toUpperCase()+(m[3]||'').toLowerCase();
+}
 
 /* I divieti arrivano con la giunzione come indice LOCALE alla regione: va tradotta
    nell'indice globale come si fa per gli archi, se no al confine non combaciano. */
@@ -1882,6 +1977,10 @@ function dossoAvanti(e, v){
 
 function buildEdges(rid, map){
   VIE[rid] = RAW.vie || [];
+  /* Normalizzati UNA volta per regione (850-1.155 voci), non per arco: sono ~340.000
+     archi numerati sulle sei regioni misurate, farlo per arco sarebbe lo stesso
+     lavoro trecento volte. */
+  RIF[rid] = (RAW.refs || []).map(normRif);
   const jn = RAW.jn || null;
   const J = jn ? (i => gjun(jn[i])) : (i => gjun(rid+':'+i));   // dataset v0.6: chiavi locali
   let zpos = 0;                  // avanza su OGNI arco del file, anche su quelli scartati
@@ -1898,6 +1997,7 @@ function buildEdges(rid, map){
     /* I dossi si agganciano per INDICE DI ARCO scritto nel flusso, non per
        posizione: un arco saltato qui sopra non sposta niente. */
     const dosArr = RDOS ? (RDOS.get(k) || null) : null;
+    const rifIdx     = arr.length>11 ? arr[11] : -1;
     const rotondaTag = arr.length>12 ? arr[12] : 0;
     const clsTag     = arr.length>14 ? arr[14] : 0;
     map[k] = -1;
@@ -1938,7 +2038,11 @@ function buildEdges(rid, map){
                zb:RALT?RALT.z:null, zo, zn, dos:dosArr,
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                // il nome sta nel dizionario della sua regione, non in un campo per arco
-               via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : ''};
+               via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : '',
+               // il numero della strada sta nel dizionario della sua regione, come il nome:
+               // portarsi dietro l'INDICE crudo vuol dire leggerlo nella tabella sbagliata
+               // appena due regioni sono attive insieme
+               rif:(rifIdx>=0 && RIF[rid]) ? (RIF[rid][rifIdx]||'') : ''};
     if(rotondaTag===1) ROTONDA.add(e.id);
     if(clsTag) CLSARCO.set(e.id, clsTag);
     map[k] = e.id;                       // indice locale -> globale, serve agli autovelox
@@ -2397,6 +2501,7 @@ const T = {
 let L='it';
 const tr=()=>T[L];
 const S = {
+  tema:'scuro',       // 'scuro' o 'chiaro' — lo scuro resta il predefinito: di notte abbaglia meno
   cx:0, cy:0, scale:0.02, rot:0,
   pitch:0,            // inclinazione della camera: 0 = a piombo, ~1,05 rad = quasi radente
   d3:false,           // vista guida 3D: inclinazione + zoom automatici
@@ -2417,6 +2522,7 @@ const S = {
 try{
   const st=JSON.parse(localStorage.getItem('copilota2')||'{}');
   if(st.car&&CARS[st.car])S.car=st.car;
+  if(st.tema==='chiaro'||st.tema==='scuro')S.tema=st.tema;
   if(st.style&&STYLES[st.style])S.style=st.style;   // i vecchi 'd'/'n'/'a' cadono su 'strada'
   if(typeof st.cal==='number')S.cal=st.cal;
   if(typeof st.calG==='number')S.calG=st.calG;
@@ -2426,7 +2532,7 @@ try{
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,audio:S.audio,d3:S.d3,lang:L}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 
 /* velocità (km/h) per 1000 giri, per marcia */
 function gearKmh(){ const c=CARS[S.car]; return c.g.map(r=>r*S.cal); }
@@ -2793,7 +2899,7 @@ function disegnaPiano(c0,c1,r0,r1){
       const c=cellPaths(ckey(cx,cy)); if(c) cells.push(c);
     }
     if(S.scale>0.35){
-      ctx.strokeStyle='#1b2229'; ctx.lineWidth=pw(SPESS.grigia);
+      ctx.strokeStyle=TC.grigia; ctx.lineWidth=pw(SPESS.grigia);
       for(const c of cells) if(c.grey) ctx.stroke(c.grey);
     }
     /* Dissolvenza dei ranghi minori invece del salto secco. L'ordine per CLASSE DI
@@ -2825,7 +2931,7 @@ function disegnaPiano(c0,c1,r0,r1){
 
   // tratto agganciato + curve davanti evidenziate
   if(S.snap && S.mode!=='free'){
-    ctx.strokeStyle='rgba(79,214,255,.20)'; ctx.lineWidth=pw(10);
+    ctx.strokeStyle=('rgba('+TC.alone+',.20)'); ctx.lineWidth=pw(10);
     for(const seg of S.aheadSegs||[]){
       const e=seg.e; ctx.beginPath();
       let f=true;
@@ -2843,7 +2949,7 @@ function disegnaPiano(c0,c1,r0,r1){
     // disegna in spazio schermo, in disegnaMe()
     const [x,y]=S.dp||S.pos;
     if(S.acc>10&&S.mode==='follow'){
-      ctx.fillStyle='rgba(79,214,255,.09)'; ctx.beginPath(); ctx.arc(x,y,S.acc,0,7); ctx.fill();
+      ctx.fillStyle=('rgba('+TC.alone+',.09)'); ctx.beginPath(); ctx.arc(x,y,S.acc,0,7); ctx.fill();
     }
   }
   ctx.restore();
@@ -2872,7 +2978,7 @@ function disegna3d(c0,c1,r0,r1){
     ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=12; ctx.stroke(P);
   }
   if(S.scale>0.35){
-    ctx.strokeStyle='#1b2229';
+    ctx.strokeStyle=TC.grigia;
     for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.grigia*FASCE[f]; ctx.stroke(T.grey[f]) }
   }
   /* Stessa dissolvenza dei ranghi minori della vista piana, e con la stessa funzione:
@@ -2904,7 +3010,7 @@ function disegna3d(c0,c1,r0,r1){
   if(S.snap && S.mode!=='free'){
     const P=new Path2D();
     for(const seg of S.aheadSegs||[]) traccia(P, seg.e.xy, seg.i0, seg.i1);
-    ctx.strokeStyle='rgba(79,214,255,.20)'; ctx.lineWidth=10; ctx.stroke(P);
+    ctx.strokeStyle=('rgba('+TC.alone+',.20)'); ctx.lineWidth=10; ctx.stroke(P);
   }
   /* Il fondo dell'inquadratura sfuma nel colore di sfondo: senza, le strade lontane
      si schiacciano una sull'altra e diventano un tappeto. */
@@ -2934,7 +3040,7 @@ function disegnaMe(){
   ctx.translate(p[0],p[1]); ctx.rotate(ang+Math.PI/2);
   if(hh!=null){
     const g=ctx.createRadialGradient(0,0,7,0,0,58);
-    g.addColorStop(0,'rgba(79,214,255,.26)'); g.addColorStop(1,'rgba(79,214,255,0)');
+    g.addColorStop(0,('rgba('+TC.alone+',.26)')); g.addColorStop(1,('rgba('+TC.alone+',0)'));
     ctx.fillStyle=g;
     ctx.beginPath(); ctx.moveTo(0,0);
     ctx.arc(0,0,58,-Math.PI/2-0.40,-Math.PI/2+0.40); ctx.closePath(); ctx.fill();
@@ -2950,10 +3056,10 @@ function disegnaMe(){
   ctx.lineTo(-2.3,-10.3);
   ctx.quadraticCurveTo(-1.7,-12.3, 0,-12.6);
   ctx.closePath();
-  ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=7; ctx.shadowOffsetY=1.5;
+  ctx.shadowColor=TC.ombra; ctx.shadowBlur=7; ctx.shadowOffsetY=1.5;
   ctx.fillStyle=ACCENT; ctx.fill();
   ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
-  ctx.lineWidth=2.1; ctx.lineJoin='round'; ctx.strokeStyle='rgba(246,251,255,.95)';
+  ctx.lineWidth=2.1; ctx.lineJoin='round'; ctx.strokeStyle=TC.bordoPos;
   ctx.stroke();
   ctx.restore();
 }
@@ -3077,6 +3183,7 @@ function piazzaEtichette(){
       occupa(b); k.fatto=true; sel.push(k.i);
     }
   LSEL=sel;
+  piazzaRif(libero, occupa);      // dopo i paesi ma PRIMA dei nomi di via
   piazzaVie(libero, occupa);      // dopo i paesi: nella collisione i paesi vincono
   LCAM={cx:S.cx, cy:S.cy, scale:S.scale, rot:S.rot, pitch:S.pitch, rank, lim, rv:vieRango()};
 }
@@ -3107,6 +3214,35 @@ function piazzaEtichette(){
    Concatenare i tratti omonimi è lavoro di preprocessing e sta in coda alla
    rigenerazione unica; questo tetto è la versione che si può avere oggi. */
 const VIA={passo:260, curvaMax:0.075, minScala:0.22, perNome:3, celle:420, aria:7};
+/* Scudetti stradali. Si vedono da PIU' lontano dei nomi di via (0,10 contro 0,22):
+   sapere di essere sulla SS36 serve anche quando il nome del paese non si legge
+   ancora, ed e' il contrario di un nome di via, che serve solo da vicino.
+   Niente controllo di dirittura come per i nomi: lo scudetto sta dritto, quindi una
+   curva sotto non lo storce. */
+const RIFV={passo:300, minScala:0.10, perNome:4, aria:8, maxRank:4};
+/* I colori sono quelli veri dei cartelli, perche' uno scudetto serve a essere
+   riconosciuto senza leggerlo, e una tavolozza inventata butterebbe via l'unica
+   cosa che lo rende immediato. Verde = autostrade (A) e itinerari europei (E);
+   blu = statali, regionali e nazionali (SS/SR/N/R e tutto il resto);
+   grigio chiaro = provinciali e comunali (SP/SC), che cosi' restano leggibili ma
+   indietreggiano — che e' anche il loro posto nella gerarchia.
+   Il verde e' lo stesso verde del RETTO di CLS[7], e non e' un problema: le classi
+   di curva colorano il TRACCIATO, lo scudetto e' un rettangolo dritto con bordo e
+   testo dentro. Un tracciato non ha ne' bordo ne' testo, quindi l'occhio non li
+   confonde nemmeno di sfuggita. */
+const RIFCOL={
+  auto:{bg:'#0a7d3f', ink:'#ffffff', bordo:'#dff0e6'},
+  stat:{bg:'#14539e', ink:'#ffffff', bordo:'#dbe7f8'},
+  prov:{bg:'#ced8e1', ink:'#16202a', bordo:'#8a97a4'}
+};
+function stileRif(r){
+  const c=r.charAt(0);
+  if(c==='A'||c==='E') return RIFCOL.auto;
+  if(r.startsWith('SP')||r.startsWith('SC')) return RIFCOL.prov;
+  return RIFCOL.stat;
+}
+let RIFFONT='';
+let LRIF=[];        // {n, x,y, w,h} — x,y in coordinate MONDO come LVIE
 /* Fin dove si scende nella gerarchia stradale, in funzione dello zoom. Da lontano
    solo le classificate, altrimenti il nome di ogni viuzza copre la rete che si sta
    guardando; da vicino anche le residenziali, che è dove il nome di via serve davvero
@@ -3128,8 +3264,9 @@ function puntoSu(P,cum,d,da){
    geometricamente continua, e due archi consecutivi possono benissimo essere
    memorizzati in versi opposti (l'uno finisce dove l'altro finisce).
    Tetti: 64 tratti e 4 km, se no una nazionale si mangia mezza regione in un colpo. */
-function catenaVia(e0, visti){
-  const nome=e0.via, cat=[{e:e0, rev:false}];
+function catenaVia(e0, visti, campo, maxRank){
+  const cp=campo||'via', rk=(maxRank===undefined?RANGOVIE:maxRank);
+  const nome=e0[cp], cat=[{e:e0, rev:false}];
   visti.add(e0.id);
   let L=e0.len;
   const cerca=(nodo)=>{
@@ -3137,7 +3274,7 @@ function catenaVia(e0, visti){
     for(const id of vic){
       if(visti.has(id)) continue;
       const c=E[id];
-      if(c.via===nome && c.rank<=RANGOVIE) return c;
+      if(c[cp]===nome && c.rank<=rk) return c;
     }
     return null;
   };
@@ -3156,6 +3293,65 @@ function catenaVia(e0, visti){
     nodo = rev ? c.j1 : c.j0;
   }
   return cat;
+}
+/* Stessa macchina dei nomi di via — catena fra gli incroci, ancore che scorrono,
+   collisione condivisa — ma su `rif` invece che su `via`, e senza la prova di
+   dirittura: un badge dritto non ha bisogno di un tratto dritto sotto.
+   Gira PRIMA di piazzaVie: nella collisione lo scudetto batte il nome di via,
+   perche' sapere che strada e' vale piu' di come si chiama il tratto. */
+function piazzaRif(libero, occupa){
+  LRIF=[];
+  if(S.scale<RIFV.minScala || !E.length) return;
+  const [bx0,by0,bx1,by1]=viewBounds();
+  const c0=Math.floor(bx0/CELL), c1=Math.floor(bx1/CELL);
+  const r0=Math.floor(by0/CELL), r1=Math.floor(by1/CELL);
+  if((c1-c0+1)*(r1-r0+1)>VIA.celle) return;
+  ctx.font=RIFFONT||(RIFFONT='700 10px '+getComputedStyle(document.body).fontFamily);
+  const visti=new Set(), quanti=new Map(), P=[];
+  for(let cx=c0;cx<=c1;cx++) for(let cy=r0;cy<=r1;cy++){
+    const ids=GRID.get(ckey(cx,cy)); if(!ids) continue;
+    for(const id of ids){
+      if(visti.has(id)) continue;
+      const e=E[id];
+      if(!e.rif || e.rank>RIFV.maxRank){ visti.add(id); continue }
+      if((quanti.get(e.rif)||0)>=RIFV.perNome){ visti.add(id); continue }
+      if(e._rw===undefined) e._rw=ctx.measureText(e.rif).width;
+      const w=e._rw+11, h=14;                    // il badge, non il testo
+      const catena=catenaVia(e, visti, 'rif', RIFV.maxRank);
+      P.length=0; let ok=true;
+      for(const t of catena){
+        const a=t.e.xy, np=t.e.np;
+        for(let k=0;k<np;k++){
+          const i = t.rev ? np-1-k : k;
+          if(P.length && k===0) continue;
+          const q=w2s(a[2*i], a[2*i+1]);
+          if(!q){ ok=false; break }
+          P.push(q[0],q[1]);
+        }
+        if(!ok) break;
+      }
+      if(!ok) continue;
+      const n=P.length>>1; if(n<2) continue;
+      const cum=new Float64Array(n);
+      for(let i=1;i<n;i++) cum[i]=cum[i-1]+Math.hypot(P[2*i]-P[2*i-2], P[2*i+1]-P[2*i-1]);
+      const L=cum[n-1];
+      if(L<w+20) continue;
+      const salto=Math.max(50, w);
+      for(let d=w/2+8; d<L-6; ){
+        const m=puntoSu(P,cum,d);
+        if(m[0]<-LBL.bordo||m[1]<-LBL.bordo||m[0]>W+LBL.bordo||m[1]>H+LBL.bordo){ d+=salto; continue }
+        const g=RIFV.aria;
+        const box=[m[0]-w/2-g, m[1]-h/2-g, m[0]+w/2+g, m[1]+h/2+g];
+        if(!libero(box)){ d+=salto; continue }
+        occupa(box);
+        const wp=s2w(m[0],m[1]);
+        LRIF.push({n:e.rif, x:wp[0], y:wp[1], w, h});
+        d+=RIFV.passo;
+        const q=(quanti.get(e.rif)||0)+1; quanti.set(e.rif,q);
+        if(q>=RIFV.perNome) break;
+      }
+    }
+  }
 }
 function piazzaVie(libero, occupa){
   LVIE=[];
@@ -3269,8 +3465,36 @@ function disegnaVie(){
   /* Più chiaro di prima: da quando le strade hanno un corpo grigio, il nome ci cade
      sopra invece che sul fondo quasi nero, e col vecchio `#7c8a97` il contrasto si
      mangiava. L'alone resta del colore del fondo, che sul grigio stacca lo stesso. */
-  ctx.fillStyle='#c8d2db';
+  ctx.fillStyle=TC.inkVia;
   for(const p of pronte){ ctx.save(); ctx.translate(p[1],p[2]); ctx.rotate(p[3]); ctx.fillText(p[0],0,0); ctx.restore() }
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+}
+/* Lo scudetto si disegna DRITTO, mai ruotato come il nome di via: e' cosi' su ogni
+   carta stradale del mondo, e un numero storto si legge molto peggio di una parola
+   storta — non ha una forma d'insieme da riconoscere, va letto carattere per
+   carattere. `roundRect` non si usa: su Safari e' arrivato tardi, e qui il percorso
+   a mano costa sei righe e funziona ovunque. */
+function disegnaScudetti(){
+  if(!LRIF.length) return;
+  ctx.font=RIFFONT;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.lineJoin='round';
+  for(const s of LRIF){
+    const q=w2s(s.x,s.y); if(!q) continue;
+    const x=q[0], y=q[1];
+    if(x<-70||y<-40||x>W+70||y>H+40) continue;
+    const st=stileRif(s.n), hw=s.w/2, hh=s.h/2, r=3.2;
+    ctx.beginPath();
+    ctx.moveTo(x-hw+r, y-hh);
+    ctx.lineTo(x+hw-r, y-hh); ctx.quadraticCurveTo(x+hw, y-hh, x+hw, y-hh+r);
+    ctx.lineTo(x+hw, y+hh-r); ctx.quadraticCurveTo(x+hw, y+hh, x+hw-r, y+hh);
+    ctx.lineTo(x-hw+r, y+hh); ctx.quadraticCurveTo(x-hw, y+hh, x-hw, y+hh-r);
+    ctx.lineTo(x-hw, y-hh+r); ctx.quadraticCurveTo(x-hw, y-hh, x-hw+r, y-hh);
+    ctx.closePath();
+    ctx.fillStyle=st.bg; ctx.fill();
+    ctx.strokeStyle=st.bordo; ctx.lineWidth=1.2; ctx.stroke();
+    ctx.fillStyle=st.ink; ctx.fillText(s.n, x, y+0.5);
+  }
   ctx.textAlign='left'; ctx.textBaseline='middle';
 }
 /* Integra la dissolvenza e disegna. Torna true se qualcosa si sta ancora muovendo,
@@ -3286,6 +3510,7 @@ function disegnaEtichette(now){
   ctx.textAlign='left'; ctx.textBaseline='middle';
   if(etichetteDaRifare()) piazzaEtichette();
   disegnaVie();          // i nomi di via stanno SOTTO i nomi paese
+  disegnaScudetti();     // e gli scudetti sopra i nomi di via
   /* Il font va rimesso: `piazzaEtichette` chiama `piazzaVie`, che passa a quello dei
      nomi di via per misurarli e lo lascia lì. Senza questa riga i nomi paese si
      disegnano col font sbagliato, e solo quando la camera si è appena mossa. */
@@ -3323,7 +3548,7 @@ function disegnaEtichette(now){
        strada proprio dove passa il nome. L'alone oscura solo quanto serve a staccare
        il testo, e la geometria sotto continua a leggersi. */
     ctx.strokeStyle=BG; ctx.strokeText(p.n,sx+7,sy+0.5);
-    ctx.fillStyle=p.r===0?'#c3ccd4':INK2; ctx.fillText(p.n,sx+7,sy+0.5);
+    ctx.fillStyle=p.r===0?TC.inkPaese:INK2; ctx.fillText(p.n,sx+7,sy+0.5);
   }
   ctx.globalAlpha=1;
   return inMoto;
@@ -3366,7 +3591,7 @@ function disegnaFrecce(){
     ctx.moveTo(10,0); ctx.lineTo(-6.5,-8); ctx.lineTo(-3,0); ctx.lineTo(-6.5,8);
     ctx.closePath();
     ctx.lineJoin='round';
-    ctx.strokeStyle='rgba(10,13,16,.75)'; ctx.lineWidth=3.4; ctx.stroke();
+    ctx.strokeStyle=TC.anello; ctx.lineWidth=3.4; ctx.stroke();
     ctx.fillStyle='#ffffff'; ctx.fill();
     ctx.restore();
     ctx.globalAlpha=1;
@@ -3423,7 +3648,7 @@ function disegnaSopra(){
     ctx.font='600 15px '+getComputedStyle(document.body).getPropertyValue('--font-d');
     ctx.fillText(tr().emptyTitle, W/2, H/2-14);
     ctx.font='13px system-ui,-apple-system,sans-serif';
-    ctx.fillStyle='#6b7783';
+    ctx.fillStyle=TC.inkFioco;
     ctx.fillText(tr().emptyHint, W/2, H/2+12);
     ctx.textAlign='left'; ctx.textBaseline='alphabetic';
   }
@@ -4377,7 +4602,7 @@ function disegnaNavIcona(ang){
   const fine=pt(A);
   const tip=[fine[0]+Math.cos(dir)*CODA, fine[1]+Math.sin(dir)*CODA];
   const stop=[tip[0]-Math.cos(dir)*9, tip[1]-Math.sin(dir)*9];  // il tratto si ferma
-  niv.strokeStyle='#e8edf2'; niv.fillStyle='#e8edf2';           // sotto la punta piena
+  niv.strokeStyle=TC.inkForte; niv.fillStyle=TC.inkForte;           // sotto la punta piena
   niv.lineWidth=5; niv.lineCap='round'; niv.lineJoin='round';
   niv.beginPath(); niv.moveTo(bx,58); niv.lineTo(bx,by);
   for(let i=1;i<=12;i++){ const p=pt(A*i/12); niv.lineTo(p[0],p[1]) }
@@ -4917,6 +5142,7 @@ bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
 const bLang=document.getElementById('bLang');
 function applyLang(){
   bLang.textContent = L==='it' ? 'EN' : 'IT';
+  if(typeof renderTema==='function') renderTema();
   document.body.classList.toggle('en', L==='en');
   qEl.placeholder = tr().search;
   document.getElementById('gearLab').textContent = tr().gear;
@@ -4930,7 +5156,15 @@ function applyLang(){
   if(S.audio) caricaVoce(L);
   S.need=true;
 }
-bLang.onclick=()=>{ L = L==='it'?'en':'it'; save(); applyLang(); renderLegend(); };
+bLang.onclick=()=>{ L = L==='it'?'en':'it'; save(); applyLang(); renderLegend(); renderTema(); };
+const bTema=document.getElementById('bTema');
+function renderTema(){
+  bTema.textContent = S.tema==='chiaro' ? (L==='it'?'Chiaro':'Light') : (L==='it'?'Scuro':'Dark');
+}
+bTema.onclick=()=>{
+  S.tema = S.tema==='chiaro' ? 'scuro' : 'chiaro';
+  applicaTema(S.tema); renderTema(); save(); renderLegend();
+};
 bAudio.classList.toggle('on',S.audio);
 bGps.hidden = (S.mode==='follow');   // stato iniziale: al boot non si insegue nessuno
 /* La bussola rimette nord in alto E la mappa a piombo, in un tocco solo: è quello
@@ -5893,6 +6127,7 @@ cv.addEventListener('dblclick',e=>{
 const splash=document.getElementById('splash'), splashMsg=document.getElementById('splashMsg');
 async function boot(){
   const t0=performance.now();
+  applicaTema(S.tema);                 // prima di qualsiasi disegno: se no il primo fotogramma lampeggia
   const mb = n => (n/1e6).toFixed(1).replace('.',',')+' MB';
   chiediPersistenza();                 // non si aspetta: nessuno deve restare fermo per questo
   try{
