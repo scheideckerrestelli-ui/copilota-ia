@@ -687,7 +687,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '151';
+const APPVER = '152';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -2432,7 +2432,7 @@ const STYLES = {
 /* ---- lingue ---- */
 const T = {
   it: {
-    search:'Cerca via, paese, CAP…', fav:'preferito', kinds:['città','paese','villaggio','frazione'],
+    search:'Cerca via, paese, CAP…', fav:'preferito', rec:'ricerca recente', kinds:['città','paese','villaggio','frazione'],
     ixLoad:'preparo l\'indirizzario…', ixNone:'nessun risultato',
     ixNoGeo:'indirizzario non scaricato per questa mappa',
     ixCiv:'civico ricavato dai numeri vicini', ixHint:'via, o via e paese, o CAP',
@@ -2498,7 +2498,7 @@ const T = {
     navDest:'destinazione',
   },
   en: {
-    search:'Search street, town, postcode…', fav:'favourite', kinds:['city','town','village','hamlet'],
+    search:'Search street, town, postcode…', fav:'favourite', rec:'recent search', kinds:['city','town','village','hamlet'],
     ixLoad:'building the address index…', ixNone:'no match',
     ixNoGeo:'address index not downloaded for this map',
     ixCiv:'number interpolated from nearby ones', ixHint:'street, or street and town, or postcode',
@@ -5972,13 +5972,38 @@ function sottotitolo(id){
   return p.join(' · ');
 }
 
+/* Le ultime ricerche: si registra cio' che si TOCCA, non cio' che si digita.
+   In gradi e non in metri locali: l'origine di proiezione cambia con le regioni
+   attive, i gradi no. Massimo tre, la piu' recente in testa, doppioni per nome. */
+const RICERCHE_K = 'copilota-ricerche';
+function ricercheRecenti(){
+  try{
+    const v = JSON.parse(localStorage.getItem(RICERCHE_K)) || [];
+    return v.filter(r => r && typeof r.la==='number' && typeof r.lo==='number')
+            .slice(0,3)
+            .map(r => { const [x,y] = toXY(r.lo, r.la);
+                        return {n:r.n, s:r.s||'', x, y, z:r.z||1.4} });
+  }catch(e){ nota('ricerche recenti illeggibili: '+e.message); return [] }
+}
+function ricordaRicerca(n, s, x, y, z){
+  try{
+    const [lo,la] = toLL(x,y);
+    const v = (JSON.parse(localStorage.getItem(RICERCHE_K)) || []).filter(r => r && r.n!==n);
+    v.unshift({n, s:s||'', la:+la.toFixed(5), lo:+lo.toFixed(5), z:+(z||1.4).toFixed(2)});
+    localStorage.setItem(RICERCHE_K, JSON.stringify(v.slice(0,3)));
+  }catch(e){ nota('ricerca non memorizzata: '+e.message) }
+}
+
 function renderResults(term){
   const t = term.trim();
   resEl.innerHTML='';
   if(!t){
-    // a campo vuoto restano i preferiti, come prima
-    for(const b of BM) rigaRis({id:-1, bm:b});
-    resEl.classList.toggle('show', BM.length>0);
+    /* A campo vuoto: le ultime tre ricerche scelte, non i preferiti precaricati.
+       Scelta di Tiago (2026-08-18): i valichi dal dataset erano rumore — restano
+       comunque cercabili scrivendoli, sono nell'indice. Niente ricerche fatte =
+       pannello chiuso, non una lista di ripiego. */
+    for(const rc of ricercheRecenti()) rigaRis({id:-1, rc});
+    resEl.classList.toggle('show', resEl.children.length>0);
     return;
   }
   if(!IX.pronto){
@@ -6002,11 +6027,12 @@ function renderResults(term){
 function rigaRis(r){
   const row=document.createElement('div'); row.className='rr';
   const b=document.createElement('button'); b.className='nm';
-  let nome, sub, x, y, z=1.4;
+  let nome, sub, x, y, z=1.4, sMem='';
   if(r.bm){ nome=r.bm.n; sub=tr().fav; x=r.bm.x; y=r.bm.y; z=r.bm.z||1.4 }
+  else if(r.rc){ nome=r.rc.n; sMem=r.rc.s; sub=sMem||tr().rec; x=r.rc.x; y=r.rc.y; z=r.rc.z||1.4 }
   else{
     const id=r.id;
-    nome=IX.n[id]; sub=sottotitolo(id); x=IX.x[id]; y=IX.y[id];
+    nome=IX.n[id]; sub=sMem=sottotitolo(id); x=IX.x[id]; y=IX.y[id];
     if(r.civ){
       const p = posCivico(IX.civ.get(id), r.civ, x, y);
       if(p){ nome = nome+' '+r.civ; x=p[0]; y=p[1]; z=2.6 }
@@ -6023,7 +6049,7 @@ function rigaRis(r){
   fr.setAttribute('aria-hidden','true');
   b.appendChild(fr);
   b.title=tr().navGo;
-  const chiudi=()=>{ resEl.classList.remove('show'); qEl.value=''; qEl.blur() };
+  const chiudi=()=>{ ricordaRicerca(nome, sMem, x, y, z); resEl.classList.remove('show'); qEl.value=''; qEl.blur() };
   /* Tocco = ci vado. Pressione lunga = ci guardo e basta, senza far partire niente:
      è lo stesso gesto che sulla mappa sceglie una destinazione, quindi non è un
      comando nuovo da imparare, solo lo stesso gesto dall'altra parte. */
