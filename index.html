@@ -66,6 +66,9 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* ---- barra alta ---- */
   .top{position:fixed;top:var(--alto);left:8px;
        right:60px;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
+  /* La ricerca ha preso il posto del marchio: e' sola sulla riga, quindi puo'
+     essere larga quanto serve invece che spremuta in un terzo di schermo. */
+  .top .search{max-width:none}
   .top > *{pointer-events:auto}
   .brand{background:rgba(20,26,32,.97);border:1px solid var(--line);border-radius:11px;
          padding:7px 11px;flex:none}
@@ -113,8 +116,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     letter-spacing:.06em}
 
   /* ---- rail ---- */
-  .rail{position:fixed;right:8px;top:50%;transform:translateY(-50%);display:flex;
-        flex-direction:column;gap:7px;z-index:5}
+  /* Una colonna sola sul bordo destro, centrata: bussola e 3D in cima, poi i
+     comandi. `.rail` e `.cwrap` non sono piu' fissati per conto loro — li posiziona
+     il contenitore, cosi' non possono piu' scavalcarsi a vicenda. */
+  .rightcol{position:fixed;right:8px;top:50%;transform:translateY(-50%);
+        display:flex;flex-direction:column;align-items:center;gap:13px;z-index:5}
+  .rail{display:flex;flex-direction:column;gap:7px}
   .rbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);
         background:rgba(20,26,32,.97);cursor:pointer;display:grid;place-items:center;
         }
@@ -125,8 +132,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      rimette a nord, il gettone sotto inclina la vista. Erano due comandi in due
      posti diversi (l'ago qui, il 3D in fondo alla colonna a destra) e per accendere
      la vista guida bisognava sapere dov'era il bottone. */
-  .cwrap{position:fixed;top:var(--alto);right:8px;z-index:5;
-    display:flex;flex-direction:column;align-items:center;gap:4px}
+  .cwrap{display:flex;flex-direction:column;align-items:center;gap:4px}
   .compass{width:44px;height:44px;
     border-radius:50%;border:1px solid var(--line);background:rgba(20,26,32,.97);
     display:grid;place-items:center;cursor:pointer}
@@ -211,9 +217,6 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .tile .v{font-family:var(--font-d);font-weight:600;font-size:23px;line-height:1;
            font-variant-numeric:tabular-nums}
   .tile small{font-size:8.5px;letter-spacing:.12em;color:var(--ink2)}
-  .road{background:rgba(20,26,32,.97);border:1px solid var(--line);border-radius:11px;
-        padding:5px 10px;font-size:11px;color:var(--ink2);max-width:44vw;overflow:hidden;
-        text-overflow:ellipsis;white-space:nowrap}
 
   /* ---- pannelli ---- */
   /* il foglio è una colonna: solo .inner scorre, e il pulsante resta appiccicato in fondo
@@ -289,28 +292,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      (in fondo al foglio: deve vincere sulle regole base di .hud/.scalebar) */
   @media (max-width:560px){
     .hud{bottom:calc(env(safe-area-inset-bottom) + 96px)}
-    .hud .road{max-width:62vw}
     .scalebar{bottom:calc(env(safe-area-inset-bottom) + 96px)}
-    /* Su telefono marchio e ricerca non ci stanno affiancati: il sottotitolo è
-       cresciuto col multi-regione ("3 regioni · 57.704 km · 310.625 curve") e
-       schiacciava il campo di ricerca a zero, con il testo tagliato a metà.
-       Prima riga marchio + lingua, la ricerca va a capo a tutta larghezza. */
-    .top{flex-wrap:wrap;row-gap:7px;align-items:center}
-    .brand{flex:1 1 auto;min-width:0;order:1}
-    .brand h1{font-size:14px}
-    .brand .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    #bLang{order:2;flex:none}
-    .search{order:3;flex:1 1 100%;max-width:none}
-    /* il brindello sotto la barra deve scendere sotto DUE righe, non una */
-    .toast{top:calc(var(--alto) + 108px)}
-    /* e la striscia del navigatore pure: la barra qui è a due righe */
-    .nav{top:calc(var(--alto) + 106px)}
+    /* Su telefono la barra alta era a DUE righe (marchio + lingua, poi la ricerca
+       a capo) perché il sottotitolo multi-regione schiacciava il campo a zero.
+       Ora lassù c'è solo la ricerca: una riga, a tutta larghezza, e tutto quello
+       che le stava sotto risale — brindello e striscia del navigatore tornano
+       agli scostamenti base invece di lasciare una riga di vuoto. */
+    .search{flex:1 1 100%;max-width:none}
     .nav .d{font-size:21px} .nav canvas{width:40px;height:40px}
-    body.navon .toast{top:calc(var(--alto) + 172px)}
-  }
-  /* schermi molto stretti: il sottotitolo è la prima cosa sacrificabile */
-  @media (max-width:360px){
-    .brand .sub{display:none}
   }
   /* Le liste avevano bisogno di una regola loro: `.sheet ul{display:flex}` ha
      specificità (0,1,1) e batteva `[data-lang]{display:none}` (0,1,0), così nei
@@ -323,6 +312,21 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   body.en .sheet ul[data-lang="en"]{display:flex}
   /* pannello Mappe. Niente <ul> qui dentro apposta: le liste hanno la regola di
      specificità di cui sopra, le righe sono <div> e non ci ricascano. */
+  /* righe del pannello Impostazioni */
+  #sheetSet .brand{background:none;border:0;padding:0;margin-bottom:16px}
+  .setrow{display:flex;align-items:center;gap:10px;padding:11px 0;
+    border-bottom:1px solid #1e262e;font-size:14.5px}
+  .setrow > span{flex:1}
+  .setrow .setval{width:auto;height:auto;padding:8px 14px;font-family:var(--font-d);
+    font-size:13px;letter-spacing:.06em;color:var(--accent)}
+  .setnav{display:flex;align-items:center;gap:12px;width:100%;padding:12px 0;
+    background:none;border:0;border-bottom:1px solid #1e262e;color:var(--ink);
+    font:inherit;font-size:14.5px;text-align:left;cursor:pointer}
+  .setnav svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;
+    stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--ink2)}
+  .setnav > span{flex:1}
+  .setnav i{font-style:normal;color:var(--ink2);font-size:18px;line-height:1}
+  .setnav[hidden]{display:none}
   .rrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #1e262e}
   .rrow:last-of-type{border-bottom:0}
   .rrow .rnm{flex:1;min-width:0}
@@ -343,19 +347,21 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 
 <canvas id="map"></canvas>
 
+<!-- In alto c'e' SOLO la ricerca. Il marchio diceva a chi guida una cosa che sa
+     gia' (che app sta usando) occupando la riga piu' preziosa dello schermo; ora
+     sta nelle impostazioni, dove serve a leggere quante regioni sono attive. -->
 <div class="top">
-  <div class="brand">
-    <h1>Copilota <span>IA</span></h1>
-    <div class="sub" id="brandSub"></div>
-  </div>
   <div class="search">
     <input id="q" type="search" placeholder="Cerca paese o strada…" autocomplete="off" spellcheck="false">
     <div class="results" id="results"></div>
   </div>
-  <button class="rbtn" id="bLang" style="width:auto;height:auto;padding:10px 12px;font-family:var(--font-d);font-size:13px;letter-spacing:.06em" title="Language">EN</button>
 </div>
 
-<div class="cwrap">
+<!-- Bussola e comandi stanno in UNA colonna sola, a meta' altezza sul bordo
+     destro: la bussola era nell'angolo in alto a destra, cioe' il punto piu'
+     lontano dal pollice di chi guida. Ora e' subito sopra le icone. -->
+<div class="rightcol">
+  <div class="cwrap">
   <div class="compass" id="compass" role="button" tabindex="0" title="Riallinea a nord" aria-label="Riallinea a nord">
     <svg viewBox="0 0 24 24" id="compassArrow">
       <path d="M12 3 L15.4 14 L12 12.2 L8.6 14 Z" fill="#ff4438"></path>
@@ -363,24 +369,26 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     </svg>
   </div>
   <button class="c3d" id="b3d" title="Vista guida 3D" aria-label="Vista guida 3D">3D</button>
-</div>
+  </div>
 
-<div class="rail">
-  <button class="rbtn" id="bGps" title="Segui GPS" aria-label="Segui GPS">
+  <div class="rail">
+  <!-- Ricentrare e' l'unico comando che in guida non puo' stare dietro un menu:
+       se tocchi la mappa e perdi l'inseguimento, devi poter tornare con UN dito.
+       Quindi non lo seppellisco, lo faccio sparire quando non serve — com'e' il
+       bottone «ricentra» di Google Maps: in marcia la colonna resta a tre icone,
+       che e' quello che Tiago ha chiesto di vedere. -->
+  <button class="rbtn" id="bGps" title="Segui GPS" aria-label="Segui GPS" hidden>
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="7.5"></circle><path d="M12 1.5v3.2M12 19.3v3.2M1.5 12h3.2M19.3 12h3.2"></path></svg></button>
   <!-- Bottone Mappe: il contenuto del pannello lo aggiunge la sessione multi-regione.
        Togliere `hidden` quando esiste #sheetMaps. Ha preso il posto del vecchio
        bottone Demo, tolto su richiesta di Tiago. -->
-  <button class="rbtn" id="bMaps" title="Mappe" aria-label="Mappe" hidden>
-    <svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"></path><path d="M9 4.5v12.7M15 6.8v12.7"></path></svg></button>
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
     <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
   <button class="rbtn" id="bCar" title="La mia auto" aria-label="La mia auto">
     <svg viewBox="0 0 24 24"><path d="M3 14.5h18M4.6 14.5l1.6-5.2a2 2 0 0 1 1.9-1.4h7.8a2 2 0 0 1 1.9 1.4l1.6 5.2"></path><path d="M3 14.5v3h3v-3M18 14.5v3h3v-3"></path><circle cx="7.5" cy="14.5" r="1.4"></circle><circle cx="16.5" cy="14.5" r="1.4"></circle></svg></button>
-  <button class="rbtn" id="bLegend" title="Legenda" aria-label="Legenda">
-    <svg viewBox="0 0 24 24"><path d="M4 6h4M4 12h4M4 18h4"></path><path d="M11 6h9M11 12h9M11 18h9" opacity=".45"></path></svg></button>
-  <button class="rbtn" id="bInfo" title="Informazioni" aria-label="Informazioni">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.6v.4"></path></svg></button>
+  <button class="rbtn" id="bSet" title="Impostazioni" aria-label="Impostazioni">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"></circle><path d="M19.4 13.6a7.7 7.7 0 0 0 0-3.2l1.8-1.4-1.9-3.3-2.2.9a7.7 7.7 0 0 0-2.7-1.6L14 2.4h-4l-.4 2.6a7.7 7.7 0 0 0-2.7 1.6l-2.2-.9-1.9 3.3 1.8 1.4a7.7 7.7 0 0 0 0 3.2l-1.8 1.4 1.9 3.3 2.2-.9a7.7 7.7 0 0 0 2.7 1.6l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.7-1.6l2.2.9 1.9-3.3z"></path></svg></button>
+  </div>
 </div>
 
 <div class="nav" id="nav">
@@ -398,24 +406,53 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 </div>
 
 <div class="hud" id="hud">
-  <div class="road" id="roadName"></div>
   <div style="display:flex;gap:6px;align-items:stretch">
     <div class="tile"><div class="v" id="speedV">0</div><small>KM/H</small></div>
-    <!-- Pendenza e quota: compaiono solo dove c'è qualcosa da dire (dal 2%) e solo
-         se la mappa attiva porta il sidecar delle quote. In pianura la riquadratura
-         resta com'era. -->
-    <div class="tile" id="pendTile" hidden><div class="v" id="pendV">0%</div><small id="quotaV">—</small></div>
     <div class="tile" id="limTile" style="display:grid;place-items:center;padding:6px 8px">
       <div id="limSign" style="width:38px;height:38px;border-radius:50%;background:#fff;
         border:5px solid #e02020;display:grid;place-items:center;color:#111;
         font-family:var(--font-d);font-weight:600;font-size:15px;
         font-variant-numeric:tabular-nums">—</div>
     </div>
+    <!-- Pendenza e quota: compaiono solo dove c'è qualcosa da dire (dal 2%) e solo
+         se la mappa attiva porta il sidecar delle quote. In pianura la riquadratura
+         resta com'era. Sta DOPO il limite, non in mezzo: infilata fra velocità e
+         limite spezzava l'unico accostamento che conta davvero, «vado a X, posso
+         andare a Y», e quei due numeri si leggono con la coda dell'occhio. -->
+    <div class="tile" id="pendTile" hidden><div class="v" id="pendV">0%</div><small id="quotaV">—</small></div>
   </div>
 </div>
 
 <div class="scalebar"><div id="scaleLabel">—</div><div class="bar" id="scaleBar"></div></div>
 <div class="toast" id="toast"></div>
+
+<!-- pannello Impostazioni -->
+<!-- Raccoglie tutto quello che NON si tocca guidando: lingua, mappe, legenda,
+     informazioni. La colonna a destra resta con le sole tre cose che si toccano
+     davvero in marcia (voce, auto, e questo ingranaggio per arrivare al resto).
+     I bottoni qui dentro hanno gli STESSI id di prima apposta: cosi' tutto il
+     codice che li aggancia continua a funzionare senza saperlo. -->
+<div class="sheet" id="sheetSet"><div class="inner">
+  <div class="grip"></div>
+  <div class="brand">
+    <h1>Copilota <span>IA</span></h1>
+    <div class="sub" id="brandSub"></div>
+  </div>
+  <div class="setrow">
+    <span data-lang="it">Lingua e voce</span><span data-lang="en">Language and voice</span>
+    <button class="rbtn setval" id="bLang" title="Language">EN</button>
+  </div>
+  <button class="setnav" id="bMaps" hidden>
+    <svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"></path><path d="M9 4.5v12.7M15 6.8v12.7"></path></svg>
+    <span data-lang="it">Mappe</span><span data-lang="en">Maps</span><i>›</i></button>
+  <button class="setnav" id="bLegend">
+    <svg viewBox="0 0 24 24"><path d="M4 6h4M4 12h4M4 18h4"></path><path d="M11 6h9M11 12h9M11 18h9" opacity=".45"></path></svg>
+    <span data-lang="it">Legenda</span><span data-lang="en">Legend</span><i>›</i></button>
+  <button class="setnav" id="bInfo">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.6v.4"></path></svg>
+    <span data-lang="it">Informazioni</span><span data-lang="en">About</span><i>›</i></button>
+  <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span></button>
+</div></div>
 
 <!-- pannello auto -->
 <div class="sheet" id="sheetCar"><div class="inner">
@@ -534,17 +571,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      which road you are turning into. Take a wrong turn and it recalculates by itself after a few
      seconds. The route is chosen on <b>time</b>, not distance: it prefers the 90 km/h main road to
      the 50 km/h lane, exactly as you would. One-way streets are respected.</p>
-  <div class="disc" data-lang="it">Quello che il navigatore <b>non</b> sa: i <b>divieti di svolta</b>
-     e gli <b>accessi privati</b> non sono nei dati (sono relazioni di OpenStreetMap che non
-     vengono estratte), quindi può proporti una svolta vietata o una strada chiusa. Le
-     <b>autostrade non sono nella rete</b>: per un trasferimento lungo resta più veloce un
-     navigatore normale. Qui il percorso serve a portarti sulle strade belle sapendo dove girare,
-     non a battere Google sui tempi.</div>
-  <div class="disc" data-lang="en">What the navigator does <b>not</b> know: <b>turn restrictions</b>
-     and <b>private access</b> are not in the data (they are OpenStreetMap relations that are not
-     extracted), so it may hand you an illegal turn or a closed road. <b>Motorways are not in the
-     network</b>: for a long transfer an ordinary satnav is still faster. The point here is to get
-     you onto the good roads knowing where to turn, not to beat Google on time.</div>
+  <div class="disc" data-lang="it">Quello che il navigatore <b>non</b> sa: gli <b>accessi
+     privati</b> non sono nei dati, quindi può proporti una strada chiusa. Il percorso serve a
+     portarti sulle strade belle sapendo dove girare, non a battere Google sui tempi.</div>
+  <div class="disc" data-lang="en">What the navigator does <b>not</b> know: <b>private access</b>
+     is not in the data, so it may hand you a closed road. The point is to get you onto the good
+     roads knowing where to turn, not to beat Google on time.</div>
   <h3><span data-lang="it">Installala sul telefono</span><span data-lang="en">Install on your phone</span></h3>
   <p data-lang="it"><b>iPhone</b>: apri in Safari → tasto Condividi → <b>Aggiungi a schermata
      Home</b>. <b>Android</b>: menu ⋮ → <b>Installa app</b>. Parte a tutto schermo, tiene lo
@@ -558,13 +590,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      limite <b>dedotto</b> (50 in centro abitato, 90 fuori, 110 solo su superstrada).
      <span id="limPct"></span> La velocità diventa arancione
      oltre il limite e rossa oltre +5. Le <b>postazioni fisse</b> note (pallini arancioni) sono
-     annunciate ~15 secondi prima. Le autostrade non sono nella mappa: solo strade ordinarie.</p>
+     annunciate ~15 secondi prima.</p>
   <p data-lang="en">The sign at bottom-left shows the <b>speed limit</b> of the road you are on.
      Solid border = limit <b>tagged</b> in OpenStreetMap; dashed border with <b>~</b> = limit
      <b>inferred</b> (50 in built-up areas, 90 outside, 110 on expressways only).
      <span id="limPctEn"></span> Your speed turns orange above the limit, red beyond +5.
-     Known <b>fixed cameras</b> (orange dots) are called ~15 seconds ahead. Motorways are not in
-     the map: ordinary roads only.</p>
+     Known <b>fixed cameras</b> (orange dots) are called ~15 seconds ahead.</p>
   <h3><span data-lang="it">Dati</span><span data-lang="en">Data</span></h3>
   <p id="infoData" data-lang="it"></p>
   <p id="infoDataEn" data-lang="en"></p>
@@ -606,7 +637,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '141';
+const APPVER = '144';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -721,7 +752,14 @@ const civUrl = r => r.civ ? r.civ+'?v='+r.cv : null;
    tracciati non si toccano e nessuno riscarica una mappa. Chi ha una regione
    scaricata da prima non vede niente di rotto — solo pendenza 0, cioe' com'era. */
 const altUrl = r => r.alt ? r.alt+'?v='+r.av : null;
-const pesoTot = r => (r.bytes||0)+(r.gb||0)+(r.cb||0)+(r.ab||0);
+/* Quarto sidecar: dos-<reg>.json porta i DOSSI ARTIFICIALI, come scostamento in
+   metri dall'inizio dell'arco su cui stanno. Lo calcola `dossi.py` leggendo gli
+   estratti OSM e agganciandoli al dataset GIA' PUBBLICATO — quindi non si tocca
+   un byte dei tracciati e nessuno riscarica una mappa per averli. Pesa fra mezzo
+   KB e 8 KB a regione. Chi ha una mappa vecchia non vede niente di rotto: i dossi
+   semplicemente non ci sono, cioe' com'era prima. */
+const dosUrl = r => r.dos ? r.dos+'?v='+r.dv : null;
+const pesoTot = r => (r.bytes||0)+(r.gb||0)+(r.cb||0)+(r.ab||0)+(r.db||0);
 
 /* Regioni per cui si è finiti a servire una copia VECCHIA dalla cache. Non è un
    errore — «una copia vecchia batte il nulla» è la scelta giusta per l'uso offline —
@@ -1770,6 +1808,78 @@ function pendTratto(e, d, dir, m){
   const g = (quotaAt(e,hi)-quotaAt(e,lo))/(hi-lo);
   return dir<0 ? -g : g;
 }
+/* ============ dossi artificiali ============
+   Il flusso e' una sequenza di gruppi [delta indice arco, quanti, scostamenti],
+   con gli scostamenti in metri e delta-codificati dentro il gruppo. A differenza
+   delle quote NON e' posizionale su tutti gli archi: ogni gruppo dice a quale arco
+   si riferisce. Cosi' un arco scartato al confine non sfasa tutto il resto — che
+   e' esattamente il modo in cui il profilo di quota puo' rompersi in silenzio. */
+let RDOS = null;               // Map indice arco nel file -> Int32Array scostamenti
+function preparaDos(j, r){
+  if(!j || !j.d || !j.meta) return null;
+  /* Stessa doppia guardia delle quote, e per lo stesso motivo: gli indici valgono
+     solo per QUEL dataset. Lo sha becca il sidecar di un'altra generazione; la
+     firma becca il caso vero e piu' insidioso, cioe' la mappa vecchia ripescata
+     dalla cache per nome di file mentre il manifesto ne annuncia una nuova. */
+  if(j.meta.sha && r.v && j.meta.sha !== r.v){
+    console.warn('dossi scartati: sidecar di un altro dataset', j.meta.sha, '≠', r.v); return null }
+  const f = j.meta.firma;
+  if(f){
+    const mio = [RAW.edges.length, RAW.meta.nJn, RAW.meta.nCurve, RAW.meta.gen];
+    if(f.length!==mio.length || f.some((v,i)=>v!==mio[i])){
+      nota('dossi spenti: la mappa in memoria ('+r.id+') è di una generazione più '+
+           'vecchia — eliminala e riscaricala da Mappe');
+      console.warn('dossi scartati: dataset di un\'altra generazione', f, '≠', mio); return null }
+  } else if(j.meta.n !== RAW.edges.length){
+    console.warn('dossi scartati:', j.meta.n, 'archi contro', RAW.edges.length); return null }
+  const v = decodeInts(j.d), m = new Map();
+  let i=0, arco=-1, tot=0;
+  while(i < v.length){
+    arco += v[i++];
+    const k = v[i++];
+    if(!(k>0) || i+k > v.length) break;      // flusso troncato: tengo quel che ho
+    const off = new Int32Array(k);
+    let a = 0;
+    for(let q=0;q<k;q++){ a += v[i++]; off[q] = a }
+    m.set(arco, off); tot += k;
+  }
+  console.log('dossi', r.id+':', tot, 'su', m.size, 'archi');
+  return m;
+}
+/* Prossimo dosso davanti. Il contratto se l'è scritto la sessione che ha fatto la
+   voce, e lo rispetto alla lettera perché la sua frase è già dentro `updateNote()`:
+
+     dossoAvanti(e, v) -> null  oppure  {dist, n, key}
+       dist : metri al primo dosso davanti
+       n    : quanti nella serie (1 = «dosso», >1 = «dossi»)
+       key  : identificatore STABILE della serie, per non riannunciarla
+
+   `key` è la parte che conta davvero: se cambiasse a ogni fix il dosso verrebbe
+   riannunciato in continuazione. Qui è indice dell'arco più scostamento del primo
+   dosso della serie — due numeri che vengono dal dato, non dalla posizione, quindi
+   non si muovono mentre guidi.
+
+   Il verso di marcia lo legge da `S.snap`, non è un argomento: in una via a doppio
+   senso gli scostamenti vanno letti dalla fine, se no il dosso ti arriva alle
+   spalle e la voce parla dopo che l'hai già preso. */
+const SERIE_DOSSI = 150;      // metri: oltre questo sono due serie diverse
+function dossoAvanti(e, v){
+  const o = e && e.dos; if(!o || !o.length) return null;
+  const s = S.snap; if(!s || s.e !== e) return null;
+  const d = distAlong(e, s.i, s.t), avanti = s.dir >= 0;
+  let i0 = -1, dist = 0;
+  if(avanti){ for(let i=0;i<o.length;i++) if(o[i] > d){ i0=i; dist=o[i]-d; break } }
+  else      { for(let i=o.length-1;i>=0;i--) if(o[i] < d){ i0=i; dist=d-o[i]; break } }
+  if(i0 < 0) return null;
+  /* La serie è una CATENA, non una finestra fissa: dieci dossi ogni 80 m sono una
+     strada sola e vanno detti una volta, ma fra due gruppi lontani ci deve stare
+     un secondo avviso. */
+  let n = 1, last = o[i0];
+  if(avanti){ for(let i=i0+1;i<o.length && o[i]-last<=SERIE_DOSSI;i++){ n++; last=o[i] } }
+  else      { for(let i=i0-1;i>=0   && last-o[i]<=SERIE_DOSSI;i--){ n++; last=o[i] } }
+  return {dist, n, key: e.id+':'+o[i0]};
+}
+
 function buildEdges(rid, map){
   VIE[rid] = RAW.vie || [];
   const jn = RAW.jn || null;
@@ -1785,6 +1895,9 @@ function buildEdges(rid, map){
     /* Coda dell'arco, presente solo dai dataset v3: si legge per LUNGHEZZA, così un
        dataset vecchio non produce `undefined` e uno nuovo si legge senza cambiare una
        riga. 11 = indice del ref, 12 = rotatoria, 13 = andamento, 14 = classe. */
+    /* I dossi si agganciano per INDICE DI ARCO scritto nel flusso, non per
+       posizione: un arco saltato qui sopra non sposta niente. */
+    const dosArr = RDOS ? (RDOS.get(k) || null) : null;
     const rotondaTag = arr.length>12 ? arr[12] : 0;
     const clsTag     = arr.length>14 ? arr[14] : 0;
     map[k] = -1;
@@ -1822,7 +1935,7 @@ function buildEdges(rid, map){
        archi hanno tutti la stessa forma e il motore JS non deottimizza il campo
        aggiunto dopo. Costano 3 slot su ~0,62 KB per arco misurati, cioè nulla. */
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
-               zb:RALT?RALT.z:null, zo, zn,
+               zb:RALT?RALT.z:null, zo, zn, dos:dosArr,
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                // il nome sta nel dizionario della sua regione, non in un campo per arco
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : ''};
@@ -1941,7 +2054,8 @@ const CARS = {
               ed e' giusto che il pannello dica "limitatore elettronico".
      Controprova del modello sui dati di targa: CLA 136 CV -> 225 calcolati vs
      220 dichiarati · Fiesta 101 CV -> 184 vs 183 · MiTo QV di serie 170 CV ->
-     220 vs 219 (e' cosi' che e' stato tarato il suo cda: 0,70, corta e tozza).
+     220 vs 219 (e' cosi' che e' stato tarato il suo cda: 0,70, corta e tozza) ·
+     C 220 d station 200 CV -> 240 vs 243 · GLC 220 d 197 CV -> 220 vs 219.
      La MiTo preparata esce a 274, ma il cambio finisce prima: in 5ª a 7.500
      giri fa 270, quindi il tetto suo lo fanno i rapporti, non l'aria. */
   m5: {nm:'Alfa MiTo', sub:'stage 3+ · 320 CV · 350 Nm · 5 marce',
@@ -2000,6 +2114,69 @@ const CARS = {
             "does not use them for the calls. What it does use are the ratios and the usable band: "+
             "all-wheel drive and wide tyres put reference grip above the MiTo's, so the same radii "+
             "come out faster."},
+  c220:{nm:'Mercedes C 220 d', sub:'Station S206 · 200 CV · 440 Nm · 9 marce · 4MATIC',
+       /* Stesso 9G-TRONIC 725.0 della C43, quindi la SPAZIATURA fra i rapporti e' la
+          stessa (5,35 · 3,24 · 2,25 · 1,64 · 1,21 · 1,00 · 0,865 · 0,717 · 0,601,
+          normalizzati sulla 9a): cambia solo il finale, ed e' esattamente quello che
+          tara il cursore. Con finale 2,65 e 225/45 R18 (circonferenza 2,073 m) la 9a
+          fa ~78 km/h ogni 1000 giri, cioe' 130 all'ora a 1.670 giri: e' il valore di
+          partenza del cursore. Il finale esatto e' da confermare sul libretto
+          [poco sicuro] — quello che conta per la marcia consigliata e' la distanza
+          fra i rapporti, e quella e' giusta. Fascia utile da OM654M con rete 48V:
+          440 Nm da 1.800 a 2.800, potenza piena a 3.600, si gira fino a ~4.500. Parte
+          da 1.600 e non da 2.000 come la CLA: e' un diesel di due generazioni dopo e
+          il motorino 48V riempie il buco sotto. Coi paddle la marcia la scegli tu,
+          quindi si suggerisce. */
+       auto:false, n:9, ref:78, grip:0.92, boost:1600, rpmLim:4500,
+       cv:200, kg:1780, cda:0.62, crr:0.011,
+       g:[0.1123,0.1855,0.2671,0.3665,0.4967,0.6010,0.6948,0.8382,1.0],
+       d_it:"2.0 diesel OM654M con rete 48V, 200 CV e 440 Nm da 1.800 a 2.800 giri, "+
+            "9G-TRONIC a 9 rapporti coi paddle, station da poco meno di 1.800 kg. Con i "+
+            "paddle la marcia la scegli tu, quindi il copilota te la dice: la fascia buona "+
+            "è 1.600-4.500 giri, più in basso e più stretta di qualsiasi benzina qui dentro, "+
+            "e le marce consigliate escono alte. Con nove rapporti in curva sei quasi sempre "+
+            "già dove serve senza scalare: quando il copilota chiama una marcia, di solito "+
+            "è per non farti trovare sopra i 4.500 in uscita, non per farti scendere. Tenuta "+
+            "di riferimento sopra la CLA (telaio nuovo, 4MATIC, gomme più larghe) ma sotto "+
+            "la C43: è una station da viaggio, non una berlina sportiva, e gli stessi raggi "+
+            "escono con numeri intermedi.",
+       d_en:"2.0 OM654M diesel with a 48V network, 200 hp and 440 Nm from 1,800 to 2,800 rpm, "+
+            "9-speed 9G-TRONIC with paddles, an estate just under 1,800 kg. With the paddles "+
+            "you pick the gear, so the co-driver calls it: the usable band is 1,600-4,500 rpm, "+
+            "lower and narrower than any petrol car here, and the suggested gears come out "+
+            "tall. With nine ratios you are usually already where you need to be without "+
+            "downshifting: when the co-driver calls a gear it is normally to keep you under "+
+            "4,500 on exit, not to bring you down. Reference grip sits above the CLA (newer "+
+            "chassis, 4MATIC, wider tyres) but below the C43: this is a touring estate, not a "+
+            "sports saloon, so the same radii come out in between."},
+  glc:{nm:'Mercedes GLC 220 d', sub:'SUV X254 · 197 CV · 440 Nm · 9 marce · 4MATIC',
+       /* Stesso motore e stesso 9G-TRONIC della Classe C: la spaziatura dei rapporti e'
+          identica, e infatti `g` e' lo stesso array. Cambia il finale e cambiano le
+          gomme: con finale ~3,07 e 235/60 R18 (circonferenza 2,322 m) la 9a fa ~75 km/h
+          ogni 1000 giri, un filo piu' corta della station nonostante le ruote piu' grandi.
+          Finale e misura esatti da confermare [poco sicuro]: li tara il cursore. */
+       auto:false, n:9, ref:75, grip:0.80, boost:1600, rpmLim:4500,
+       cv:197, kg:2010, cda:0.78, crr:0.012,
+       g:[0.1123,0.1855,0.2671,0.3665,0.4967,0.6010,0.6948,0.8382,1.0],
+       d_it:"Lo stesso 2.0 diesel OM654M con rete 48V della Classe C, 197 CV e 440 Nm, "+
+            "9G-TRONIC coi paddle, ma su un SUV da circa due tonnellate. Motore e rapporti "+
+            "sono quelli, quindi le marce consigliate somigliano a quelle della station; "+
+            "quello che cambia davvero è la tenuta di riferimento, ed è il valore più basso "+
+            "di tutta la lista: baricentro alto, massa, gomme da comfort. Sugli stessi raggi "+
+            "il copilota chiama numeri più bassi di qualunque altra auto qui dentro — non è "+
+            "prudenza gratuita: un SUV in appoggio finisce il margine prima, e lo finisce "+
+            "coricandosi invece che scivolando, quindi quando te ne accorgi hai già poco da "+
+            "fare. Sui tornanti stretti e in discesa la differenza con la station si sente "+
+            "tutta, sul veloce molto meno.",
+       d_en:"The same 2.0 OM654M diesel with a 48V network as the C-Class, 197 hp and 440 Nm, "+
+            "9G-TRONIC with paddles, but in an SUV of about two tonnes. Engine and ratios are "+
+            "identical, so the suggested gears look much like the estate's; what really changes "+
+            "is reference grip, and this is the lowest figure in the whole list: high centre of "+
+            "gravity, mass, comfort tyres. On the same radii the co-driver calls lower speeds "+
+            "than for any other car here — that is not free caution: an SUV runs out of margin "+
+            "sooner, and it runs out by leaning rather than by sliding, so by the time you feel "+
+            "it there is little left to do. In tight hairpins and downhill the gap to the estate "+
+            "is obvious; on fast roads far less so."},
   fie:{nm:'Ford Fiesta ST-Line', sub:'2019 · 1.0 EcoBoost 3 cilindri · 101 CV · 6 marce',
        /* B6 a 6 rapporti: 3,727 · 2,048 · 1,321 · 0,951 · 0,756 · 0,614, finale 4,067,
           normalizzati sulla 6ª. Con 195/55 R16 (circonferenza 1,916 m) la 6ª fa ~46 km/h
@@ -2046,10 +2223,17 @@ const isAuto = () => !!CARS[S.car].auto;
    pareggia le resistenze. Equilibrio risolto per bisezione su
      eta*P = 1/2*rho*CdA*v³ + m*g*(crr + pendenza)*v
    con eta = 0,85 di trasmissione e rho = 1,225. `slope` e' la pendenza in
-   frazione (0,06 = 6%%): oggi i dataset non portano quote, quindi l'app la
-   passa sempre a 0 — il parametro sta qui perche' quando gli archi avranno la
-   pendenza (DEM nel generatore, si accoda a una rigenerazione) il tetto in
-   salita si accende cambiando UNA chiamata, non questa formula.
+   frazione (0,06 = 6%). Il tetto in salita e' ACCESO dal 2026-08-17: i sidecar
+   `alt-<reg>.json` col DEM sono pubblicati per tutte e 17 le regioni, `S.pend`
+   esce da `pendTratto()` dentro `buildAhead()`, e lo leggono `bestGear()` e
+   `curveKmh()`. Su una regione scaricata PRIMA dei sidecar `S.pend` resta 0 e
+   qui non cambia niente: e' il comportamento di sempre, non un guasto.
+   Quanto morde, al 6%: GLC 220 -> 174, C 220 d 240 -> 193, CLA 225 -> 172,
+   ma MiTo preparata 274 -> 248 e C43 ferma a 280 (comanda il limitatore).
+   Non e' il gasolio: e' potenza su massa. Su un'auto pesante e poco potente il
+   tetto in salita entra dentro le velocita' che si tengono davvero, su una
+   leggera e carica no — vale la pena ricordarlo se un giorno lo si mostra a
+   schermo, perche' dove non morde sarebbe rumore fisso.
    Il limitatore elettronico (`vlim`), dove c'e', taglia sotto il valore fisico.
    NON entra mai in costo()/tempoArco(): il percorso non dipende dall'auto. */
 function vTop(slope){
@@ -2122,15 +2306,14 @@ const T = {
     dlFail:'Scaricamento fallito: ',
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
     hereOn:n=>'Sei in '+n+': attiva la mappa dal pannello Mappe.',
-    farApart:'Regioni molto lontane fra loro: le note restano corrette, il disegno si deforma un po\'. Meglio tenere attive solo quelle dove guidi.',
-    applicaDopo:'Le mappe che hai acceso o spento si caricano quando tocchi Fatto: puoi sceglierne piu\' d\'una senza uscire dal pannello.',
+    applicaDopo:'Si caricano quando tocchi Fatto.',
     logTit:'Cosa è andato storto (resta qui, non ti interrompe in guida):',
     logSfratto:'le mappe scaricate NON sono protette: il telefono può cancellarle quando ha bisogno di spazio',
-    tooMuch:mb=>'Molte mappe attive (~'+mb+' MB di memoria): sul telefono l\'app rischia di venire chiusa mentre guidi. Tieni attive solo le regioni dove stai andando — restano scaricate lo stesso.',
+    tooMuch:mb=>'Molte mappe attive (~'+mb+' MB): l\'app può chiudersi mentre guidi. Tieni attive solo quelle dove vai — spegnerle non le cancella.',
     inUse:'in uso', at:'a', byLimit:'limite',
     calRif:'Marcia di riferimento', calHint:g=>'A 2.000 giri in '+g+' il tachimetro segna:',
-    legalOn:'La velocità di riferimento non supera mai il limite della strada: sulle curve larghe è il limite a comandare.',
-    legalOff:'La velocità di riferimento ignora il limite: mostra solo quello che la curva permette. Da usare a fondo chiuso.',
+    legalOn:'Non supera mai il limite della strada.',
+    legalOff:'Ignora il limite: solo quello che la curva permette.',
     navGo:'VAI', navIn:'fra', navM:'metri', navNow:'ORA', navInto:'in', navMin:'MIN',
     navTurn:{dx:'a destra', sx:'a sinistra', dxs:'secca a destra', sxs:'secca a sinistra',
              dxk:'tieni la destra', sxk:'tieni la sinistra', inv:'inverti la marcia',
@@ -2185,15 +2368,14 @@ const T = {
     dlFail:'Download failed: ',
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
     hereOn:n=>'You are in '+n+': activate the map from the Maps panel.',
-    farApart:'Regions far apart: pacenotes stay correct, drawing gets slightly distorted. Better to keep active only the ones you drive in.',
-    applicaDopo:'Maps you switched on or off load when you tap Done: you can pick several without leaving this panel.',
+    applicaDopo:'They load when you tap Done.',
     logTit:'What went wrong (it stays here, it will not interrupt you while driving):',
     logSfratto:'downloaded maps are NOT protected: the phone may delete them when it needs space',
-    tooMuch:mb=>'A lot of active maps (~'+mb+' MB of memory): on a phone the app may get killed while you drive. Keep active only the regions you are heading to — they stay downloaded anyway.',
+    tooMuch:mb=>'Many active maps (~'+mb+' MB): the app may close while you drive. Keep only the ones you are heading to — switching off does not delete them.',
     inUse:'in use', at:'at', byLimit:'limit',
     calRif:'Reference gear', calHint:g=>'At 2,000 rpm in '+g+' the speedo reads:',
-    legalOn:'The reference speed never exceeds the road limit: on open corners the limit is what rules.',
-    legalOff:'The reference speed ignores the limit and shows only what the corner allows. For closed roads.',
+    legalOn:'Never exceeds the road limit.',
+    legalOff:'Ignores the limit: only what the corner allows.',
     navGo:'GO', navIn:'in', navM:'meters', navNow:'NOW', navInto:'onto', navMin:'MIN',
     navTurn:{dx:'turn right', sx:'turn left', dxs:'sharp right', sxs:'sharp left',
              dxk:'keep right', sxk:'keep left', inv:'make a U-turn',
@@ -3818,12 +4000,40 @@ function drawIcon(cls,right){
    due curve che fluiscono l'una nell'altra e «poi» quando c'è uno stacco. */
 const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, sorgente:null};
 
+/* Cache PROPRIA per la voce, e si legge da lì PRIMA di provare la rete.
+
+   Il service worker precarica solo la shell (`index.html`, icone, manifesto,
+   `regions.json`): gli sprite vocali NON sono nel suo elenco. Senza questa cache,
+   in galleria o fuori campo il `fetch` fallirebbe e il copilota resterebbe muto —
+   cioè proprio nella condizione per cui l'app esiste. È lo stesso schema già usato
+   per i dataset: leggere dalla Cache API prima della rete, così non si dipende dal
+   service worker per una cosa che serve offline.
+
+   Una cache separata (`copilota-voce`) e non quella della shell: la shell sale di
+   versione a ogni build e verrebbe buttata, mentre lo sprite cambia solo quando
+   cambia il vocabolario. */
+const CACHE_VOCE = 'copilota-voce-v1';
+async function prendi(url){
+  if(self.caches){
+    try{
+      const c = await caches.open(CACHE_VOCE);
+      const hit = await c.match(url);
+      if(hit) return hit;
+      const r = await fetch(url);
+      if(r.ok) { c.put(url, r.clone()).catch(()=>{}); return r }
+      return Promise.reject(r.status);
+    }catch(e){ /* niente Cache API: si prova la rete e basta */ }
+  }
+  const r = await fetch(url);
+  return r.ok ? r : Promise.reject(r.status);
+}
+
 async function caricaVoce(lang){
   if(VOCE.buf[lang]) return true;
   try{
     const [j,a] = await Promise.all([
-      fetch('voce-'+lang+'.json').then(r=>r.ok?r.json():Promise.reject(r.status)),
-      fetch('voce-'+lang+'.m4a').then(r=>r.ok?r.arrayBuffer():Promise.reject(r.status)),
+      prendi('voce-'+lang+'.json').then(r=>r.json()),
+      prendi('voce-'+lang+'.m4a').then(r=>r.arrayBuffer()),
     ]);
     VOCE.ctx = VOCE.ctx || new (window.AudioContext||window.webkitAudioContext)();
     VOCE.idx[lang] = j.clip;
@@ -3999,6 +4209,35 @@ function updateNote(){
       const lim=cam0.cam.ms;
       if(lim && VOCE.idx[L] && VOCE.idx[L]['a.lim.'+lim]) ch.push('a.limite','a.lim.'+lim);
       dilo(ch, true);
+    }
+  }
+  /* ---- dossi artificiali ----
+     Canale indipendente, come l'autovelox. Il DATO lo espone l'altra sessione con
+     `dossoAvanti(e, d)`; qui c'è solo la frase, e finché quella funzione non esiste
+     questo blocco non fa niente — così l'innesto non rompe nulla se il sidecar dei
+     dossi non è caricato o la mappa è vecchia.
+
+     In città i dossi vengono a SERIE: in Vallonia e a Bruxelles sono la norma, non
+     l'eccezione. Annunciarli uno per uno sarebbe peggio del silenzio, quindi una
+     serie si annuncia una volta sola al plurale — è il motivo per cui il vocabolario
+     ha «dossi» oltre a «dosso».
+
+     Non è urgente: non interrompe una nota di curva in corso. Un dosso preso senza
+     preavviso scuote, una curva presa senza preavviso è un'altra cosa. */
+  if(typeof dossoAvanti === 'function' && S.snap && !S.gpsBuco){
+    const ds = dossoAvanti(S.snap.e, S.v);
+    if(ds && ds.dist != null){
+      const leadD = Math.max(60, S.v*5.5);
+      const kD = 'dos'+(ds.key != null ? ds.key : Math.round(ds.dist));
+      if(ds.dist <= leadD && !S.said.has(kD)){
+        S.said.add(kD);
+        const molti = (ds.n|0) > 1;
+        const d50 = 'd.'+Math.round(Math.max(20, ds.dist)/50)*50;
+        const ch = [];
+        if(VOCE.idx[L] && VOCE.idx[L][d50] && ds.dist >= 45) ch.push(d50, 'd.metri');
+        ch.push(molti ? 'h.dossi' : 'h.dosso');
+        dilo(ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]), false);
+      }
     }
   }
   // il banner mostra l'autovelox quando è la cosa più vicina davanti
@@ -4376,7 +4615,6 @@ navX.onclick=()=>fermaNav();
 
 /* ============ posizione ============ */
 const hud=document.getElementById('hud'), speedV=document.getElementById('speedV'),
-      roadName=document.getElementById('roadName'),
       pendTile=document.getElementById('pendTile'), pendV=document.getElementById('pendV'),
       quotaV=document.getElementById('quotaV');
 /* La pendenza mostrata è arrotondata all'1% e ha una zona morta al 2%: il DEM ha
@@ -4448,7 +4686,10 @@ function feed(x,y,hd,v,acc){
     limSign.textContent='~50'; limSign.style.opacity=0.72; limSign.style.borderStyle='dashed';
     speedV.style.color = kmhNow>55 ? '#ff4438' : kmhNow>50 ? '#ff8a1e' : '';
   } else { limSign.textContent='—'; limSign.style.opacity=0.5; speedV.style.color=''; }
-  roadName.textContent = S.snap ? tr().roads[S.snap.e.rank] : (S.local ? tr().roadLocal : tr().roadOff);
+  /* La targhetta con la classe della strada («Provinciale») e' stata tolta su
+     richiesta di Tiago: diceva a chi guida qualcosa che ha gia' sotto gli occhi
+     dal finestrino, e rubava la riga sopra i numeri che invece contano. Le voci
+     tr().roads/roadLocal/roadOff restano: le usa la legenda. */
   updateNote(); S.need=true;
 }
 function toast(m,ms){
@@ -4614,6 +4855,10 @@ function setMode(m){
   if(p==='follow'&&m!=='follow')stopGps();
   if(p==='demo'&&m!=='demo')S.demo=null;
   bGps.classList.toggle('on',m==='follow');
+  /* Mentre insegue il GPS il bottone non serve a niente: sparisce, e la colonna
+     resta a tre icone. Ricompare nell'istante in cui perdi l'inseguimento —
+     che e' l'unico momento in cui qualcuno lo cerca. */
+  bGps.hidden = (m==='follow');
   // il bottone Demo non è più nella rail (startDemo resta, si chiama da console)
   if(bDemo){
     bDemo.classList.toggle('on',m==='demo');
@@ -4687,6 +4932,7 @@ function applyLang(){
 }
 bLang.onclick=()=>{ L = L==='it'?'en':'it'; save(); applyLang(); renderLegend(); };
 bAudio.classList.toggle('on',S.audio);
+bGps.hidden = (S.mode==='follow');   // stato iniziale: al boot non si insegue nessuno
 /* La bussola rimette nord in alto E la mappa a piombo, in un tocco solo: è quello
    che fa quella di Google Maps, ed è l'unica via d'uscita ovvia se ti sei ritrovato
    la mappa storta o coricata senza volerlo. */
@@ -4697,7 +4943,8 @@ document.getElementById('compass').onclick=()=>{
 };
 
 /* pannelli */
-const sheets={car:document.getElementById('sheetCar'),legend:document.getElementById('sheetLegend'),
+const sheets={set:document.getElementById('sheetSet'),car:document.getElementById('sheetCar'),
+              legend:document.getElementById('sheetLegend'),
               info:document.getElementById('sheetInfo')};
 /* pannello Mappe: lo aggiunge la sessione multi-regione. Bottone e voce si
    agganciano da soli quando #sheetMaps compare nel documento. */
@@ -4884,14 +5131,6 @@ function renderMaps(){
     a.textContent = tr().applicaDopo;
     mapList.appendChild(a);
   }
-  // avviso onesto: con regioni lontane le note restano giuste, il disegno si deforma
-  if(att.length>1){
-    const la0=Math.min(...att.map(r=>r.bbox[0])), la1=Math.max(...att.map(r=>r.bbox[2]));
-    if(la1-la0>4.5){
-      const w=document.createElement('p'); w.className='disc'; w.textContent=tr().farApart;
-      mapList.appendChild(w);
-    }
-  }
 }
 
 async function showStore(){
@@ -4919,6 +5158,12 @@ function suggestRegion(la,lo){
 document.getElementById('bCar').onclick=()=>openSheet('car');
 document.getElementById('bLegend').onclick=()=>openSheet('legend');
 document.getElementById('bInfo').onclick=()=>openSheet('info');
+/* L'ingranaggio e' un interruttore, non solo un'apertura: chi lo tocca una seconda
+   volta si aspetta di richiudere. Senza questo il tocco cadeva nel ramo «dentro un
+   pannello» del gestore qui sotto e non succedeva niente. */
+document.getElementById('bSet').onclick=()=>{
+  sheets.set.classList.contains('show') ? closeSheets() : openSheet('set');
+};
 /* "già vista l'introduzione" lo decide SOLO il bottone del pannello Info: era su
    tutti i [data-close], quindi chiudere Mappe al primo avvio bruciava l'intro che
    l'utente non aveva ancora letto. */
@@ -5726,6 +5971,11 @@ async function boot(){
     RALT = null;
     try{ RALT = preparaAlt(await leggiFile(altUrl(r), r.id), r) }
     catch(err){ nota('quote non caricate: '+err.message); console.warn('quote non caricate:', err.message) }
+    /* Stessa regola dei sidecar: se manca, è di un'altra generazione o è illeggibile,
+       si guida come prima — senza dossi, non con dossi sbagliati. */
+    RDOS = null;
+    try{ RDOS = preparaDos(await leggiFile(dosUrl(r), r.id), r) }
+    catch(err){ console.warn('dossi non caricati:', err.message) }
     const map = new Int32Array(RAW.edges.length);   // indice arco locale -> globale
     buildEdges(r.id, map); buildGrey(); buildCams(map); buildRestr();
     for(const p of RAW.places){
