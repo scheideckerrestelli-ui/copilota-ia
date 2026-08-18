@@ -673,7 +673,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '147';
+const APPVER = '148';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1793,7 +1793,22 @@ const RIF_ITA=new Set(['SS','SP','SR','SC','RA','NSA']);
 const RIF_EX=new RegExp('^(SP|SC|SS|SR) ?ex ?(?:SS|SP|SR|BS|NSA)? ?','i');
 const RIF_PR=new RegExp('^(SP|SC) ?(?:'+RIF_PROV+') ?(?=[0-9IVX])','i');
 const RIF_OK=/^([A-Z]{1,3}) ?([0-9]{1,4}|[IVX]{1,6}) ?(bis|ter|dir|racc|var|[a-z])?$/i;
+/* CONCORRENZE: `A8/A26` e' un tratto che due autostrade percorrono insieme, e la
+   barra manda a vuoto la forma. Si prende il PRIMO: il colore e' certo (e' pur
+   sempre un'autostrada) e il numero e' giusto per quel tratto — sbagliato sarebbe
+   dire quale dei due, non dirne uno. Vale anche per le diramazioni provinciali
+   (`SP11/B` -> `SP 11`). Recupera 2.656 archi su 180 valori distinti, misurati su
+   otto regioni il 2026-08-18, e sono arterie grosse che oggi non mostrano niente.
+   Restano fuori i numeri NUDI senza prefisso (`11`, `403`, `2`): sono numeri veri
+   a cui OSM ha tolto SS/SP/SR, ma senza prefisso non si sa che cartello disegnare,
+   e uno scudetto del colore sbagliato e' peggio di nessuno scudetto. */
 function normRif(r){
+  const v=normRif1(r);
+  if(v || !r) return v;
+  const i=String(r).indexOf('/');
+  return i>0 ? normRif1(String(r).slice(0,i)) : '';
+}
+function normRif1(r){
   if(!r) return '';
   let x=String(r).split(/\s+/).join(' ').trim();
   if(x.indexOf('.')>=0) return '';               // N.004.065 e simili: mai su un cartello
