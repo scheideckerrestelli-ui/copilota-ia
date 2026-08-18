@@ -96,8 +96,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
   /* ---- barra alta ---- */
+  /* La riga di ricerca ARRIVA AL BORDO: right:8px, non piu' 60px — il buco a
+     destra serviva alla bussola quando stava nell'angolo, e non c'e' piu' niente
+     li' da scansare. La riga la chiude la freccia blu. */
   .top{position:fixed;top:var(--alto);left:8px;
-       right:60px;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
+       right:8px;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
   /* La ricerca ha preso il posto del marchio: e' sola sulla riga, quindi puo'
      essere larga quanto serve invece che spremuta in un terzo di schermo. */
   .top .search{max-width:none}
@@ -109,8 +112,17 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .brand h1 span{color:var(--accent)}
   .brand .sub{font-size:10px;color:var(--ink2);margin-top:3px;font-variant-numeric:tabular-nums}
   .search{position:relative;flex:1;min-width:0;max-width:280px}
-  .search input{width:100%;background:var(--velo);border:1px solid var(--line);
-    border-radius:11px;padding:10px 12px;color:var(--ink);font-size:13.5px}
+  .search .srow{display:flex;align-items:stretch}
+  .search input{flex:1;min-width:0;background:var(--velo);border:1px solid var(--line);
+    border-right:0;border-radius:11px 0 0 11px;padding:10px 12px;color:var(--ink);font-size:13.5px}
+  /* La freccia e' il "vai" della riga: con testo scritto sceglie il primo
+     risultato, a campo vuoto apre la tastiera. E' l'unico elemento pieno di
+     accento sulla riga, quindi dice da sola dove si parte. */
+  .search .qgo{flex:none;width:46px;border:0;border-radius:0 11px 11px 0;
+    background:var(--accent);color:var(--suaccento);cursor:pointer;
+    display:grid;place-items:center;padding:0}
+  .search .qgo svg{width:20px;height:20px;fill:none;stroke:currentColor;
+    stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
   .search input::placeholder{color:var(--ink2)}
   .results{position:absolute;top:calc(100% + 5px);left:0;right:0;background:var(--panel);
     border:1px solid var(--line);border-radius:11px;overflow:hidden;display:none;max-height:52vh;
@@ -151,7 +163,10 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* Una colonna sola sul bordo destro, centrata: bussola e 3D in cima, poi i
      comandi. `.rail` e `.cwrap` non sono piu' fissati per conto loro — li posiziona
      il contenitore, cosi' non possono piu' scavalcarsi a vicenda. */
-  .rightcol{position:fixed;right:8px;top:50%;transform:translateY(-50%);
+  /* A filo sotto la riga di ricerca, non piu' a meta' schermo: 41px di riga
+     (10+10 di padding + testo) + 9px d'aria. L'ordine dall'alto: bussola e 3D,
+     ingranaggio, voce, auto, e il ricentra in fondo — chiesto da Tiago 2026-08-18. */
+  .rightcol{position:fixed;right:8px;top:calc(var(--alto) + 50px);
         display:flex;flex-direction:column;align-items:center;gap:13px;z-index:5}
   .rail{display:flex;flex-direction:column;gap:7px}
   .rbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);
@@ -384,7 +399,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      sta nelle impostazioni, dove serve a leggere quante regioni sono attive. -->
 <div class="top">
   <div class="search">
-    <input id="q" type="search" placeholder="Cerca paese o strada…" autocomplete="off" spellcheck="false">
+    <div class="srow">
+      <input id="q" type="search" placeholder="Cerca paese o strada…" autocomplete="off" spellcheck="false">
+      <button class="qgo" id="qGo" title="Vai" aria-label="Vai">
+        <svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"></path></svg></button>
+    </div>
     <div class="results" id="results"></div>
   </div>
 </div>
@@ -404,22 +423,17 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   </div>
 
   <div class="rail">
-  <!-- Ricentrare e' l'unico comando che in guida non puo' stare dietro un menu:
-       se tocchi la mappa e perdi l'inseguimento, devi poter tornare con UN dito.
-       Quindi non lo seppellisco, lo faccio sparire quando non serve — com'e' il
-       bottone «ricentra» di Google Maps: in marcia la colonna resta a tre icone,
-       che e' quello che Tiago ha chiesto di vedere. -->
-  <button class="rbtn" id="bGps" title="Segui GPS" aria-label="Segui GPS" hidden>
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="7.5"></circle><path d="M12 1.5v3.2M12 19.3v3.2M1.5 12h3.2M19.3 12h3.2"></path></svg></button>
-  <!-- Bottone Mappe: il contenuto del pannello lo aggiunge la sessione multi-regione.
-       Togliere `hidden` quando esiste #sheetMaps. Ha preso il posto del vecchio
-       bottone Demo, tolto su richiesta di Tiago. -->
+  <button class="rbtn" id="bSet" title="Impostazioni" aria-label="Impostazioni">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"></circle><path d="M19.4 13.6a7.7 7.7 0 0 0 0-3.2l1.8-1.4-1.9-3.3-2.2.9a7.7 7.7 0 0 0-2.7-1.6L14 2.4h-4l-.4 2.6a7.7 7.7 0 0 0-2.7 1.6l-2.2-.9-1.9 3.3 1.8 1.4a7.7 7.7 0 0 0 0 3.2l-1.8 1.4 1.9 3.3 2.2-.9a7.7 7.7 0 0 0 2.7 1.6l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.7-1.6l2.2.9 1.9-3.3z"></path></svg></button>
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
     <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
   <button class="rbtn" id="bCar" title="La mia auto" aria-label="La mia auto">
     <svg viewBox="0 0 24 24"><path d="M3 14.5h18M4.6 14.5l1.6-5.2a2 2 0 0 1 1.9-1.4h7.8a2 2 0 0 1 1.9 1.4l1.6 5.2"></path><path d="M3 14.5v3h3v-3M18 14.5v3h3v-3"></path><circle cx="7.5" cy="14.5" r="1.4"></circle><circle cx="16.5" cy="14.5" r="1.4"></circle></svg></button>
-  <button class="rbtn" id="bSet" title="Impostazioni" aria-label="Impostazioni">
-    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"></circle><path d="M19.4 13.6a7.7 7.7 0 0 0 0-3.2l1.8-1.4-1.9-3.3-2.2.9a7.7 7.7 0 0 0-2.7-1.6L14 2.4h-4l-.4 2.6a7.7 7.7 0 0 0-2.7 1.6l-2.2-.9-1.9 3.3 1.8 1.4a7.7 7.7 0 0 0 0 3.2l-1.8 1.4 1.9 3.3 2.2-.9a7.7 7.7 0 0 0 2.7 1.6l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.7-1.6l2.2.9 1.9-3.3z"></path></svg></button>
+  <!-- Ricentrare e' l'unico comando che in guida non puo' stare dietro un menu:
+       se tocchi la mappa e perdi l'inseguimento devi tornare con UN dito. In fondo
+       alla colonna, come chiesto, e sparisce quando gia' si insegue. -->
+  <button class="rbtn" id="bGps" title="Segui GPS" aria-label="Segui GPS" hidden>
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="7.5"></circle><path d="M12 1.5v3.2M12 19.3v3.2M1.5 12h3.2M19.3 12h3.2"></path></svg></button>
   </div>
 </div>
 
@@ -673,7 +687,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '148';
+const APPVER = '150';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -6002,6 +6016,16 @@ function rigaRis(r){
 }
 
 qEl.onfocus=()=>{ assicuraIndice(); renderResults(qEl.value) };
+/* La freccia usa POINTERDOWN con preventDefault, non click: il click arriverebbe
+   dopo il blur del campo, che 180 ms dopo chiude la lista — e si cliccherebbe una
+   lista appena svuotata. Il preventDefault tiene il fuoco dov'e'. */
+document.getElementById('qGo').onpointerdown=e=>{
+  e.preventDefault();
+  if(!qEl.value.trim()){ qEl.focus(); return }
+  const b=resEl.querySelector('.rr .nm');
+  if(b) b.click();
+  else { assicuraIndice(); renderResults(qEl.value) }
+};
 qEl.oninput=()=>renderResults(qEl.value);
 /* `premuto` = c'è un dito appoggiato su un risultato. Senza, il tocco toglie il
    fuoco alla casella e 180 ms dopo l'elenco si chiude DA SOLO: una pressione lunga
@@ -6300,6 +6324,12 @@ async function boot(){
   else { S.cx=(BB[0]+BB[2])/2; S.cy=(BB[1]+BB[3])/2; S.scale=zoomIniziale(20000) }
   splash.classList.add('hide');
   loop();
+  /* All'apertura ci si aggancia da soli alla posizione: e' quello che fa qualunque
+     navigatore, e Tiago l'ha chiesto esplicitamente (2026-08-18). Stessa strada del
+     bottone — startGps() — cosi' permessi, tolleranza ai buchi e wake lock sono gli
+     stessi di sempre. Se il permesso e' negato, l'handler dentro startGps lo dice e
+     si resta sulla vista di prima: il fallback sui preferiti qui sopra serve a quello. */
+  startGps();
   let seen=false; try{seen=!!localStorage.getItem('copilota2seen')}catch(e){}
   if(!seen) openSheet('info');
   console.log('boot in',Math.round(performance.now()-t0),'ms ·',E.length,'archi');
