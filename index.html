@@ -606,7 +606,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '139';
+const APPVER = '141';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3845,7 +3845,15 @@ function svegliaVoce(){
 const GAP = 0.03;
 function durataFrase(chiavi){
   const ix = VOCE.idx[L]; if(!ix) return 0;
-  let t=0; for(const k of chiavi){ const c=ix[k]; if(c) t += c.d + GAP; }
+  let t=0;
+  for(const k of chiavi){
+    const c=ix[k]; if(!c) continue;
+    /* Con le varianti la durata vera si sa solo al momento di suonare: qui si prende
+       la PIÙ LUNGA. Sottostimare vuol dire iniziare tardi e finire dentro la curva;
+       sovrastimare vuol dire parlare un attimo prima, che non fa danno. */
+    let d=c.d; if(c.v) for(const a of c.v) if(a.d>d) d=a.d;
+    t += d + GAP;
+  }
   return t;
 }
 
@@ -3863,10 +3871,17 @@ function dilo(chiavi, urgente){
   let t=t0; const nodi=[];
   for(const k of chiavi){
     const c=ix[k]; if(!c) continue;
+    /* Le chiamate frequenti hanno più versioni della stessa parola e se ne pesca una
+       a caso. Sentire duecento volte in un viaggio lo STESSO identico «destra tre» è
+       ciò che separa un copilota da un annunciatore di stazione — i pacenote pack
+       seri ne registrano fino a sei per chiamata. Chi non ha varianti usa la sua e
+       basta, quindi il codice non deve sapere quali chiavi le hanno. */
+    const alt = c.v ? [c].concat(c.v) : null;
+    const q = alt ? alt[(Math.random()*alt.length)|0] : c;
     const s=VOCE.ctx.createBufferSource();
     s.buffer=buf; s.connect(VOCE.ctx.destination);
-    s.start(t, c.t, c.d); nodi.push(s);
-    t += c.d + GAP;
+    s.start(t, q.t, q.d); nodi.push(s);
+    t += q.d + GAP;
   }
   VOCE.sorgente=nodi; VOCE.fino=t;
   return t-t0;
