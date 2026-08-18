@@ -687,7 +687,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '150';
+const APPVER = '151';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -809,6 +809,7 @@ const altUrl = r => r.alt ? r.alt+'?v='+r.av : null;
    KB e 8 KB a regione. Chi ha una mappa vecchia non vede niente di rotto: i dossi
    semplicemente non ci sono, cioe' com'era prima. */
 const dosUrl = r => r.dos ? r.dos+'?v='+r.dv : null;
+const camsUrl = r => r.cams ? r.cams+'?v='+r.csv : null;
 const pesoTot = r => (r.bytes||0)+(r.gb||0)+(r.cb||0)+(r.ab||0)+(r.db||0);
 
 /* Regioni per cui si è finiti a servire una copia VECCHIA dalla cache. Non è un
@@ -843,7 +844,7 @@ async function leggiFile(url, rid, onProgress){
     try{
       const c = await caches.open(cacheName(rid));
       await c.put(url, new Response(buf, {headers:{'Content-Type':'application/json'}}));
-    }catch(e){}
+    }catch(e){ nota('mappa scaricata ma non salvata offline ('+url.split('/').pop()+'): '+e.message) }
     return JSON.parse(new TextDecoder().decode(buf));
   }
   return JSON.parse(new TextDecoder().decode(await readStream(res, onProgress||(()=>{}))));
@@ -1939,6 +1940,7 @@ function pendTratto(e, d, dir, m){
    si riferisce. Cosi' un arco scartato al confine non sfasa tutto il resto — che
    e' esattamente il modo in cui il profilo di quota puo' rompersi in silenzio. */
 let RDOS = null;               // Map indice arco nel file -> Int32Array scostamenti
+let RCAMS = null;              // autovelox del sidecar, se validi (altrimenti RAW.cams)
 function preparaDos(j, r){
   if(!j || !j.d || !j.meta) return null;
   /* Stessa doppia guardia delle quote, e per lo stesso motivo: gli indici valgono
@@ -1969,6 +1971,34 @@ function preparaDos(j, r){
   }
   console.log('dossi', r.id+':', tot, 'su', m.size, 'archi');
   return m;
+}
+/* ============ autovelox staccati ============
+   Stesso motivo dei dossi e delle quote: gli autovelox invecchiano in SETTIMANE,
+   il resto della regione in anni, e finche' stanno dentro `data-<reg>.json` un
+   aggiornamento da poche decine di KB fa riscaricare l'intera regione — fino a
+   58 MB per spostare un autovelox, proprio mentre uno e' in viaggio. Il campo
+   `cams` embedded resta come ripiego: se il sidecar manca o e' di un'altra
+   generazione si torna a leggere `RAW.cams`, che e' il comportamento di sempre.
+   Ogni autovelox porta `ei`, l'indice dell'arco DENTRO QUEL FILE: stessa doppia
+   guardia sha+firma di preparaAlt/preparaDos, per lo stesso motivo — un indice
+   che punta all'arco sbagliato non lancia nessun errore, mette solo l'avviso
+   sulla strada sbagliata. */
+function preparaCams(j, r){
+  if(!j || !j.c || !j.meta) return null;
+  if(j.meta.sha && r.v && j.meta.sha !== r.v){
+    nota('autovelox sidecar scartato: di un altro dataset ('+r.id+')');
+    console.warn('cams scartati: sidecar di un altro dataset', j.meta.sha, '≠', r.v); return null }
+  const f = j.meta.firma;
+  if(f){
+    const mio = [RAW.edges.length, RAW.meta.nJn, RAW.meta.nCurve, RAW.meta.gen];
+    if(f.length!==mio.length || f.some((v,i)=>v!==mio[i])){
+      nota('autovelox sidecar scartato: mappa in memoria ('+r.id+') di una generazione '+
+           'diversa — eliminala e riscaricala da Mappe');
+      console.warn('cams scartati: dataset di un\'altra generazione', f, '≠', mio); return null }
+  } else if(j.meta.n !== RAW.edges.length){
+    nota('autovelox sidecar scartato: non allineato al dataset ('+j.meta.n+' archi contro '+RAW.edges.length+')');
+    console.warn('cams scartati:', j.meta.n, 'archi contro', RAW.edges.length); return null }
+  return j.c;
 }
 /* Prossimo dosso davanti. Il contratto se l'è scritto la sessione che ha fatto la
    voce, e lo rispetto alla lettera perché la sua frase è già dentro `updateNote()`:
@@ -2143,7 +2173,7 @@ function buildGrey(){
 const CAMS = [];                        // {x,y,ms,e,d}
 const E2CAM = new Map();                // edgeId -> [cam]
 function buildCams(map){
-  for (const [lon,lat,ms,ei,d] of (RAW.cams||[])){
+  for (const [lon,lat,ms,ei,d] of (RCAMS || RAW.cams || [])){
     const ck = lon+','+lat;
     if (CSEEN.has(ck)) continue;          // stesso autovelox in due regioni confinanti
     CSEEN.add(ck);
@@ -6250,6 +6280,11 @@ async function boot(){
     RDOS = null;
     try{ RDOS = preparaDos(await leggiFile(dosUrl(r), r.id), r) }
     catch(err){ console.warn('dossi non caricati:', err.message) }
+    /* Stessa regola: se il sidecar manca o non torna, RCAMS resta null e buildCams
+       ripiega su RAW.cams — è il comportamento di sempre, non un guasto. */
+    RCAMS = null;
+    try{ RCAMS = preparaCams(await leggiFile(camsUrl(r), r.id), r) }
+    catch(err){ console.warn('autovelox sidecar non caricato:', err.message) }
     const map = new Int32Array(RAW.edges.length);   // indice arco locale -> globale
     buildEdges(r.id, map); buildGrey(); buildCams(map); buildRestr();
     for(const p of RAW.places){
