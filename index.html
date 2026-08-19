@@ -495,6 +495,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <span data-lang="it">Lingua e voce</span><span data-lang="en">Language and voice</span><span data-lang="fr">Langue et voix</span>
     <button class="rbtn setval" id="bLang" title="Language">EN</button>
   </div>
+  <!-- Un interruttore solo, non sei: queste scelte sono un dialetto, e mezzo rally
+       mezzo navigatore non e' nessuna delle due lingue. Spento = comportamento di
+       sempre, identico. Il «si stringe» sta FUORI di qui apposta: e' sicurezza, non
+       stile, quindi vale acceso o spento. -->
+  <label class="opt"><input type="checkbox" id="paceChk">
+    <span data-lang="it">Note stile rally: distanze a voce, note concatenate, marcia non detta</span>
+    <span data-lang="en">Rally-style notes: spoken distances, linked calls, no gear called</span>
+    <span data-lang="fr">Notes façon rallye : distances à voix, notes enchaînées, sans rapport</span></label>
   <div class="setrow">
     <span data-lang="it">Aspetto</span><span data-lang="en">Appearance</span><span data-lang="fr">Apparence</span>
     <button class="rbtn setval" id="bTema" title="Tema / Theme"></button>
@@ -752,7 +760,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '157';
+const APPVER = '164';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -875,7 +883,19 @@ const altUrl = r => r.alt ? r.alt+'?v='+r.av : null;
    semplicemente non ci sono, cioe' com'era prima. */
 const dosUrl = r => r.dos ? r.dos+'?v='+r.dv : null;
 const camsUrl = r => r.cams ? r.cams+'?v='+r.csv : null;
-const pesoTot = r => (r.bytes||0)+(r.gb||0)+(r.cb||0)+(r.ab||0)+(r.db||0);
+/* Sesto sidecar: bas-<reg>.json e' lo SFONDO — acqua, verde, aree urbane. Serve a
+   togliere il nero ai lati della strada, che non e' una questione di bellezza:
+   senza niente attorno non si distingue un lago da un bosco da un paese, e la
+   strada resta sospesa nel vuoto. Lo calcola `sfondo.py` dai PBF.
+   Differenza dagli altri sidecar, ed e' voluta: NON e' allineato arco-per-arco,
+   quindi non porta `firma` e non c'e' niente da confrontare col dataset. E'
+   geometria a se'; l'unica cosa che deve tornare e' il sistema di coordinate, e
+   quello se lo porta scritto dentro (vedi `preparaBas`). */
+const basUrl = r => r.bas ? r.bas+'?v='+r.bsv : null;
+/* `csb` mancava: gli autovelox erano l'unico sidecar a non essere contato nel peso
+   annunciato in Mappe. Svista mia di ieri quando ho aggiunto `cams-`, non una scelta. */
+const pesoTot = r => (r.bytes||0)+(r.gb||0)+(r.cb||0)+(r.ab||0)+(r.db||0)
+                     +(r.csb||0)+(r.bsb||0);
 
 /* Regioni per cui si è finiti a servire una copia VECCHIA dalla cache. Non è un
    errore — «una copia vecchia batte il nulla» è la scelta giusta per l'uso offline —
@@ -971,11 +991,18 @@ const CLS = [
    Il perche' dei valori chiari sta nella nota del foglio di stile: si tara sul
    CORPO STRADA, non sul fondo. */
 const TEMI = {
-  scuro:  {bg:'#101418', corpo:'#39434d', grigia:'#1b2229', ink2:'#8b98a5',
+  /* Sfondo (acqua/verde/urbano): sta sotto TUTTO, quindi si tara verso il fondo e non
+     verso la strada. Il vincolo è che il CORPO STRADA resti la cosa più chiara dello
+     scuro e più scura del chiaro: se lo sfondo si avvicina, la rete smette di
+     staccare e si perde la cosa per cui l'app esiste. Sono masse di contesto, non
+     informazione da leggere — se si notano, sono sbagliate. */
+  scuro:  {acqua:'#0e1d2c', verde:'#141d17', urbano:'#191e24',
+           bg:'#101418', corpo:'#39434d', grigia:'#1b2229', ink2:'#8b98a5',
            accent:'#4fd6ff', inkVia:'#c8d2db', inkPaese:'#c3ccd4', inkFioco:'#6b7783',
            inkForte:'#e8edf2', ombra:'rgba(0,0,0,.55)', bordoPos:'rgba(246,251,255,.95)',
            anello:'rgba(10,13,16,.75)', alone:'79,214,255'},
-  chiaro: {bg:'#e9eef3', corpo:'#2b3540', grigia:'#aeb9c4', ink2:'#5a6774',
+  chiaro: {acqua:'#c7dbf0', verde:'#d7e7d2', urbano:'#dde3ea',
+           bg:'#e9eef3', corpo:'#2b3540', grigia:'#aeb9c4', ink2:'#5a6774',
            accent:'#0b6fd0', inkVia:'#33404c', inkPaese:'#16202a', inkFioco:'#79848f',
            inkForte:'#16202a', ombra:'rgba(20,30,40,.28)', bordoPos:'rgba(16,24,32,.92)',
            anello:'rgba(255,255,255,.85)', alone:'11,111,208'}
@@ -2065,6 +2092,136 @@ function preparaCams(j, r){
     console.warn('cams scartati:', j.meta.n, 'archi contro', RAW.edges.length); return null }
   return j.c;
 }
+
+/* ============ sfondo: acqua, verde, urbano ============
+   Fuori dalla carreggiata la mappa era nera, e non e' un problema estetico: senza
+   niente attorno non si distingue un lago da un bosco da un paese, e la strada
+   resta sospesa nel vuoto. Sono le tre masse di colore che danno il contesto —
+   non gli edifici, che sono milioni e peserebbero piu' di tutta la rete stradale.
+
+   PERCHE' QUI NON C'E' LA `firma`. Gli altri sidecar (`alt`, `dos`, `cams`) sono
+   allineati ARCO PER ARCO e vanno buttati se il dataset in memoria e' di un'altra
+   generazione: un indice sbagliato mette la pendenza della statale sulla mulattiera.
+   Questo no. E' geometria a se', non ha un valore per arco, e non gli importa nulla
+   di quanti archi ci siano. Metterci la firma sarebbe una severita' finta: butterebbe
+   uno sfondo perfettamente valido perche' e' stata ricontata una curva.
+
+   QUELLO CHE INVECE PUO' ROMPERSI e' il sistema di coordinate, ed e' un guasto muto:
+   i poligoni si disegnerebbero traslati rispetto alle strade, senza nessun errore.
+   `setOrigin()` sceglie UN'origine per tutte le regioni caricate insieme, mentre il
+   sidecar e' stato scritto in metri attorno all'origine della SUA regione. Quindi non
+   si confronta niente: il file dichiara il proprio riferimento e qui si riporta a
+   quello dell'app con una scala e uno spostamento per asse, una volta sola al
+   caricamento. Cosi' e' esatto per costruzione, e continua a esserlo se un domani si
+   caricano tre regioni insieme e l'origine comune si sposta. */
+const BAS = {pol:[], cat:[], bb:[], path:[], grid:new Map(), grandi:[], n:0};
+const BASCAT = ['u','v','a'];            // ordine di disegno: urbano sotto, acqua sopra
+const BASGRANDE = CELL*6;                // oltre 9 km di lato non entra nell'indice a celle
+
+function decodeAnello(s, q, sx, ox, oy){
+  const n=s.length; let i=0, x=0, y=0; const out=[];
+  while(i<n){
+    let r=0, sh=0, b;
+    do{ b=s.charCodeAt(i++)-63; r|=(b&0x1f)<<sh; sh+=5 }while(b>=0x20);
+    x += (r&1)? ~(r>>1) : (r>>1);
+    r=0; sh=0;
+    do{ b=s.charCodeAt(i++)-63; r|=(b&0x1f)<<sh; sh+=5 }while(b>=0x20);
+    y += (r&1)? ~(r>>1) : (r>>1);
+    out.push(x*q*sx+ox, y*q+oy);
+  }
+  return Float32Array.from(out);
+}
+function indicizzaBas(p, cat){
+  let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12;
+  for(let i=0;i<p.length;i+=2){
+    if(p[i]<x0)x0=p[i]; if(p[i]>x1)x1=p[i];
+    if(p[i+1]<y0)y0=p[i+1]; if(p[i+1]>y1)y1=p[i+1];
+  }
+  const id=BAS.n++;
+  BAS.pol.push(p); BAS.cat.push(cat); BAS.path.push(null);
+  BAS.bb.push(x0,y0,x1,y1);
+  /* Un poligono grande sta sopra centinaia di celle e registrarlo in tutte vorrebbe
+     dire un indice piu' pesante della geometria. I grandi sono pochi (un lago, un
+     parco nazionale, il mare) e si tengono in una lista a parte che si scorre sempre:
+     costa un confronto di riquadri a testa, che e' meno del loro indice. */
+  if(x1-x0>BASGRANDE || y1-y0>BASGRANDE){ BAS.grandi.push(id); return }
+  const cx0=Math.floor(x0/CELL), cx1=Math.floor(x1/CELL);
+  const cy0=Math.floor(y0/CELL), cy1=Math.floor(y1/CELL);
+  for(let cx=cx0;cx<=cx1;cx++) for(let cy=cy0;cy<=cy1;cy++){
+    const k=ckey(cx,cy); let a=BAS.grid.get(k);
+    if(!a){ a=[]; BAS.grid.set(k,a) }
+    a.push(id);
+  }
+}
+function preparaBas(j, r){
+  if(!j || !j.meta) return 0;
+  const q=j.meta.q||4, latS=j.meta.lat0, lonS=j.meta.lon0;
+  if(!(latS>=-90&&latS<=90) || !(lonS>=-180&&lonS<=180)){
+    nota('sfondo scartato: manca il riferimento di coordinate ('+r.id+')');
+    console.warn('sfondo scartato: lat0/lon0 assenti', j.meta); return 0 }
+  const bx = 111320*Math.cos(latS*Math.PI/180);
+  /* KY e' la stessa costante nei due riferimenti, quindi sull'asse y basta lo
+     spostamento; sull'asse x cambia col coseno della latitudine e serve anche la scala. */
+  const sx = KX/bx, ox = (lonS-M.lon0)*KX, oy = (latS-M.lat0)*KY;
+  let n=0;
+  for(let c=0;c<3;c++){
+    const lista=j[BASCAT[c]];
+    if(!Array.isArray(lista)) continue;
+    for(const s of lista){
+      const p=decodeAnello(s,q,sx,ox,oy);
+      if(p.length<8) continue;                      // meno di 4 vertici non e' un'area
+      indicizzaBas(p,c); n++;
+    }
+  }
+  return n;
+}
+/* Raccoglie gli sfondi inquadrati, divisi per categoria. Il filtro vero non e' lo
+   zoom ma la DIMENSIONE SULLO SCHERMO: sotto una decina di pixel un poligono e' un
+   puntino che costa quanto un lago, e toglierlo e' insieme il LOD e il risparmio.
+   Con quel filtro la vista da lontano si regge da sola e non serve una seconda soglia. */
+const BASBUCK=[[],[],[]];
+function sfondoInquadrato(c0,c1,r0,r1, bx0,by0,bx1,by1, scala){
+  BASBUCK[0].length=BASBUCK[1].length=BASBUCK[2].length=0;
+  if(!BAS.n) return false;
+  const minPx=10, bb=BAS.bb;
+  const prendi = id => {
+    const o=id<<2;
+    if(bb[o+2]<bx0||bb[o]>bx1||bb[o+3]<by0||bb[o+1]>by1) return;
+    if((bb[o+2]-bb[o]+bb[o+3]-bb[o+1])*scala < minPx) return;
+    BASBUCK[BAS.cat[id]].push(id);
+  };
+  const nCelle=(c1-c0+1)*(r1-r0+1);
+  /* Da vicino conviene l'indice a celle: si guardano poche decine di caselle invece
+     di tutti i poligoni della regione. Da lontano si ribalta — le celle inquadrate
+     diventano migliaia, ognuna con la sua ricerca nella mappa e il suo controllo dei
+     doppioni, mentre i poligoni sono comunque solo qualche decina di migliaia e un
+     confronto di riquadri costa meno di una ricerca. Quindi oltre la soglia si
+     scorrono tutti, e non si perde nulla: la vista d'insieme resta piena.
+     La prima stesura qui disegnava solo i `grandi` oltre soglia, ed era un buco —
+     allontanandosi lo sfondo spariva di colpo, cioè si toglieva uno scatto (quello
+     delle curve) per aggiungerne un altro. */
+  if(nCelle<=1200){
+    const visti=new Set();
+    for(let cx=c0;cx<=c1;cx++) for(let cy=r0;cy<=r1;cy++){
+      const a=BAS.grid.get(ckey(cx,cy));
+      if(!a) continue;
+      for(const id of a){ if(visti.has(id)) continue; visti.add(id); prendi(id) }
+    }
+    for(const id of BAS.grandi) prendi(id);
+  } else {
+    for(let id=0;id<BAS.n;id++) prendi(id);
+  }
+  return BASBUCK[0].length+BASBUCK[1].length+BASBUCK[2].length > 0;
+}
+function basPath(id){
+  let p=BAS.path[id];
+  if(p) return p;
+  const q=BAS.pol[id]; p=new Path2D();
+  p.moveTo(q[0],q[1]);
+  for(let i=2;i<q.length;i+=2) p.lineTo(q[i],q[i+1]);
+  p.closePath();
+  BAS.path[id]=p; return p;
+}
 /* Prossimo dosso davanti. Il contratto se l'è scritto la sessione che ha fatto la
    voce, e lo rispetto alla lettera perché la sua frase è già dentro `updateNote()`:
 
@@ -2123,6 +2280,14 @@ function buildEdges(rid, map){
     const dosArr = RDOS ? (RDOS.get(k) || null) : null;
     const rifIdx     = arr.length>11 ? arr[11] : -1;
     const rotondaTag = arr.length>12 ? arr[12] : 0;
+    /* 13 = andamento: quali curve SI STRINGONO e di quanto. Coppie appiattite
+       [indice della curva, profondita' 1..9], dove la profondita' e' quante volte il
+       raggio d'ingresso e' piu' largo del punto piu' stretto. E' una MISURA, non una
+       decisione: la soglia oltre cui dirlo a voce sta nell'app (STRINGE_MIN), cosi' si
+       tara guidando invece di rigenerare 206 MB di dataset. Letto per LUNGHEZZA come
+       gli altri campi della coda: sui dataset che non ce l'hanno resta null e non
+       cambia niente. */
+    const andamArr   = arr.length>13 ? arr[13] : null;
     const clsTag     = arr.length>14 ? arr[14] : 0;
     map[k] = -1;
     if (wid!==undefined){
@@ -2153,6 +2318,13 @@ function buildEdges(rid, map){
       curves=[];
       for (let i=0;i<cflat.length;i+=5)
         curves.push({d0:cflat[i], d1:cflat[i+1], dir:cflat[i+2], c:cflat[i+3], r:cflat[i+4]});
+      /* L'indice del campo 13 conta le curve DOPO la fusione, cioe' nello stesso
+         ordine in cui sono qui: e' la stessa lista `merged` di process4.py. Il campo
+         sta fuori da `cflat` apposta — un sesto valore per curva porterebbe il passo
+         dell'appiattito da 5 a 6 e un'app vecchia leggerebbe tutte le CLASSI sfasate. */
+      if(andamArr) for(let i=0;i<andamArr.length;i+=2){
+        const c=curves[andamArr[i]]; if(c) c.st=andamArr[i+1];
+      }
     }
     const gj0=J(j0), gj1=J(j1);
     /* `zb`/`zo`/`zn` sono nel letterale anche quando il sidecar non c'è: così gli
@@ -2522,6 +2694,7 @@ const T = {
     localCall:'Strada locale', localSub:'strada urbana: nessuna nota di curva, limite dedotto',
     gWords:['prima','seconda','terza','quarta','quinta','sesta','settima','ottava','nona'],
     cWords:['tornante','uno','due','tre','quattro','cinque','sei'],
+    tight:'si stringe',
     sideW:['destra','sinistra'], hairW:'tornante a ',
     gpsSearch:'Cerco il GPS…',
     gpsFrame:'Questa è la demo dentro claude.ai: la posizione è bloccata dall\'iframe, non da te. Apri l\'app vera su scheideckerrestelli-ui.github.io/copilota-ia/ (o usa la Demo qui).',
@@ -2585,6 +2758,7 @@ const T = {
     localCall:'Local road', localSub:'urban street: no corner calls, limit inferred',
     gWords:['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth'],
     cWords:['hairpin','one','two','three','four','five','six'],
+    tight:'tightens',
     sideW:['right','left'], hairW:'hairpin ',
     gpsSearch:'Looking for GPS…',
     gpsFrame:'This is the demo embedded in claude.ai: location is blocked by the iframe, not by you. Open the real app at scheideckerrestelli-ui.github.io/copilota-ia/ (or use the Demo here).',
@@ -2645,6 +2819,7 @@ const T = {
     localCall:'Route locale', localSub:'rue urbaine : pas d\'annonce de virage, limite estimée',
     gWords:['première','deuxième','troisième','quatrième','cinquième','sixième','septième','huitième','neuvième'],
     cWords:['épingle','un','deux','trois','quatre','cinq','six'],
+    tight:'se ferme',
     sideW:['droite','gauche'], hairW:'épingle à ',
     gpsSearch:'Recherche du GPS…',
     gpsFrame:'Ceci est la démo intégrée dans claude.ai : la position est bloquée par l\'iframe, pas par toi. Ouvre l\'application réelle sur scheideckerrestelli-ui.github.io/copilota-ia/ (ou utilise la Démo ici).',
@@ -2699,7 +2874,7 @@ const S = {
   d3:false,           // vista guida 3D: inclinazione + zoom automatici
   pitchLibero:false,  // l'inclinazione l'hai messa tu (due dita o bottone): l'automatismo non ci mette più le mani
   zoomLibero:false,   // l'utente ha pizzicato: da qui in poi lo zoom è suo, non mio
-  mode:'free', audio:false, autoMode:false, watchId:null, wake:null,
+  mode:'free', audio:false, autoMode:false, pace:false, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
   dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
@@ -2720,12 +2895,13 @@ try{
   if(typeof st.calG==='number')S.calG=st.calG;
   if(typeof st.legal==='boolean')S.legal=st.legal;
   if(typeof st.autoMode==='boolean')S.autoMode=st.autoMode;
+  if(typeof st.pace==='boolean')S.pace=st.pace;
   if(st.audio)S.audio=true;
   if(st.d3)S.d3=true;
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,autoMode:S.autoMode,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 
 /* velocità (km/h) per 1000 giri, per marcia */
 function gearKmh(){ const c=CARS[S.car]; return c.g.map(r=>r*S.cal); }
@@ -2913,43 +3089,89 @@ function viewBounds(){
 
    Le larghezze si dividono in tre fasce di profondità: senza, il fondo dell'inquadratura
    diventa un tappeto di colore pieno perché tutte le strade restano spesse uguali. */
-const FASCE=[1, 0.68, 0.44];
-function fasciaDi(d){ return d<CAM.R*1.7 ? 0 : d<CAM.R*3.4 ? 1 : 2 }
+/* Erano TRE gradini — [1, 0,68, 0,44] con due soglie secche — e si vedeva: da 1 a
+   0,68 è un salto del 32% della larghezza, a distanza FISSA dalla camera, cioè una
+   riga che ti scorre incontro mentre guidi e assottiglia le strade quando la
+   attraversano. In prospettiva vera la larghezza cala con continuità.
+
+   Otto gradini con lo stesso andamento: ogni fascia è 1,35 volte più lontana della
+   precedente e larga 1,35^-0,6 volte, cioè la stessa curva di prima campionata più
+   fitta. I due estremi coincidono con i vecchi (1,0 vicino, ~0,45 a 4·R), quindi la
+   mappa non cambia aspetto: cambia solo che il salto passa dal 32% al 17% e avviene
+   in punti diversi, sotto la soglia in cui l'occhio lo aggancia.
+   Il prezzo sono 2,7 volte i Path2D e le chiamate di stroke in prospettiva. Si può
+   pagare: il 3D a zoom di guida costa 0,1 ms su 16,7 disponibili, misurato sulla
+   Valle d'Aosta — anche triplicato resta sotto il 2% del fotogramma. */
+const NFASCE=8;
+const FASCE=new Float32Array(NFASCE);      // moltiplicatore di larghezza
+const FMUL=new Float32Array(NFASCE);       // confine della fascia, in unità di CAM.R*1.2
+for(let f=0;f<NFASCE;f++){ FASCE[f]=Math.pow(1.35,-0.6*f); FMUL[f]=Math.pow(1.35,f+0.5) }
+function fasciaDi(d){
+  const t=d/(CAM.R*1.2);
+  for(let f=0;f<NFASCE-1;f++) if(t<FMUL[f]) return f;
+  return NFASCE-1;
+}
+const fasceVuote = () => { const a=new Array(NFASCE); for(let f=0;f<NFASCE;f++) a[f]=new Path2D(); return a };
 /* Proietta una polilinea tagliandola sul piano vicino. Il taglio è la parte che tutti
    sbagliano la prima volta: se un pezzo di strada passa DIETRO la camera e lo si
    proietta lo stesso, la divisione cambia segno e disegna una riga enorme di traverso. */
+/* La smussatura vale anche qui, e anzi qui si vede DI PIU': in prospettiva la curva
+   davanti al cofano occupa mezzo schermo, e uno spigolo largo dieci metri diventa
+   largo cento pixel. Si smussa in spazio SCHERMO, dopo la proiezione, per non dover
+   proiettare punti in più: si accumulano i punti del sottotracciato negli appoggi e
+   si emettono in blocco. Gli appoggi stanno fuori dalla funzione perché questa gira
+   qualche migliaio di volte per fotogramma. */
+const _tsx=new Float64Array(4096), _tsy=new Float64Array(4096);
+function emettiMorbido(P, m){
+  if(m<2) return;
+  P.moveTo(_tsx[0],_tsy[0]);
+  if(m<4){ for(let i=1;i<m;i++) P.lineTo(_tsx[i],_tsy[i]); return }
+  for(let i=1;i<m-1;i++)
+    P.quadraticCurveTo(_tsx[i],_tsy[i], (_tsx[i]+_tsx[i+1])/2, (_tsy[i]+_tsy[i+1])/2);
+  P.lineTo(_tsx[m-1],_tsy[m-1]);
+}
+/* Niente funzioncina interna per «metti un punto»: questa gira qualche migliaio di
+   volte per fotogramma e una chiusura per chiamata sono migliaia di oggetti al
+   secondo dati al garbage collector, cioè gli scatti che si stanno togliendo. Le tre
+   righe si ripetono a mano. */
 function traccia(P, xy, a, b){
-  const near=CAM.R*NEAR;
-  let px=0, py=0, pd=0, giu=true;
+  const near=CAM.R*NEAR, cap=_tsx.length;
+  let px=0, py=0, pd=0, giu=true, m=0;
   for(let i=a;i<=b;i++){
     const ax=xy[2*i]-CAM.cx, ay=xy[2*i+1]-CAM.cy;
     const X=ax*CAM.c+ay*CAM.s, Y=-ax*CAM.s+ay*CAM.c;
     const d=Y*CAM.sp+CAM.R;
     if(d<near){
-      if(!giu && pd>=near){                    // esce: taglia sul piano vicino
-        const t=(pd-near)/(pd-d);
-        const cx2=px+(X-px)*t, cy2=py+(Y-py)*t;
-        P.lineTo(W/2+CAM.f*cx2/near, H/2-CAM.f*cy2*CAM.cp/near);
+      if(!giu){
+        if(pd>=near && m<cap){                 // esce: taglia sul piano vicino
+          const t=(pd-near)/(pd-d);
+          const cx2=px+(X-px)*t, cy2=py+(Y-py)*t;
+          _tsx[m]=W/2+CAM.f*cx2/near; _tsy[m]=H/2-CAM.f*cy2*CAM.cp/near; m++;
+        }
+        emettiMorbido(P,m); m=0;               // sottotracciato chiuso qui
       }
       px=X; py=Y; pd=d; giu=true; continue;
     }
-    if(giu && pd<near && pd!==0){              // rientra: parti dal taglio
-      const t=(near-pd)/(d-pd);
-      const cx2=px+(X-px)*t, cy2=py+(Y-py)*t;
-      P.moveTo(W/2+CAM.f*cx2/near, H/2-CAM.f*cy2*CAM.cp/near);
+    if(giu){
+      m=0;
+      if(pd<near && pd!==0){                   // rientra: parti dal taglio
+        const t=(near-pd)/(d-pd);
+        const cx2=px+(X-px)*t, cy2=py+(Y-py)*t;
+        _tsx[m]=W/2+CAM.f*cx2/near; _tsy[m]=H/2-CAM.f*cy2*CAM.cp/near; m++;
+      }
       giu=false;
     }
-    const sx=W/2+CAM.f*X/d, sy=H/2-CAM.f*Y*CAM.cp/d;
-    if(giu){ P.moveTo(sx,sy); giu=false } else P.lineTo(sx,sy);
+    if(m<cap){ _tsx[m]=W/2+CAM.f*X/d; _tsy[m]=H/2-CAM.f*Y*CAM.cp/d; m++ }
     px=X; py=Y; pd=d;
   }
+  emettiMorbido(P,m);
 }
 /* Tutta la rete inquadrata, proiettata e divisa per classe di curva e fascia. */
 function tracciati3d(c0,c1,r0,r1){
-  const paths=[], pmin=[], grey=[new Path2D(),new Path2D(),new Path2D()];
+  const paths=[], pmin=[], grey=fasceVuote();
   for(let k=0;k<CLS.length;k++){
-    paths.push([new Path2D(),new Path2D(),new Path2D()]);
-    pmin.push([new Path2D(),new Path2D(),new Path2D()]);   // ranghi 3-4, come in piano
+    paths.push(fasceVuote());
+    pmin.push(fasceVuote());                               // ranghi 3-4, come in piano
   }
   const visti=new Set(), lim=vista3d();
   for(let cx=c0;cx<=c1;cx++) for(let cy=r0;cy<=r1;cy++){
@@ -2988,6 +3210,37 @@ function tracciati3d(c0,c1,r0,r1){
   return {paths, pmin, grey};
 }
 
+/* Le polilinee della rete sono ricampionate a passo fisso da `process4.py` (DS = 10 m).
+   Su un rettilineo non si vede, ma in curva stretta quel passo E' la curva: un raggio
+   di 30 m cambia direzione di 10/30 = 0,33 rad ogni segmento, cioè 19° di spigolo, e
+   da vicino si legge il poligono invece della curva. È il «meno spigolose, simili a
+   Google Maps» chiesto da Tiago il 2026-08-19.
+
+   Si smussa al momento di costruire il Path2D, non nei dati: passando per i PUNTI DI
+   MEZZO con il vertice come controllo della quadratica. Il vantaggio è che non costa
+   un byte né un punto in più — stesso numero di comandi, solo `quadraticCurveTo` al
+   posto di `lineTo` — quindi non tocca la memoria, che è il vincolo vero (la
+   Lombardia è già a 57 MB).
+
+   NON si usa `ammorbidisci()`, che pure esiste qui sopra: quella INSERISCE punti per
+   raccordare, ed è la scelta giusta là dove serve (il percorso viola, dove la
+   geometria va anche misurata). Qui i punti in più andrebbero moltiplicati per tutti
+   gli archi inquadrati, a ogni ricostruzione di cella.
+
+   Il prezzo è che la curva non passa più esattamente per i vertici: taglia l'angolo
+   di al più un quarto della freccia. Su un vertice a 90° con gambe da 10 m fa 1,8 m —
+   cioè meno del raggio di svolta di una strada vera. Sul disegno va bene; per lo snap
+   e le distanze restano i vertici grezzi in `e.xy`, che non si toccano. */
+function morbido(P, xy, a, b){
+  if(b-a<1) return;
+  P.moveTo(xy[2*a],xy[2*a+1]);
+  if(b-a<3){ for(let i=a+1;i<=b;i++) P.lineTo(xy[2*i],xy[2*i+1]); return }
+  for(let i=a+1;i<b;i++)
+    P.quadraticCurveTo(xy[2*i], xy[2*i+1],
+                       (xy[2*i]+xy[2*i+2])/2, (xy[2*i+1]+xy[2*i+3])/2);
+  P.lineTo(xy[2*b],xy[2*b+1]);
+}
+
 /* cache di Path2D per cella */
 const PCACHE=new Map();
 function cellPaths(kk){
@@ -3018,18 +3271,13 @@ function cellPaths(kk){
     for(let m=0;m<runs.length;m+=2){
       const b=runs[m], cl=runs[m+1];
       const P = banda===0 ? grigia() : banda===2 ? pmin[cl] : paths[cl];
-      P.moveTo(xy[2*a],xy[2*a+1]);
-      for(let i=a+1;i<=b;i++) P.lineTo(xy[2*i],xy[2*i+1]);
+      morbido(P, xy, a, b);
       a=b;
     }
   }
   if(gids){
     grigia();
-    for(const gi of gids){
-      const g=GREY[gi], np=g.length>>1;
-      grey.moveTo(g[0],g[1]);
-      for(let i=1;i<np;i++) grey.lineTo(g[2*i],g[2*i+1]);
-    }
+    for(const gi of gids) morbido(grey, GREY[gi], 0, (GREY[gi].length>>1)-1);
   }
   c={paths,pmin,grey};
   /* Prima qui c'era un PCACHE.clear(): svuotare tutto significa che il frame dopo
@@ -3076,6 +3324,18 @@ function disegnaPiano(c0,c1,r0,r1){
   ctx.lineCap='round'; ctx.lineJoin='round';
   const pw = p => p/S.scale;
   const nCells=(c1-c0+1)*(r1-r0+1);
+
+  /* Lo sfondo per primo: sta sotto tutto il resto, percorso compreso. Le tre passate
+     sono nell'ordine urbano -> verde -> acqua perché è l'ordine in cui si coprono nel
+     mondo vero (un parco dentro il costruito, un lago dentro il parco). */
+  if(sfondoInquadrato(c0,c1,r0,r1, c0*CELL,r0*CELL,(c1+1)*CELL,(r1+1)*CELL, S.scale)){
+    const col=[TC.urbano, TC.verde, TC.acqua];
+    for(let k=0;k<3;k++){
+      if(!BASBUCK[k].length) continue;
+      ctx.fillStyle=col[k];
+      for(const id of BASBUCK[k]) ctx.fill(basPath(id));
+    }
+  }
 
   /* Il percorso va SOTTO la rete, non sopra: disegnato sopra copriva i colori delle
      curve proprio lungo la strada che stai facendo, cioè cancellava la cosa per cui
@@ -3149,8 +3409,64 @@ function disegnaPiano(c0,c1,r0,r1){
 }
 
 /* vista inclinata: tutto proiettato a mano, tutto in spazio schermo */
+/* Sfondo in prospettiva. Qui non basta proiettare i vertici come fa `traccia()` per
+   le strade: quella TAGLIA la polilinea sul piano vicino e riprende dall'altra parte,
+   che su una linea va benissimo e su un'AREA no — il contorno resterebbe aperto e il
+   riempimento colerebbe attraverso mezzo schermo.
+   Si ritaglia quindi il poligono contro il piano vicino prima di proiettarlo
+   (Sutherland-Hodgman: si scorre il contorno e a ogni attraversamento del piano si
+   inserisce il punto di intersezione). Il risultato e' un contorno di nuovo chiuso,
+   che si puo' riempire.
+   Gli appoggi sono fuori dalla funzione: qui dentro si passa qualche centinaio di
+   poligoni per fotogramma, e allocare due array a testa vorrebbe dire dare in pasto
+   al garbage collector qualche migliaio di oggetti al secondo — cioe' gli scatti che
+   si stanno cercando di togliere. */
+const _bcx=new Float64Array(8192), _bcy=new Float64Array(8192);
+const _box=new Float64Array(8192), _boy=new Float64Array(8192);
+function areaProiettata(P, p){
+  const near=CAM.R*NEAR, n=p.length>>1;
+  if(n<3 || n>_bcx.length) return;
+  for(let i=0;i<n;i++){
+    const ax=p[2*i]-CAM.cx, ay=p[2*i+1]-CAM.cy;
+    _bcx[i]=ax*CAM.c+ay*CAM.s; _bcy[i]=-ax*CAM.s+ay*CAM.c;
+  }
+  let m=0;
+  for(let i=0;i<n;i++){
+    const j=(i+1)%n;
+    const di=_bcy[i]*CAM.sp+CAM.R, dj=_bcy[j]*CAM.sp+CAM.R;
+    const dentro=di>=near, dentroJ=dj>=near;
+    if(dentro){ _box[m]=_bcx[i]; _boy[m]=_bcy[i]; m++ }
+    if(dentro!==dentroJ){
+      const t=(near-di)/(dj-di);
+      _box[m]=_bcx[i]+(_bcx[j]-_bcx[i])*t; _boy[m]=_bcy[i]+(_bcy[j]-_bcy[i])*t; m++;
+    }
+    if(m>=_box.length-2) break;
+  }
+  if(m<3) return;
+  for(let i=0;i<m;i++){
+    const d=_boy[i]*CAM.sp+CAM.R;
+    const sx=W/2+CAM.f*_box[i]/d, sy=H/2-CAM.f*_boy[i]*CAM.cp/d;
+    if(i) P.lineTo(sx,sy); else P.moveTo(sx,sy);
+  }
+  P.closePath();
+}
+function sfondo3d(c0,c1,r0,r1){
+  /* La scala qui non e' S.scale: in prospettiva un poligono lontano e' piccolo anche
+     se il mondo inquadrato e' poco. Si usa la scala al centro della vista, che e'
+     quella a cui si guida, e il filtro dei 10 pixel torna a voler dire qualcosa. */
+  const scala=CAM.f/Math.max(1,CAM.R);
+  if(!sfondoInquadrato(c0,c1,r0,r1, c0*CELL,r0*CELL,(c1+1)*CELL,(r1+1)*CELL, scala)) return;
+  const col=[TC.urbano, TC.verde, TC.acqua];
+  for(let k=0;k<3;k++){
+    if(!BASBUCK[k].length) continue;
+    const P=new Path2D();
+    for(const id of BASBUCK[k]) areaProiettata(P, BAS.pol[id]);
+    ctx.fillStyle=col[k]; ctx.fill(P);
+  }
+}
 function disegna3d(c0,c1,r0,r1){
   ctx.lineCap='round'; ctx.lineJoin='round';
+  sfondo3d(c0,c1,r0,r1);                    // per primo: sta sotto tutto
   const T=tracciati3d(c0,c1,r0,r1);
   // il percorso sotto la rete, come nella vista piana: se no copre le curve
   if(S.nav && S.nav.geo && S.nav.geo.np>1){
@@ -3172,7 +3488,7 @@ function disegna3d(c0,c1,r0,r1){
   }
   if(S.scale>0.35){
     ctx.strokeStyle=TC.grigia;
-    for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.grigia*FASCE[f]; ctx.stroke(T.grey[f]) }
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.grigia*FASCE[f]; ctx.stroke(T.grey[f]) }
   }
   /* Stessa dissolvenza dei ranghi minori della vista piana, e con la stessa funzione:
      due criteri separati tornerebbero a divergere, e il difetto si vedrebbe solo
@@ -3183,22 +3499,22 @@ function disegna3d(c0,c1,r0,r1){
      è quella in cui la strada deve sembrare una strada. Costa una passata di stroke
      in più su un frame che sta a 0,3 ms su 16,7. */
   ctx.strokeStyle=CORPO;
-  for(let f=2;f>=0;f--){ ctx.lineWidth=(SPESS.retto+SPESS.corpo)*FASCE[f];
+  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=(SPESS.retto+SPESS.corpo)*FASCE[f];
     ctx.stroke(T.paths[7][f]); if(aMin>0.004) ctx.stroke(T.pmin[7][f]) }
   for(let k=6;k>=0;k--)
-    for(let f=2;f>=0;f--){ ctx.lineWidth=(SPESS.curva(k)+SPESS.corpo)*FASCE[f];
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=(SPESS.curva(k)+SPESS.corpo)*FASCE[f];
       ctx.stroke(T.paths[k][f]); if(aMin>0.004) ctx.stroke(T.pmin[k][f]) }
   ctx.strokeStyle=CLS[7].col;
   if(aMin>0.004){ ctx.globalAlpha=aMin;
-    for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.pmin[7][f]) }
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.pmin[7][f]) }
     ctx.globalAlpha=1 }
-  for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.paths[7][f]) }
+  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.paths[7][f]) }
   for(let k=6;k>=0;k--){
     ctx.strokeStyle=CLS[k].col;
     if(aMin>0.004){ ctx.globalAlpha=aMin;
-      for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.pmin[k][f]) }
+      for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.pmin[k][f]) }
       ctx.globalAlpha=1 }
-    for(let f=2;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.paths[k][f]) }
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.paths[k][f]) }
   }
   if(S.snap && S.mode!=='free'){
     const P=new Path2D();
@@ -4589,12 +4905,80 @@ const sideOf = a => tr().sideW[isRight(a)?0:1];
    «undefined» due volte (a 7 e a 9 rapporti, allungando una lingua sola) non può
    ripresentarsi: se una clip mancasse, `dilo()` la salta invece di dire una parola
    sbagliata. */
-function chiaviCurva(a, conMarcia){
-  const ch = ['c.'+(isRight(a)?0:1)+'.'+a.c.c];
-  if(conMarcia && !isAuto()){
-    const g = bestGear(curveKmh(a.c.r, a.e, a.dir, a.c.d0));
-    if(VOCE.idx[L] && VOCE.idx[L]['g.'+g]) ch.push('g.'+g);
+/* ============ modalita' pacenote (stile rally) ============
+   Non e' un dettaglio in piu': e' un DIALETTO. Un copilota da rally dice la distanza,
+   lega tre elementi di fila, appiccica i modificatori alla curva e la marcia non la
+   nomina mai. Meta' di qui e meta' di la' non e' nessuna delle due, per questo c'e' un
+   interruttore solo (`S.pace`) e non sei.
+   Le parole ci sono gia' tutte e tre le lingue dal 2026-08-17: questo cantiere non
+   genera una sola clip nuova, accende quelle che erano gia' pubblicate e mute. */
+const STRINGE_MIN = 3;      // raggio d'ingresso >= 3x il punto piu' stretto
+const LUNGA_M = 120;        // p90 delle curve misurate in Abruzzo sta fra 70 e 120 m
+const CORTA_M = 25, CORTA_CLS = 2;
+/* Le distanze che il vocabolario sa dire. Fuori da questa lista non si inventa. */
+const DIST_CLIP = [20,30,40,50,60,80,100,150,200,250,300,400,500];
+/* Sotto i 40 m la distanza non si dice: sei gia' li', e un numero in piu' ruba il
+   tempo alla curva. E se il valore tondo piu' vicino sbaglia di oltre un terzo si
+   tace, perche' dire «duecento» a 320 m e' peggio che non dire niente. Il quinto e non
+   un terzo: sui valori che si possono davvero dire (40-330 m, cioe' fino all'anticipo
+   massimo a 130 all'ora) lo scarto peggiore e' il 14%, quindi un quinto non taglia
+   niente di buono e taglia tutto quello che sarebbe una bugia. */
+function clipDist(m){
+  if(!(m>=40)) return null;
+  let best=DIST_CLIP[0];
+  for(const v of DIST_CLIP) if(Math.abs(v-m) < Math.abs(best-m)) best=v;
+  if(Math.abs(best-m) > m*0.20) return null;
+  const k='d.'+best;
+  return (VOCE.idx[L] && VOCE.idx[L][k]) ? k : null;
+}
+/* Quali curve entrano nella nota. Separata dal comporre le parole perche' la catena
+   serve PRIMA di decidere se parlare: da lei dipende la durata della frase, e dalla
+   durata l'anticipo. Non tocca `S.said`: segnare il gia'-detto qui vorrebbe dire
+   bruciare le curve anche nei giri in cui poi non si parla. */
+function catenaNota(){
+  const a=S.ahead[0]; if(!a) return null;
+  const el=[a], max = S.pace ? 3 : 2;
+  for(let n=1; n<max; n++){
+    const b=S.ahead[n], prev=el[el.length-1];
+    if(!b || piatta(b) || mutoQui(b) || troppoAmpia(b)) break;
+    if(b.dist - prev.dist > Math.max(45, S.v*3.2)) break;
+    el.push(b);
   }
+  return el;
+}
+/* Le parole. In pacenote lo stacco fra due curve si dice in METRI invece che con
+   «poi» — e' esattamente cio' che fa un copilota vero: «destra tre, cinquanta,
+   sinistra quattro». Il legato resta «in»/«into»/«sur», che e' un'informazione di
+   guida diversa dalla distanza (l'assetto della prima condiziona la seconda). */
+function chiaviNota(el){
+  let ch = chiaviCurva(el[0], !S.pace);
+  if(S.pace){ const dk=clipDist(el[0].dist); if(dk) ch=[dk].concat(ch) }
+  for(let n=1;n<el.length;n++){
+    const gap = el[n].dist - el[n-1].dist;
+    const legato = gap <= Math.max(30, S.v*1.4);
+    const legame = legato ? 'k.in' : ((S.pace && clipDist(gap)) || 'k.poi');
+    ch = ch.concat([legame], chiaviCurva(el[n], false));
+  }
+  return ch;
+}
+
+function chiaviCurva(a, conMarcia){
+  const ix = VOCE.idx[L];
+  const ch = ['c.'+(isRight(a)?0:1)+'.'+a.c.c];
+  const agg = k => { if(ix && ix[k]) ch.push(k) };
+  /* Lunga/corta sono STILE di chiamata, quindi solo in pacenote. «Corta» per giunta
+     solo sulle strette (classe <= 2): su una curva larga non aggiunge niente, e detta
+     su un quarto delle curve sarebbe rumore che svaluta gli annunci veri. */
+  if(S.pace){
+    if(a.len >= LUNGA_M) agg('m.lunga');
+    else if(a.c.c <= CORTA_CLS && a.len <= CORTA_M) agg('m.corta');
+  }
+  /* «Si stringe» NON e' stile, e' sicurezza: vale in tutte e due le modalita'. E' la
+     nota che nessun navigatore sa dare — il minimo che arriva tardi ed e' molto piu'
+     stretto di dove hai impostato la traiettoria — ed era misurata nei dati e buttata
+     via da quando i dataset sono v3. */
+  if((a.c.st|0) >= STRINGE_MIN) agg('m.chiude');
+  if(conMarcia && !isAuto()) agg('g.'+bestGear(curveKmh(a.c.r, a.e, a.dir, a.c.d0)));
   return ch;
 }
 
@@ -4726,6 +5110,8 @@ function updateNote(){
   nCall.textContent=(isRight(a)?t0.right+' ':t0.left+' ')+(a.c.c===0?t0.hairpin:CLS[a.c.c].nm);
   let sub=t0.radius+' ~'+a.c.r+' m · '+t0.ref+' '+kmh+' km/h';
   if(cappedByLimit(a.c.r, a.e)) sub += ' ('+t0.byLimit+')';   // comanda il limite, non la curva
+  // a schermo il restringimento si vede sempre, come a voce: non e' stile, e' sicurezza
+  if((a.c.st|0) >= STRINGE_MIN) sub += ' · '+t0.tight;
   if(!isAuto()){
     const g0=bestGear(kmh);
     sub += ' · '+Math.round(rpmAt(kmh,g0)/50)*50+' '+t0.rpm;
@@ -4765,7 +5151,13 @@ function updateNote(){
          velocità che si aspetta di tenere. */
   const vRif = curveKmh(a.c.r, a.e, a.dir, a.c.d0)/3.6;
   const frenata = S.v>vRif ? (S.v*S.v - vRif*vRif)/(2*3.0) : 0;   // 3 m/s², prudente
-  const parlato = durataFrase(chiaviCurva(a, true)) || 1.2;
+  /* La nota si COMPONE prima di decidere se dirla. In pacenote la frase e' piu' lunga
+     (distanza + modificatori + fino a tre elementi): misurare l'anticipo sulla sola
+     prima curva vorrebbe dire cominciare in tempo e finire dentro la curva. Comporre
+     non ha effetti collaterali — il gia'-detto si segna solo quando si parla. */
+  const el = catenaNota();
+  const ch = el ? chiaviNota(el) : null;
+  const parlato = (ch ? durataFrase(ch) : 0) || 1.2;
   const lead = Math.min(S.v*9, Math.max(S.v*2.2, S.v*(parlato+1.4) + frenata));
   /* Dopo un buco di segnale la voce TACE finché la posizione non è di nuovo
      credibile (vedi `S.gpsBuco`). È la trappola peggiore di tutta questa parte:
@@ -4776,23 +5168,7 @@ function updateNote(){
   if(!a.inside && a.dist<=lead && !S.said.has(a.key) && !S.gpsBuco && !mutoQui(a) && !piatta(a) && !troppoAmpia(a)){
     const now=performance.now();
     if(now-S.lastSaid>900){
-      S.said.add(a.key); S.lastSaid=now;
-      /* La marcia si dice solo sulla PRIMA curva della nota: metterla anche sulla
-         seconda farebbe «destra tre seconda in sinistra quattro terza», che è un
-         elenco di numeri, non una nota. */
-      let ch=chiaviCurva(a, true);
-      /* Concatenamento in SECONDI, non in metri. I 190 m fissi erano l'unica soglia
-         del file che non scalava con la velocità: a 80 all'ora valgono 8,5 s
-         (ragionevole), a 30 ne valgono 22,9 — la seconda curva finiva in un «poi»
-         quando era ancora lontanissima nel tempo.
-         «in» quando le due curve fluiscono l'una nell'altra e l'assetto della prima
-         condiziona la seconda; «poi» quando c'è uno stacco. Sono due informazioni di
-         guida diverse, e prima si dicevano tutte e due con «e poi». */
-      if(b && !piatta(b) && !mutoQui(b) && !troppoAmpia(b) && (b.dist-a.dist) <= Math.max(45, S.v*3.2)){
-        S.said.add(b.key);
-        const legato = (b.dist-a.dist) <= Math.max(30, S.v*1.4);
-        ch = ch.concat([legato?'k.in':'k.poi'], chiaviCurva(b, false));
-      }
+      el.forEach(x => S.said.add(x.key)); S.lastSaid=now;
       dilo(ch, false);
     }
   }
@@ -5179,12 +5555,51 @@ function toast(m,ms){
   const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms||4500);
 }
+let wakeUltimo = 0;
 async function wakeOn(){
   // se questo fallisce lo schermo si spegne mentre guidi: e' il piu' fastidioso
   // dei guasti silenziosi, e non se ne accorge nessuno finche' non succede
-  try{S.wake=await navigator.wakeLock.request('screen')}catch(e){ nota('schermo sempre acceso negato: '+e.message) }
+  if(document.hidden) return;                 // a pagina nascosta la specifica lo nega
+  if(S.wake && !S.wake.released) return;      // gia' acceso: non si richiede
+  const ora = Date.now();
+  if(ora - wakeUltimo < 1000) return;         // se il sistema lo rifiuta, non insistere a raffica
+  wakeUltimo = ora;
+  try{
+    S.wake=await navigator.wakeLock.request('screen');
+    /* IL PEZZO CHE MANCAVA, ed e' quello che spegneva davvero lo schermo a Tiago
+       (confermato da lui il 2026-08-19: «prima mi si stava spegnendo»).
+       Il sistema puo' rilasciare il lock DA SOLO, senza che la pagina venga mai
+       nascosta: risparmio energetico, batteria bassa, o una decisione della
+       piattaforma. Da quel momento `S.wake.released` e' true e lo schermo si spegne
+       come se non avessimo mai chiesto niente.
+       Gli altri due riprovi non possono accorgersene, ed e' il motivo per cui il
+       difetto sopravviveva a entrambi: `visibilitychange` vuole che la pagina vada
+       nascosta e torni, il riprovo al tocco vuole che tu tocchi lo schermo — e
+       guidando non succede NESSUNA delle due. Qui invece si riacquisisce nell'unico
+       momento che conta: quando cade. */
+    S.wake.addEventListener('release', ()=>{
+      if(S.mode==='follow' || S.mode==='demo') wakeOn();
+    }, {once:true});
+  }catch(e){ nota('schermo sempre acceso negato: '+e.message) }
 }
+/* Rete indipendente dagli eventi: su iOS il supporto all'evento `release` e' stato
+   incostante fra le versioni, e questo e' un guasto che si paga guidando di notte.
+   Un controllo ogni 15 s costa una lettura di proprieta' — `wakeOn()` esce subito
+   se il lock c'e' gia'. Meglio ridondante che muto. */
+setInterval(()=>{ if(S.mode==='follow' || S.mode==='demo') wakeOn() }, 15000);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&S.mode!=='free')wakeOn() });
+/* Rete di sicurezza in piu', non alternativa al riprovo sopra: da quando il GPS
+   parte da solo al boot (`setTimeout(boot,30)`), la prima wakeOn() nasce PRIMA di
+   qualunque tocco. Non confermato ancora su un telefono vero SE questo sia la causa
+   del "negato" che vede Tiago (potrebbe bastare gia' il riprovo su visibilitychange
+   qui sopra) — ma il costo di riprovare anche al primo tocco e' zero quando il lock
+   c'e' gia', quindi si lascia attaccato senza doverlo sapere con certezza prima. */
+function svegliaWake(){
+  if(S.wake && !S.wake.released) return;
+  if(S.mode==='follow' || S.mode==='demo') wakeOn();
+}
+for(const ev of ['pointerdown','touchend','keydown'])
+  addEventListener(ev, svegliaWake, {capture:true, passive:true});
 
 /* perché il GPS è stato negato: iframe (la demo su claude.ai), pagina non HTTPS,
    oppure permesso bloccato per il sito. Il messaggio generico non aiutava. */
@@ -5757,6 +6172,11 @@ legalChk.onchange=()=>{S.legal=legalChk.checked; save(); renderCar(); updateNote
    con l'automatico i rapporti spariscono dal pannello. */
 autoChk.onchange=()=>{S.autoMode=autoChk.checked; S.said.clear(); save(); renderCar();
   updateNote(); S.need=true};
+/* Come per l'automatico: senza svuotare il gia'-detto la prima curva dopo
+   l'interruttore resterebbe muta, e sembrerebbe che non abbia fatto niente. */
+const paceChk=document.getElementById('paceChk');
+paceChk.checked=S.pace;
+paceChk.onchange=()=>{S.pace=paceChk.checked; S.said.clear(); save(); updateNote(); S.need=true};
 /* Il cursore muove sempre `S.cal` (km/h ogni 1000 giri in ultima), solo che chi
    guarda legge il numero alla marcia di riferimento: le due cose sono legate da un
    fattore fisso, quindi il passo del cursore resta lineare e non c'è nessuna
@@ -5868,8 +6288,33 @@ function ixTok(t, id){
 /* Costruisce l'indice: preferiti e paesi ci sono già in memoria, le vie arrivano
    dai file geo-<reg>.json. Si fa la prima volta che si tocca la ricerca, non al
    boot: chi accende l'app per guidare non deve pagare l'attesa dell'indirizzario. */
+/* LA PRIMA RICERCA NON DEVE PIU' CONGELARE L'APP.
+   `costruisciIndice` era gia' `async`, ma solo per aspettare i file: i cicli sulle vie
+   erano sincroni e su Lombardia bloccavano tutto per 1,5-2,2 s — schermo fermo, niente
+   fotogrammi, con l'auto in movimento. Adesso il lavoro si taglia a fette di 8 ms (meta'
+   fotogramma) e fra una fetta e l'altra si cede il controllo, cosi' la mappa continua a
+   scorrere mentre l'indice si costruisce. Il totale cresce di poco; quello che sparisce
+   e' il blocco, che e' l'unica cosa che si sente.
+   Si cede con MessageChannel e non con setTimeout: setTimeout ha un pavimento di ~4 ms
+   per chiamata (e in una scheda nascosta viene strozzato a un risveglio al minuto),
+   quindi con centinaia di fette costerebbe piu' dell'indice stesso. Un messaggio e' un
+   macrotask come il timer — il browser puo' disegnare in mezzo — ma senza il pavimento. */
+const _mcIx = new MessageChannel(); const _codaIx = [];
+_mcIx.port1.onmessage = () => { const f = _codaIx.shift(); if(f) f() };
+const cediOra = () => new Promise(r => { _codaIx.push(r); _mcIx.port2.postMessage(0) });
+let _fetta = 0;
+async function cediSeServe(){
+  /* Il controllo va fatto SPESSO, non solo il cedimento: con un controllo ogni 512
+     giri il budget di 8 ms non serve a niente, perche' 512 vie da indicizzare costano
+     240 ms e si blocca lo stesso — misurato in Vallonia, buco da 371 ms. `performance.now()`
+     costa decine di nanosecondi: guardarlo ogni 64 giri e' gratis. */
+  if(performance.now() - _fetta < 8) return;
+  await cediOra(); _fetta = performance.now();
+}
+
 async function costruisciIndice(){
   const t0 = performance.now();
+  _fetta = performance.now();
   const capIdx = new Map();
   const capId = s => {
     if(!s) return -1;
@@ -5890,6 +6335,7 @@ async function costruisciIndice(){
     // le località sono entità cercabili anche loro: quartieri e frazioni che nel
     // dataset di guida non ci sono (lì ci stanno solo città/paese/villaggio/frazione)
     for(let i=0;i<g.loc.length;i++){
+      if((i & 63) === 0) await cediSeServe();
       const l = g.loc[i], [x,y] = toXY(l[2], l[1]);
       const id = ixAdd(l[0], '', x, y, 2.3-(l[3]||0)*0.4, 1, loc0+i, -1, capId(l[4]||''), r.id, -1);
       // il CAP si cerca, ma NON entra nel nome normalizzato: se no "Herstal" e
@@ -5898,6 +6344,7 @@ async function costruisciIndice(){
     }
     IX.base[r.id] = IX.n.length;         // da qui in poi sono vie, in ordine di file
     for(let i=0;i<g.st.length;i++){
+      if((i & 63) === 0) await cediSeServe();
       const s = g.st[i];                 // [nome, loc, lat, lon, rango, len, cap, com, alias?]
       const [x,y] = toXY(s[3], s[2]);
       const alias = (s[8]||[]).join(' ');
@@ -5915,7 +6362,9 @@ async function costruisciIndice(){
      l'indirizzario non ce li ha già: se no lo stesso paese comparirebbe due volte,
      una col comune scritto sotto e una senza. */
   for(const b of BM) ixAdd(b.n, '', b.x, b.y, 3.2, 0, -1, -1, -1, '', -1);
+  let _np = 0;
   for(const p of PLACES){
+    if((_np++ & 63) === 0) await cediSeServe();
     if(giaPresente(p.n, p.x, p.y)) continue;
     ixAdd(p.n, '', p.x, p.y, 2.4-(p.r||0)*0.45, 1, -1, -1, -1, '', -1);
   }
@@ -6534,6 +6983,11 @@ async function boot(){
     RCAMS = null;
     try{ RCAMS = preparaCams(await leggiFile(camsUrl(r), r.id), r) }
     catch(err){ console.warn('autovelox sidecar non caricato:', err.message) }
+    /* Lo sfondo non entra in `buildEdges` e non ha indici da allineare: si accumula
+       da sé come PLACES e BM, una regione dopo l'altra. Se manca — mappa scaricata
+       prima che questo esistesse, o file illeggibile — resta il nero di sempre. */
+    try{ preparaBas(await leggiFile(basUrl(r), r.id), r) }
+    catch(err){ console.warn('sfondo non caricato:', err.message) }
     const map = new Int32Array(RAW.edges.length);   // indice arco locale -> globale
     buildEdges(r.id, map); buildGrey(); buildCams(map); buildRestr();
     for(const p of RAW.places){
