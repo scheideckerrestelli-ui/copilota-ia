@@ -760,7 +760,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '164';
+const APPVER = '165';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -5158,7 +5158,18 @@ function updateNote(){
   const el = catenaNota();
   const ch = el ? chiaviNota(el) : null;
   const parlato = (ch ? durataFrase(ch) : 0) || 1.2;
-  const lead = Math.min(S.v*9, Math.max(S.v*2.2, S.v*(parlato+1.4) + frenata));
+  /* Il TETTO deve conoscere la frase, non solo l'andatura. I 9 secondi di strada erano
+     tarati su una nota da 2-4 s: con le note concatenate della modalita' pacenote la
+     frase peggiore misurata sta a 8,18 s (italiano; francese 7,98, inglese 7,42), quindi
+     il tetto la tagliava lasciando 0,8 s di margine — e quel margine non veniva dal
+     progetto, veniva dal caso che due costanti si sfiorassero. Un tetto che tronca la
+     frase fa esattamente il danno che il tetto doveva evitare: la voce finisce DENTRO la
+     curva. Ora il tetto non scende mai sotto «la frase piu' due secondi».
+     In modalita' normale non cambia niente per costruzione: li' la frase piu' lunga
+     possibile e' 4,41 s (inglese, due curve con marcia e «chiude»), cioe' 6,41 col
+     margine, che sta sotto i 9 di prima. */
+  const tetto = S.v * Math.max(9, parlato + 2.0);
+  const lead = Math.min(tetto, Math.max(S.v*2.2, S.v*(parlato+1.4) + frenata));
   /* Dopo un buco di segnale la voce TACE finché la posizione non è di nuovo
      credibile (vedi `S.gpsBuco`). È la trappola peggiore di tutta questa parte:
      uscendo da una galleria il primo fix è quasi sempre sporco, e riagganciare
@@ -5168,8 +5179,14 @@ function updateNote(){
   if(!a.inside && a.dist<=lead && !S.said.has(a.key) && !S.gpsBuco && !mutoQui(a) && !piatta(a) && !troppoAmpia(a)){
     const now=performance.now();
     if(now-S.lastSaid>900){
-      el.forEach(x => S.said.add(x.key)); S.lastSaid=now;
-      dilo(ch, false);
+      /* Si segna il gia'-detto SOLO se la voce ha parlato davvero. `dilo` RIFIUTA una
+         nota non urgente mentre ne sta dicendo un'altra (torna 0), e segnarla prima
+         voleva dire buttare quelle curve per sempre: mute, senza un errore da nessuna
+         parte. Il difetto c'era gia', ma con le note concatenate la finestra in cui
+         morde passa da ~3,5 s a ~8, cioe' da raro a normale su una strada che gira.
+         Se la voce e' occupata si riprova al giro dopo, e quando si entra nella curva
+         ci pensa `a.inside` a chiudere: non si annuncia una curva gia' presa. */
+      if(dilo(ch, false) > 0){ el.forEach(x => S.said.add(x.key)); S.lastSaid=now }
     }
   }
   // stessa logica della cache dei tracciati: svuotare tutto vorrebbe dire che una
