@@ -198,8 +198,13 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* Sta in ALTO, sotto la barra di ricerca. Il fondo è della nota di curva, che è il
      cuore dell'app: l'istruzione di svolta è un altro canale e non deve rubarle il
      posto né alternarsi con lei nello stesso riquadro. È anche dove la mettono tutti
-     i navigatori, quindi non c'è niente da imparare. */
-  .nav{position:fixed;left:8px;right:8px;top:calc(var(--alto) + 54px);
+     i navigatori, quindi non c'è niente da imparare.
+     `right` non è più 8px come `.note`: a quella quota ci sta sopra `.rightcol`
+     (bussola+3D, `right:8px` largo 44px, stessa altezza — `--alto+50px` contro
+     `--alto+54px`), e la striscia ci finiva sotto. 60px = 8 (margine di rightcol)
+     + 44 (bussola) + 8 (aria) tra la striscia e il bottone, segnalato da Tiago
+     guidando il 2026-08-19. */
+  .nav{position:fixed;left:8px;right:60px;top:calc(var(--alto) + 54px);
     max-width:660px;margin:0 auto;display:none;align-items:center;gap:10px;z-index:7;
     background:var(--velo2);border:1px solid var(--line);border-radius:14px;padding:8px 10px}
   .nav.show{display:flex}
@@ -353,10 +358,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      pannelli comparivano italiano E inglese uno sotto l'altro. */
   [data-lang]{display:none}
   .sheet ul[data-lang]{display:none}
-  body:not(.en) [data-lang="it"]{display:revert}
-  body:not(.en) .sheet ul[data-lang="it"]{display:flex}
+  body:not(.en):not(.fr) [data-lang="it"]{display:revert}
+  body:not(.en):not(.fr) .sheet ul[data-lang="it"]{display:flex}
   body.en [data-lang="en"]{display:revert}
   body.en .sheet ul[data-lang="en"]{display:flex}
+  body.fr [data-lang="fr"]{display:revert}
+  body.fr .sheet ul[data-lang="fr"]{display:flex}
   /* pannello Mappe. Niente <ul> qui dentro apposta: le liste hanno la regola di
      specificità di cui sopra, le righe sono <div> e non ci ricascano. */
   /* righe del pannello Impostazioni */
@@ -485,33 +492,42 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <div class="sub" id="brandSub"></div>
   </div>
   <div class="setrow">
-    <span data-lang="it">Lingua e voce</span><span data-lang="en">Language and voice</span>
+    <span data-lang="it">Lingua e voce</span><span data-lang="en">Language and voice</span><span data-lang="fr">Langue et voix</span>
     <button class="rbtn setval" id="bLang" title="Language">EN</button>
   </div>
   <div class="setrow">
-    <span data-lang="it">Aspetto</span><span data-lang="en">Appearance</span>
+    <span data-lang="it">Aspetto</span><span data-lang="en">Appearance</span><span data-lang="fr">Apparence</span>
     <button class="rbtn setval" id="bTema" title="Tema / Theme"></button>
   </div>
   <button class="setnav" id="bMaps" hidden>
     <svg viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.8v12.7L9 17.2l6 2.3 5.5-2.3V4.5L15 6.8z"></path><path d="M9 4.5v12.7M15 6.8v12.7"></path></svg>
-    <span data-lang="it">Mappe</span><span data-lang="en">Maps</span><i>›</i></button>
+    <span data-lang="it">Mappe</span><span data-lang="en">Maps</span><span data-lang="fr">Cartes</span><i>›</i></button>
   <button class="setnav" id="bLegend">
     <svg viewBox="0 0 24 24"><path d="M4 6h4M4 12h4M4 18h4"></path><path d="M11 6h9M11 12h9M11 18h9" opacity=".45"></path></svg>
-    <span data-lang="it">Legenda</span><span data-lang="en">Legend</span><i>›</i></button>
+    <span data-lang="it">Legenda</span><span data-lang="en">Legend</span><span data-lang="fr">Légende</span><i>›</i></button>
   <button class="setnav" id="bInfo">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.6v.4"></path></svg>
-    <span data-lang="it">Informazioni</span><span data-lang="en">About</span><i>›</i></button>
-  <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span></button>
+    <span data-lang="it">Informazioni</span><span data-lang="en">About</span><span data-lang="fr">À propos</span><i>›</i></button>
+  <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
 </div></div>
 
 <!-- pannello auto -->
 <div class="sheet" id="sheetCar"><div class="inner">
   <div class="grip"></div>
-  <h2><span data-lang="it">La mia <i class="ac">auto</i></span><span data-lang="en">My <i class="ac">car</i></span></h2>
+  <h2><span data-lang="it">La mia <i class="ac">auto</i></span><span data-lang="en">My <i class="ac">car</i></span><span data-lang="fr">Ma <i class="ac">voiture</i></span></h2>
   <div class="row2" id="carChips"></div>
   <p style="margin-top:10px" id="carDesc"></p>
+  <!-- Le auto in elenco hanno tutte i paddle, quindi il copilota la marcia la dice.
+       Ma i paddle si usano quando si vuole: guidando la stessa auto in automatico,
+       sentirsi dire la marcia è rumore. Questo interruttore è dell'AUTISTA, non
+       dell'auto: `CARS[].auto` resta la proprietà del veicolo, qui si dice come lo
+       stai guidando adesso. -->
+  <label class="opt"><input type="checkbox" id="autoChk">
+    <span data-lang="it">La guido in automatico: non dirmi la marcia</span>
+    <span data-lang="en">Driving it in automatic: do not call the gear</span>
+    <span data-lang="fr">Je la conduis en automatique : ne me dis pas le rapport</span></label>
   <div id="gearBox">
-    <h3><span data-lang="it">Rapporti</span><span data-lang="en">Ratios</span></h3>
+    <h3><span data-lang="it">Rapporti</span><span data-lang="en">Ratios</span><span data-lang="fr">Rapports</span></h3>
     <!-- La taratura si controlla GUIDANDO, quindi il punto di riferimento dev'essere
          un punto in cui ci si può stare davvero: 2.000 giri in una marcia che scegli
          tu. Prima era "km/h ogni 1000 giri in ultima", cioè un numero giusto ma
@@ -525,12 +541,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     </div>
     <div class="gears" id="gearTable"></div>
   </div>
-  <h3><span data-lang="it">Stile di guida</span><span data-lang="en">Driving style</span></h3>
+  <h3><span data-lang="it">Stile di guida</span><span data-lang="en">Driving style</span><span data-lang="fr">Style de conduite</span></h3>
   <div class="row2" id="styleChips"></div>
   <p style="margin-top:9px" id="styleDesc"></p>
   <label class="opt"><input type="checkbox" id="legalChk">
     <span data-lang="it">Non superare mai il limite della strada</span>
-    <span data-lang="en">Never exceed the road speed limit</span></label>
+    <span data-lang="en">Never exceed the road speed limit</span><span data-lang="fr">Ne jamais dépasser la limite de la route</span></label>
   <p style="margin-top:6px;font-size:11.5px" id="legalDesc"></p>
   <div class="disc" data-lang="it">La velocità di riferimento è √(accelerazione laterale × raggio):
     un valore <b>teorico</b>, che presume asfalto asciutto e pulito, gomme in ordine e strada
@@ -542,24 +558,31 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <b>theoretical</b> figure that assumes clean dry tarmac, good tyres and an empty road. It knows
     nothing about gradient, camber, gravel, damp patches in the shade or oncoming traffic — and on
     an open road those are what decide. With <b>Race</b> the numbers are closed-road
-    territory: on a public road treat them as the absolute ceiling, not a target.</div>
-  <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span></button>
+    territory: on a public road treat them as the absolute ceiling, not a target.</div><div class="disc" data-lang="fr">La vitesse de référence est √(accélération latérale × rayon) :
+    une valeur <b>théorique</b>, qui suppose un asphalte sec et propre, des pneus en bon état et une
+    route dégagée. Elle ne tient compte ni de la pente, du dévers, du gravier, de l'humidité à
+    l'ombre, ni de ceux qui arrivent en sens inverse — et sur route ouverte, ce sont eux qui
+    décident. Avec <b>Race</b> les chiffres deviennent ceux d'un parcours fermé : sur route
+    ouverte, traite-les comme un plafond absolu, pas comme un objectif.</div>
+  <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
 </div></div>
 
 <!-- legenda -->
 <div class="sheet legend" id="sheetLegend"><div class="inner">
   <div class="grip"></div>
-  <h2><span data-lang="it">Legenda</span><span data-lang="en">Legend</span></h2>
-  <h3><span data-lang="it">Raggio di curva</span><span data-lang="en">Corner radius</span></h3>
+  <h2><span data-lang="it">Legenda</span><span data-lang="en">Legend</span><span data-lang="fr">Légende</span></h2>
+  <h3><span data-lang="it">Raggio di curva</span><span data-lang="en">Corner radius</span><span data-lang="fr">Rayon de virage</span></h3>
   <div id="legendRows"></div>
-  <h3><span data-lang="it">Come leggere la nota</span><span data-lang="en">Reading the pacenote</span></h3>
+  <h3><span data-lang="it">Come leggere la nota</span><span data-lang="en">Reading the pacenote</span><span data-lang="fr">Comment lire la note</span></h3>
   <p data-lang="it"><b>DESTRA 3</b> = curva a destra di classe 3 (raggio 50–85 m). <b>1</b> è quasi
      un tornante, <b>6</b> è una piega veloce. La distanza è quella che ti separa dall'inizio della
      curva; la marcia è quella con cui ci arrivi in coppia.</p>
   <p data-lang="en"><b>RIGHT 3</b> = right-hander, class 3 (radius 50–85 m). <b>1</b> is nearly a
      hairpin, <b>6</b> is a fast kink. The distance is what separates you from the corner entry;
-     the gear is the one that gets you there on full torque.</p>
-  <button class="btn" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span></button>
+     the gear is the one that gets you there on full torque.</p><p data-lang="fr"><b>DROITE 3</b> = virage à droite de classe 3 (rayon 50–85 m). <b>1</b> est presque
+     une épingle, <b>6</b> est un enchaînement rapide. La distance est celle qui te sépare du début
+     du virage ; la vitesse est celle qui t'y amène en pleine accélération.</p>
+  <button class="btn" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span><span data-lang="fr">Fermer</span></button>
 </div></div>
 
 <!-- info -->
@@ -567,11 +590,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <div class="grip"></div>
   <h2>Copilota <i class="ac">IA</i> · v0.7</h2>
   <p id="infoStats" data-lang="it"></p>
-  <p id="infoStatsEn" data-lang="en"></p>
+  <p id="infoStatsEn" data-lang="en"></p><p id="infoStatsFr" data-lang="fr"></p>
   <p class="disc" id="infoPerf"></p>
   <p class="disc" id="infoVer"></p>
   <p class="disc" id="infoLog" hidden style="white-space:pre-line;color:#ffb454"></p>
-  <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span></h3>
+  <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span><span data-lang="fr">Comment ça marche</span></h3>
   <ul data-lang="it">
     <li>Nessun percorso da impostare: l'app <b>ti aggancia alla strada</b> su cui sei e legge le
       curve davanti a te, anche attraverso gli incroci — segue la strada più dritta, oppure il
@@ -607,8 +630,26 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
       <b>stands back up and tightens</b>, because there you need the shape of the corner — tilted,
       the nose of the car would hide it. Pinch to zoom or tilt by hand and you are in charge:
       tap 3D twice to hand it back to the automatics.</li>
+  </ul><ul data-lang="fr">
+    <li>Aucun itinéraire à définir : l'app <b>s'accroche à la route</b> sur laquelle tu es et lit les
+      virages devant toi, même à travers les intersections — elle suit la continuation la plus
+      directe, ou ton <b>itinéraire</b> si tu en as défini un.</li>
+    <li>Chaque tronçon est coloré selon le <b>rayon de virage</b> mesuré sur la géométrie réelle.</li>
+    <li>Avec le son activé, les virages sont <b>annoncés</b> environ 4 secondes à l'avance, à ta
+      vitesse actuelle, avec la <b>vitesse</b> qu'il faut pour la voiture choisie : plus tu vas vite,
+      plus tôt vient l'annonce.</li>
+    <li>La carte <b>s'incline à deux doigts</b> : pose-les et fais-les glisser de haut en bas, comme
+      sur Google Maps. En les tournant, tu tournes la carte ; la <b>boussole</b> remet le nord en
+      haut et la carte à plat en un geste. Vue de très loin, la carte redevient plate toute seule —
+      inclinée elle ne servirait à rien et coûterait pour rien.</li>
+    <li>Le bouton <b>3D</b> incline la carte, et en conduite il règle aussi le zoom tout seul. Il ne
+      suit pas la vitesse comme le font les GPS : c'est le <b>virage à venir</b> qui commande. En
+      rapide et dégagé, elle s'incline et s'élargit, parce qu'il faut voir loin ; sur un virage
+      serré et proche, <b>elle se redresse et se resserre</b>, parce qu'il faut alors voir la forme
+      du virage — inclinée, le capot la cacherait. Si tu pinces pour zoomer ou inclines à la main,
+      c'est toi qui commandes : appuie deux fois sur 3D pour rendre la main à l'automatisme.</li>
   </ul>
-  <h3><span data-lang="it">Portami là</span><span data-lang="en">Take me there</span></h3>
+  <h3><span data-lang="it">Portami là</span><span data-lang="en">Take me there</span><span data-lang="fr">Emmène-moi là</span></h3>
   <p data-lang="it">Cerca un posto e <b>tocca il risultato</b> (pressione lunga sul risultato = ci
      guardi e basta, senza partire), oppure <b>tieni premuto</b> un punto qualsiasi
      della mappa: il percorso appare in viola e la striscia in alto dice quanto manca alla prossima
@@ -620,21 +661,33 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      the route shows up in purple and the strip at the top tells you how far the next turn is and
      which road you are turning into. Take a wrong turn and it recalculates by itself after a few
      seconds. The route is chosen on <b>time</b>, not distance: it prefers the 90 km/h main road to
-     the 50 km/h lane, exactly as you would. One-way streets are respected.</p>
+     the 50 km/h lane, exactly as you would. One-way streets are respected.</p><p data-lang="fr">Cherche un endroit et <b>touche le résultat</b> (appui long sur le résultat = tu
+     regardes seulement, sans partir), ou bien <b>appuie longuement</b> n'importe où sur la carte :
+     l'itinéraire apparaît en violet et le bandeau en haut indique la distance jusqu'au prochain
+     virage et dans quelle rue tu t'engages. Si tu te trompes de route, le recalcul se fait seul
+     après quelques secondes. L'itinéraire est choisi sur le <b>temps</b>, pas sur la distance : il
+     préfère la nationale à 90 à la petite route à 50, comme tu le ferais toi-même. Les sens uniques
+     sont respectés.</p>
   <div class="disc" data-lang="it">Quello che il navigatore <b>non</b> sa: gli <b>accessi
      privati</b> non sono nei dati, quindi può proporti una strada chiusa. Il percorso serve a
      portarti sulle strade belle sapendo dove girare, non a battere Google sui tempi.</div>
   <div class="disc" data-lang="en">What the navigator does <b>not</b> know: <b>private access</b>
      is not in the data, so it may hand you a closed road. The point is to get you onto the good
-     roads knowing where to turn, not to beat Google on time.</div>
-  <h3><span data-lang="it">Installala sul telefono</span><span data-lang="en">Install on your phone</span></h3>
+     roads knowing where to turn, not to beat Google on time.</div><div class="disc" data-lang="fr">Ce que le navigateur <b>ne</b> sait pas : les <b>accès
+     privés</b> ne sont pas dans les données, donc il peut te proposer une route fermée. L'itinéraire
+     sert à t'emmener sur les belles routes en sachant où tourner, pas à battre Google sur le
+     temps.</div>
+  <h3><span data-lang="it">Installala sul telefono</span><span data-lang="en">Install on your phone</span><span data-lang="fr">Installe-la sur ton téléphone</span></h3>
   <p data-lang="it"><b>iPhone</b>: apri in Safari → tasto Condividi → <b>Aggiungi a schermata
      Home</b>. <b>Android</b>: menu ⋮ → <b>Installa app</b>. Parte a tutto schermo, tiene lo
      schermo acceso e la mappa è già dentro: funziona anche senza campo.</p>
   <p data-lang="en"><b>iPhone</b>: open in Safari → Share → <b>Add to Home Screen</b>.
      <b>Android</b>: ⋮ menu → <b>Install app</b>. It runs full screen, keeps the display awake and
-     carries the whole map inside: it works with no signal at all.</p>
-  <h3><span data-lang="it">Limiti e autovelox</span><span data-lang="en">Limits and speed cameras</span></h3>
+     carries the whole map inside: it works with no signal at all.</p><p data-lang="fr"><b>iPhone</b> : ouvre dans Safari → bouton Partager → <b>Ajouter à l'écran
+     d'accueil</b>. <b>Android</b> : menu ⋮ → <b>Installer l'application</b>. Elle démarre en plein
+     écran, garde l'écran allumé et la carte est déjà à l'intérieur : ça fonctionne même sans
+     réseau.</p>
+  <h3><span data-lang="it">Limiti e autovelox</span><span data-lang="en">Limits and speed cameras</span><span data-lang="fr">Limites et radars</span></h3>
   <p data-lang="it">Il cartello in basso a sinistra mostra il <b>limite</b> della strada su cui sei.
      Bordo pieno = limite <b>segnalato</b> in OpenStreetMap; bordo tratteggiato con <b>~</b> =
      limite <b>dedotto</b> (50 in centro abitato, 90 fuori, 110 solo su superstrada).
@@ -645,10 +698,16 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      Solid border = limit <b>tagged</b> in OpenStreetMap; dashed border with <b>~</b> = limit
      <b>inferred</b> (50 in built-up areas, 90 outside, 110 on expressways only).
      <span id="limPctEn"></span> Your speed turns orange above the limit, red beyond +5.
-     Known <b>fixed cameras</b> (orange dots) are called ~15 seconds ahead.</p>
-  <h3><span data-lang="it">Dati</span><span data-lang="en">Data</span></h3>
+     Known <b>fixed cameras</b> (orange dots) are called ~15 seconds ahead.</p><p data-lang="fr">Le panneau en bas à gauche affiche la <b>limite</b> de la route sur laquelle tu es.
+     Bordure pleine = limite <b>signalée</b> dans OpenStreetMap ; bordure pointillée avec <b>~</b> =
+     limite <b>déduite</b> (50 en agglomération, 90 hors agglomération, 110 seulement sur voie
+     rapide).
+     <span id="limPctFr"></span> La vitesse devient orange
+     au-delà de la limite et rouge au-delà de +5. Les <b>radars fixes</b> connus (points orange)
+     sont annoncés ~15 secondes à l'avance.</p>
+  <h3><span data-lang="it">Dati</span><span data-lang="en">Data</span><span data-lang="fr">Données</span></h3>
   <p id="infoData" data-lang="it"></p>
-  <p id="infoDataEn" data-lang="en"></p>
+  <p id="infoDataEn" data-lang="en"></p><p id="infoDataFr" data-lang="fr"></p>
   <div class="disc" data-lang="it">Strumento informativo, non un dispositivo di sicurezza. Limiti di
     velocità e postazioni di controllo sono <b>indicativi</b>, derivati da dati pubblici
     (© OpenStreetMap contributors, ODbL) e possono essere errati o non aggiornati: fanno fede la
@@ -658,22 +717,28 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     enforcement points are <b>indicative</b>, derived from public data (© OpenStreetMap
     contributors, ODbL), and may be wrong or out of date: road signs and your own speedometer are
     what count. <b>No warning does not mean no enforcement.</b> Watch the road, not the screen —
-    set everything up before moving.</div>
-  <button class="btn" data-close><span data-lang="it">Si parte</span><span data-lang="en">Let's go</span></button>
+    set everything up before moving.</div><div class="disc" data-lang="fr">Outil informatif, pas un dispositif de sécurité. Les limites de
+    vitesse et les radars sont <b>indicatifs</b>, tirés de données publiques
+    (© contributeurs OpenStreetMap, ODbL) et peuvent être erronés ou obsolètes : la signalisation
+    routière et ton propre compteur font foi. <b>L'absence d'alerte ne garantit pas
+    l'absence de contrôle.</b> Regarde la route, pas l'écran — règle tout à l'arrêt.</div>
+  <button class="btn" data-close><span data-lang="it">Si parte</span><span data-lang="en">Let's go</span><span data-lang="fr">C'est parti</span></button>
 </div></div>
 
 <div class="sheet" id="sheetMaps"><div class="inner">
   <div class="grab"></div>
-  <h2><span data-lang="it">Mappe</span><span data-lang="en">Maps</span></h2>
+  <h2><span data-lang="it">Mappe</span><span data-lang="en">Maps</span><span data-lang="fr">Cartes</span></h2>
   <p data-lang="it">Scarica le regioni che ti servono: restano sul telefono e funzionano
     <b>senza rete</b>. Quelle <b>attive</b> vengono caricate all'avvio — tienine poche,
     ognuna occupa memoria. Il pallino segna la regione dove ti vede il GPS.</p>
   <p data-lang="en">Download the regions you need: they stay on your phone and work
     <b>offline</b>. <b>Active</b> ones get loaded at startup — keep only a few, each one
-    takes memory. The dot marks the region the GPS puts you in.</p>
+    takes memory. The dot marks the region the GPS puts you in.</p><p data-lang="fr">Télécharge les régions dont tu as besoin : elles restent sur le téléphone et fonctionnent
+    <b>sans réseau</b>. Celles qui sont <b>actives</b> se chargent au démarrage — n'en garde que
+    quelques-unes, chacune prend de la mémoire. Le point marque la région où le GPS te situe.</p>
   <div id="mapList"></div>
   <p class="disc" id="mapStore"></p>
-  <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span></button>
+  <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
 </div></div>
 
 <div class="splash" id="splash"><div class="in">
@@ -687,7 +752,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '152';
+const APPVER = '157';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -2380,7 +2445,13 @@ const CARS = {
 };
 const boostOf = () => CARS[S.car].boost || 3000;
 const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
-const isAuto = () => !!CARS[S.car].auto;
+/* Automatico = l'auto NON ha una marcia da suggerire, e questo succede per due
+   motivi diversi: o il cambio è automatico di suo (`CARS[].auto`), oppure ce l'hai
+   coi paddle ma in questo momento lo stai lasciando fare da solo (`S.autoMode`,
+   interruttore nel pannello auto, chiesto da Tiago il 2026-08-19). Il secondo è
+   una scelta dell'autista e cambia in corsa, il primo è una proprietà del veicolo:
+   tenerli separati evita di dover falsificare il catalogo per una preferenza. */
+const isAuto = () => !!CARS[S.car].auto || !!S.autoMode;
 
 /* Velocita' massima raggiungibile (km/h): il punto dove la potenza alle ruote
    pareggia le resistenze. Equilibrio risolto per bisezione su
@@ -2495,6 +2566,7 @@ const T = {
     navUscite:['prima','seconda','terza','quarta','quinta','sesta'],
     navUscitaPre:'la ', navUscitaPost:' uscita',
     d3gps:'La vista 3D si accende quando guidi: avvia il GPS.',
+    audioTocca:'Tocca lo schermo una volta per attivare la voce: il telefono non la fa partire da sola.',
     navDest:'destinazione',
   },
   en: {
@@ -2554,6 +2626,67 @@ const T = {
     navUscite:['first','second','third','fourth','fifth','sixth'],
     navUscitaPre:'take the ', navUscitaPost:' exit',
     d3gps:'The 3D view kicks in while driving: start GPS.',
+    audioTocca:'Tap the screen once to enable the voice: the phone will not start it on its own.',
+    navDest:'destination',
+  },
+  fr: {
+    search:'Cherche une rue, une ville, un code postal…', fav:'favori', rec:'recherche récente', kinds:['ville','commune','village','hameau'],
+    ixLoad:'préparation de l\'indexation des adresses…', ixNone:'aucun résultat',
+    ixNoGeo:'indexation des adresses non téléchargée pour cette carte',
+    ixCiv:'numéro estimé à partir des numéros voisins', ixHint:'rue, ou rue et ville, ou code postal',
+    right:'DROITE', left:'GAUCHE', hairpin:'· ÉPINGLE', straight:'LIGNE DROITE',
+    cam:'RADAR', camVoice:'radar', lim:'limite', fixed:'radar fixe',
+    noCurve:'aucun virage à distance utile', inC:'DANS', inC2:'VIRAGE', m:'MÈTRES', now:'MAINTENANT',
+    gear:'VITESSE', then:'puis', radius:'rayon', ref:'réf.', flat:'· à fond', rpm:'tr/min',
+    off:'Hors des routes cartographiées', offSub:'rapproche-toi d\'une route pour reprendre les indications',
+    roads:{0:'Route nationale',1:'Nationale / Provinciale',2:'Route provinciale',3:'Provinciale secondaire',4:'Route locale',5:'Rue de village'},
+    roadOff:'hors des routes cartographiées', roadLocal:'route locale', voiceOn:'copilote actif',
+    clsAuto:'Autoroute', clsRampa:'Bretelle',
+    localCall:'Route locale', localSub:'rue urbaine : pas d\'annonce de virage, limite estimée',
+    gWords:['première','deuxième','troisième','quatrième','cinquième','sixième','septième','huitième','neuvième'],
+    cWords:['épingle','un','deux','trois','quatre','cinq','six'],
+    sideW:['droite','gauche'], hairW:'épingle à ',
+    gpsSearch:'Recherche du GPS…',
+    gpsFrame:'Ceci est la démo intégrée dans claude.ai : la position est bloquée par l\'iframe, pas par toi. Ouvre l\'application réelle sur scheideckerrestelli-ui.github.io/copilota-ia/ (ou utilise la Démo ici).',
+    gpsInsecure:'Page non HTTPS : aucun navigateur ne donne la position. Ouvre l\'adresse en https.',
+    gpsBlocked:'Position bloquée pour ce site. iPhone : Réglages → Confidentialité → Position → Safari = "Lors de l\'utilisation" + Position précise ; puis dans Safari aA → Réglages du site → Position → Autoriser. Mac : Réglages Système → Confidentialité → Position.',
+    gpsDenied:'Permission GPS refusée. Si le navigateur ne la demande même pas, vérifie la position dans les réglages système.',
+    gpsErr:'GPS indisponible : ', gpsNone:'Ce navigateur n\'expose pas le GPS.',
+    outZone:'Tu es en dehors des cartes chargées.',
+    pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', load:'Activer', active:'Active',
+    emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
+    noSave:'Impossible d\'enregistrer le choix : espace insuffisant ou navigation privée. Libère de l\'espace et réessaie.',
+    perf:(f,a)=>'Tourne à '+f+' images par seconde sur '+a+' tronçons chargés. Ça suit l\'écran : 120 sur iPhone Pro avec ProMotion, 60 sur les autres, moins à l\'arrêt ou en mode économie d\'énergie.',
+    ver:(v,pwa)=>'Version '+v+(pwa?' · application installée':' · depuis le navigateur')+'. Si ce numéro n\'augmente pas après une mise à jour, l\'ancienne copie est restée en cache : ferme complètement l\'app depuis le sélecteur et rouvre-la.',
+    gpsPwa:'L\'application ajoutée à l\'écran d\'accueil a SES PROPRES permissions, séparées de Safari, et n\'apparaît PAS parmi les apps dans Réglages → Position : ne la cherche pas là. La seule solution est de lui faire redemander la permission : maintiens l\'icône → Supprimer, rouvre le site dans Safari, Partager → Sur l\'écran d\'accueil, et appuie sur Autoriser à la première demande.',
+    onDevice:'cartes sur le téléphone', onDevice1:'carte sur le téléphone', freeSpace:'espace disponible', delMap:'Supprimer',
+    dlFail:'Échec du téléchargement : ',
+    hereDl:n=>'Tu es à '+n+' : télécharge la carte depuis le panneau Cartes.',
+    hereOn:n=>'Tu es à '+n+' : active la carte depuis le panneau Cartes.',
+    applicaDopo:'Elles se chargent quand tu appuies sur Terminé.',
+    logTit:'Ce qui a mal tourné (reste ici, ça ne t\'interrompt pas en conduisant) :',
+    logSfratto:'les cartes téléchargées ne sont PAS protégées : le téléphone peut les supprimer s\'il a besoin d\'espace',
+    tooMuch:mb=>'Beaucoup de cartes actives (~'+mb+' MB) : l\'app peut se fermer pendant que tu conduis. Ne garde actives que celles où tu vas — les désactiver ne les supprime pas.',
+    inUse:'en cours', at:'à', byLimit:'limite',
+    calRif:'Vitesse de référence', calHint:g=>'À 2 000 tr/min en '+g+', le compteur affiche :',
+    legalOn:'Ne dépasse jamais la limite de la route.',
+    legalOff:'Ignore la limite : seulement ce que permet le virage.',
+    navGo:'ALLER', navIn:'dans', navM:'mètres', navNow:'MAINTENANT', navInto:'sur', navMin:'MIN',
+    navTurn:{dx:'à droite', sx:'à gauche', dxs:'fort à droite', sxs:'fort à gauche',
+             dxk:'tiens la droite', sxk:'tiens la gauche', inv:'fais demi-tour',
+             arr:'tu es arrivé'},
+    navCalc:'Calcul de l\'itinéraire…',
+    navNone:'Aucune route praticable trouvée jusque-là. Essaie un point plus proche d\'une route principale.',
+    navOut:'Ce point est en dehors des cartes actives : active la région depuis le panneau Cartes.',
+    navStart:n=>'Itinéraire vers '+n,
+    navArr:'Tu es arrivé à destination.',
+    navRecalc:'Hors itinéraire : recalcul…',
+    navNoGps:'active le GPS pour avoir les indications',
+    navRot:'au rond-point,',
+    navUscite:['première','deuxième','troisième','quatrième','cinquième','sixième'],
+    navUscitaPre:'la ', navUscitaPost:' sortie',
+    d3gps:'La vue 3D s\'active quand tu conduis : démarre le GPS.',
+    audioTocca:'Touche l\'écran une fois pour activer la voix : le téléphone ne la démarre pas tout seul.',
     navDest:'destination',
   },
 };
@@ -2566,7 +2699,7 @@ const S = {
   d3:false,           // vista guida 3D: inclinazione + zoom automatici
   pitchLibero:false,  // l'inclinazione l'hai messa tu (due dita o bottone): l'automatismo non ci mette più le mani
   zoomLibero:false,   // l'utente ha pizzicato: da qui in poi lo zoom è suo, non mio
-  mode:'free', audio:false, watchId:null, wake:null,
+  mode:'free', audio:false, autoMode:false, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
   dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
@@ -2586,12 +2719,13 @@ try{
   if(typeof st.cal==='number')S.cal=st.cal;
   if(typeof st.calG==='number')S.calG=st.calG;
   if(typeof st.legal==='boolean')S.legal=st.legal;
+  if(typeof st.autoMode==='boolean')S.autoMode=st.autoMode;
   if(st.audio)S.audio=true;
   if(st.d3)S.d3=true;
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,autoMode:S.autoMode,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 
 /* velocità (km/h) per 1000 giri, per marcia */
 function gearKmh(){ const c=CARS[S.car]; return c.g.map(r=>r*S.cal); }
@@ -2604,7 +2738,7 @@ const rpmAt = (kmh,g) => kmh/gearKmh()[g-1]*1000;
    teneva per verificare il numero. 2.000 giri è un regime che tengono tutte e quattro
    le auto in elenco, diesel compreso. */
 const RPM_RIF = 2000;
-const gLab = g => L==='it' ? g+'ª' : g+(g===1?'st':g===2?'nd':g===3?'rd':'th');
+const gLab = g => L==='it' ? g+'ª' : L==='fr' ? (g===1?'1ère':g+'e') : g+(g===1?'st':g===2?'nd':g===3?'rd':'th');
 /* Marcia su cui si legge il riferimento. Se non l'ha scelta lui, si prende la più
    alta che a 2.000 giri sta sotto i 110 km/h: cioè la più lunga verificabile senza
    andare a velocità da autostrada tedesca (in 9ª la C43 a 2.000 giri fa 136). */
@@ -4072,6 +4206,16 @@ function segHeading(e,i){
 }
 function angDiff(a,b){ let d=a-b; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI; return d; }
 
+/* La proiezione è ritagliata al capo da cui si ESCE, e non per pochi centimetri.
+   `projectOn` blocca `t` in [0,1] su ogni segmento: quando l'auto è oltre la fine
+   dell'arco, la proiezione si incolla lì e `d` misura quanto l'hai superata. Il capo
+   d'uscita dipende dal verso di marcia: in avanti è l'ultimo vertice, all'indietro
+   il primo. La soglia dei 5 m tiene fuori il caso normale «sto arrivando al capo». */
+function oltreIlCapo(e, pr, dir){
+  if(pr.d <= 5) return false;
+  return (dir||1) > 0 ? (pr.i === e.np-2 && pr.t >= 0.999)
+                      : (pr.i === 0 && pr.t <= 0.001);
+}
 function matchRoad(x,y,hd){
   const cands=nearEdges(x,y,80);
   let best=null;
@@ -4086,7 +4230,16 @@ function matchRoad(x,y,hd){
       dir = dv<=db?1:-1;
       score += Math.min(dv,db)*26;                 // ~26 m di penalità per radiante
     }
-    if(S.snap && S.snap.e.id===id) score -= 22;    // isteresi: resta sulla strada corrente
+    /* Isteresi: resta sulla strada corrente — ma NON quando l'hai già finita.
+       L'isteresi serve a non saltellare fra due strade vicine e parallele; se la
+       proiezione è ritagliata al capo d'USCITA dell'arco, l'auto ha superato la
+       giunzione e tenerla agganciata lì costa caro: `projectOn` blocca `t` a quel
+       capo, quindi il fix proiettato resta INDIETRO rispetto a dove sei davvero, e
+       `avanzaSuStrada` riparte da lì. Misurato su 103,8 km simulati con GPS
+       perfetto: 18 arretramenti del segnaposto per km, fino a 5,9 m, e il 5,3% dei
+       fix con l'aggancio incollato al capo — in un caso per 6 fix di fila. È la
+       «freccetta che torna indietro». */
+    if(S.snap && S.snap.e.id===id && !oltreIlCapo(e, pr, S.snap.dir)) score -= 22;
     // a parità di distanza, la strada del percorso è quella giusta: sulle
     // carreggiate separate l'aggancio saltava sull'altra corsia e faceva credere
     // di essere fuori percorso
@@ -4330,8 +4483,32 @@ async function caricaVoce(lang){
    copilota apre il contesto e lo tiene aperto. Senza questo la prima nota è muta. */
 function svegliaVoce(){
   if(!VOCE.ctx) VOCE.ctx = new (window.AudioContext||window.webkitAudioContext)();
-  if(VOCE.ctx.state==='suspended') VOCE.ctx.resume();
+  if(VOCE.ctx.state==='suspended'){
+    /* `resume()` FUORI da un gesto utente viene RIFIUTATO da iOS, e la promessa
+       rifiutata senza `catch` non lascia traccia da nessuna parte: le note vengono
+       poi programmate su un contesto sospeso e non si sente niente. Zero errori,
+       bottone acceso, copilota muto. Qui almeno resta scritto nel registro. */
+    const p = VOCE.ctx.resume();
+    if(p && p.catch) p.catch(e => nota('audio non risvegliato (serve un tocco): '+e.message));
+  }
+  return VOCE.ctx.state === 'running';
 }
+/* IL TOCCO CHE SBLOCCA L'AUDIO NON PUÒ ESSERE SOLO QUELLO SUL BOTTONE ALTOPARLANTE.
+   `S.audio` si salva fra una sessione e l'altra: chi riapre l'app con l'audio già
+   acceso non tocca mai quel bottone, quindi il contesto nasce SOSPESO al boot (fuori
+   da un gesto) e non si risveglia più. Risultato: bottone illuminato e copilota muto
+   per tutto il viaggio, senza un errore da nessuna parte — trovato da Tiago guidando
+   il 2026-08-19. Adesso lo sblocca QUALUNQUE tocco, che è ciò che fanno tutti i
+   lettori audio sul web. Il passaggio è a vuoto quando il contesto è già acceso,
+   quindi si può lasciare attaccato per sempre senza pesare. */
+function sbloccaAudio(){
+  if(!S.audio) return;
+  if(VOCE.ctx && VOCE.ctx.state === 'running' && VOCE.buf[L]) return;
+  svegliaVoce();
+  if(!VOCE.buf[L]) caricaVoce(L);
+}
+for(const ev of ['pointerdown','touchend','keydown'])
+  addEventListener(ev, sbloccaAudio, {capture:true, passive:true});
 
 /* Durata di una frase PRIMA di pronunciarla: serve al gestore annunci per sapere
    quando iniziare, invece di partire a un anticipo fisso e finire dentro la curva.
@@ -4390,7 +4567,7 @@ VOCE.fino = 0;
 function sayUI(t){
   if(!S.audio || !('speechSynthesis' in window)) return;
   const u=new SpeechSynthesisUtterance(t);
-  u.lang = L==='it'?'it-IT':'en-GB'; u.rate=1.08;
+  u.lang = L==='it'?'it-IT':L==='fr'?'fr-FR':'en-GB'; u.rate=1.08;
   speechSynthesis.speak(u);
 }
 
@@ -4562,7 +4739,7 @@ function updateNote(){
   nGear.hidden = isAuto();
   if(!isAuto()){
     const g=bestGear(kmh);
-    gearV.textContent = L==='it' ? g+'ª' : g+['st','nd','rd','th','th','th','th','th','th'][g-1];
+    gearV.textContent = L==='it' ? g+'ª' : L==='fr' ? (g===1?'1ère':g+'e') : g+['st','nd','rd','th','th','th','th','th','th'][g-1];
     nGear.style.borderColor = flat ? CLS[6].col : 'var(--line)';
   }
   if(a.inside){nDist.textContent=t0.inC;nLab.textContent=t0.inC2}
@@ -4631,7 +4808,7 @@ const navEl=document.getElementById('nav'), navD=document.getElementById('navD')
       niv=document.getElementById('navIcon').getContext('2d');
 let NAVSN=0;                                  // serie del percorso: le chiavi della voce
                                               // non devono sopravvivere a un ricalcolo
-const dec = n => L==='it' ? n.replace('.',',') : n;
+const dec = n => (L==='it'||L==='fr') ? n.replace('.',',') : n;
 const kmTxt = m => m<950 ? Math.round(m/10)*10+' m'
                          : dec((m/1000).toFixed(m<9500?1:0))+' km';
 function minTxt(s){
@@ -4934,6 +5111,28 @@ function feed(x,y,hd,v,acc){
   const m=matchRoad(x,y,S.hd);
   S.snap = (m && m.d<70) ? m : null;
   S.local = !S.snap && distToGrey(x,y,45) < 45;    // strada locale, fuori dalla rete annotata
+  /* SONDA «mi è sparita la strada» (2026-08-19). Tiago l'ha vista guidando, e in
+     103,8 km simulati non si riproduce: `S.snap.d` non supera mai 29 m su strade
+     mappate, anche con salti GPS da 45 m. Quindi la causa NON è nel modello che so
+     simulare — è nel mondo (copertura, canyon urbani, gallerie, confine regione), e
+     l'unico modo onesto di saperlo è misurarlo dove capita. Costa due righe e
+     nessuna interruzione in guida: si annota nel registro del pannello Info, con
+     durata, luogo e distanza dalla strada più vicina — così la prossima volta la
+     domanda ha una risposta invece di un'ipotesi. */
+  const fuoriOra = !S.snap || S.snap.d > 70;
+  if(fuoriOra && !S.fuoriDa){ S.fuoriDa = Date.now(); S.fuoriXY = [x,y] }
+  else if(!fuoriOra && S.fuoriDa){
+    const sec = Math.round((Date.now()-S.fuoriDa)/1000);
+    if(sec >= 3){                       // sotto i 3 s è un fix sporco, non un buco
+      const [fx,fy] = S.fuoriXY || [x,y];
+      const ll = toLL(fx,fy);            // [lon,lat]
+      const dg = Math.round(distToGrey(fx,fy,200));
+      nota('strada persa per '+sec+' s'+(ll ? ' a '+ll[1].toFixed(5)+','+ll[0].toFixed(5) : '')
+           +' — residenziale più vicina '+(dg>=200?'oltre 200':dg)+' m'
+           +(S.gpsBuco?' (dopo un buco GPS)':'')+' — precisione '+Math.round(S.acc||0)+' m');
+    }
+    S.fuoriDa = null; S.fuoriXY = null;
+  }
   /* Ricarica silenziosa a metà viaggio: appena si è agganciati a una strada si
      ricalcola il percorso verso la destinazione ricordata. Una volta sola — se
      fallisce non si riprova a ogni fix, se no in una zona scoperta si ricalcola
@@ -5200,9 +5399,10 @@ bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
   save() };
 const bLang=document.getElementById('bLang');
 function applyLang(){
-  bLang.textContent = L==='it' ? 'EN' : 'IT';
+  bLang.textContent = L==='it' ? 'EN' : L==='en' ? 'FR' : 'IT';
   if(typeof renderTema==='function') renderTema();
   document.body.classList.toggle('en', L==='en');
+  document.body.classList.toggle('fr', L==='fr');
   qEl.placeholder = tr().search;
   document.getElementById('gearLab').textContent = tr().gear;
   renderCar(); updateNote(); renderMaps(); showStore(); setBrandSub();
@@ -5212,13 +5412,23 @@ function applyLang(){
      il codice che le chiede non sa nemmeno quale lingua è attiva. È la difesa
      contro il baco di casa uscito due volte (a 7 e a 9 marce): non si può allungare
      un vocabolario e dimenticare l'altro. */
-  if(S.audio) caricaVoce(L);
+  /* Caricare lo sprite non basta a poter PARLARE: se il contesto è nato sospeso
+     (audio già acceso da una sessione precedente, quindi nessun gesto) le note
+     verrebbero programmate nel vuoto. Il primo tocco lo sblocca da solo — vedi
+     `sbloccaAudio` — ma se quel tocco non arriva mai bisogna DIRLO, se no il
+     copilota resta muto e sembra rotto. Una volta sola, non a ogni cambio lingua. */
+  if(S.audio) caricaVoce(L).then(()=>{
+    if(VOCE.ctx && VOCE.ctx.state==='suspended' && !S.avvisoAudio){
+      S.avvisoAudio = true;
+      toast(tr().audioTocca, 7000);
+    }
+  });
   S.need=true;
 }
-bLang.onclick=()=>{ L = L==='it'?'en':'it'; save(); applyLang(); renderLegend(); renderTema(); };
+bLang.onclick=()=>{ L = L==='it'?'en':L==='en'?'fr':'it'; save(); applyLang(); renderLegend(); renderTema(); };
 const bTema=document.getElementById('bTema');
 function renderTema(){
-  bTema.textContent = S.tema==='chiaro' ? (L==='it'?'Chiaro':'Light') : (L==='it'?'Scuro':'Dark');
+  bTema.textContent = S.tema==='chiaro' ? (L==='it'?'Chiaro':L==='fr'?'Clair':'Light') : (L==='it'?'Scuro':L==='fr'?'Sombre':'Dark');
 }
 bTema.onclick=()=>{
   S.tema = S.tema==='chiaro' ? 'scuro' : 'chiaro';
@@ -5314,8 +5524,8 @@ let BRAND = null;
 function setBrandSub(){
   const el=document.getElementById('brandSub'); if(!el) return;
   if(!BRAND){ el.textContent = tr().pickMap; return }
-  el.textContent = (BRAND.n>1 ? BRAND.n+(L==='it'?' regioni · ':' regions · ') : BRAND.nome+' · ')
-    + BRAND.km+' km · '+BRAND.nc+(L==='it'?' curve':' corners');
+  el.textContent = (BRAND.n>1 ? BRAND.n+(L==='it'?' regioni · ':L==='fr'?' régions · ':' regions · ') : BRAND.nome+' · ')
+    + BRAND.km+' km · '+BRAND.nc+(L==='it'?' curve':L==='fr'?' virages':' corners');
 }
 const mapList=document.getElementById('mapList'), mapStore=document.getElementById('mapStore');
 const MB = n => (n/1e6).toFixed(1).replace('.',',')+' MB';
@@ -5352,8 +5562,8 @@ function renderMaps(){
     const nm=document.createElement('div');
     nm.className='rnm';
     nm.innerHTML='<b>'+r.nm+'</b><span>'+MB(pesoTot(r))+' · '+r.km.toLocaleString('it-IT')+' km · '+
-      r.curve.toLocaleString('it-IT')+(L==='it'?' curve':' corners')+
-      (r.vie?' · '+r.vie.toLocaleString('it-IT')+(L==='it'?' vie':' streets'):'')+'</span>';
+      r.curve.toLocaleString('it-IT')+(L==='it'?' curve':L==='fr'?' virages':' corners')+
+      (r.vie?' · '+r.vie.toLocaleString('it-IT')+(L==='it'?' vie':L==='fr'?' rues':' streets'):'')+'</span>';
     row.appendChild(nm);
 
     // scaricata ma non attiva: la riga resta in evidenza finché non la si accende
@@ -5471,6 +5681,7 @@ const carChips=document.getElementById('carChips'), styleChips=document.getEleme
       calGears=document.getElementById('calGears'),
       styleDesc=document.getElementById('styleDesc'), carDesc=document.getElementById('carDesc'),
       gearBox=document.getElementById('gearBox'), legalChk=document.getElementById('legalChk'),
+      autoChk=document.getElementById('autoChk'),
       legalDesc=document.getElementById('legalDesc');
 function gearTableHtml(){
   /* Il tetto (vTop) si applica QUI, alla presentazione, e non dentro gearKmh:
@@ -5519,6 +5730,7 @@ function renderCar(){
       ? 'repeat(auto-fit,minmax(62px,1fr))' : 'repeat('+CARS[S.car].n+',1fr)';
     renderCal();
   }
+  autoChk.checked=S.autoMode;
   legalChk.checked=S.legal;
   legalDesc.textContent=tr()[S.legal?'legalOn':'legalOff'];
 }
@@ -5539,6 +5751,12 @@ function renderCal(){
   gearTable.innerHTML=gearTableHtml();
 }
 legalChk.onchange=()=>{S.legal=legalChk.checked; save(); renderCar(); updateNote(); S.need=true};
+/* `S.said` si svuota apposta: le note gia' annunciate contengono la marcia, e senza
+   ripulire il gia'-detto la prima curva dopo l'interruttore resterebbe muta o
+   continuerebbe a nominarla. Stessa ragione per cui `renderCar` rifa' la tabella:
+   con l'automatico i rapporti spariscono dal pannello. */
+autoChk.onchange=()=>{S.autoMode=autoChk.checked; S.said.clear(); save(); renderCar();
+  updateNote(); S.need=true};
 /* Il cursore muove sempre `S.cal` (km/h ogni 1000 giri in ultima), solo che chi
    guarda legge il numero alla marcia di riferimento: le due cose sono legate da un
    fattore fisso, quindi il passo del cursore resta lineare e non c'è nessuna
@@ -5550,8 +5768,12 @@ renderCar();
 function renderLegend(){
   const names = L==='it'
     ? c=>(c.nm==='TORNANTE'?'TORNANTE':c.nm==='RETTO'?'RETTO':'Classe '+c.nm)
+    : L==='fr'
+    ? c=>(c.nm==='TORNANTE'?'ÉPINGLE':c.nm==='RETTO'?'LIGNE DROITE':'Classe '+c.nm)
     : c=>(c.nm==='TORNANTE'?'HAIRPIN':c.nm==='RETTO'?'STRAIGHT':'Class '+c.nm);
-  const rg = L==='it' ? c=>c.rg : c=>c.rg.replace('meno di','under').replace('oltre','over');
+  const rg = L==='it' ? c=>c.rg
+    : L==='fr' ? c=>c.rg.replace('meno di','moins de').replace('oltre','plus de')
+    : c=>c.rg.replace('meno di','under').replace('oltre','over');
   document.getElementById('legendRows').innerHTML=CLS.map(c=>
     '<div class="lrow"><div class="sw" style="background:'+c.col+'"></div><b>'+
     names(c)+'</b><span>'+rg(c)+'</span></div>').join('');
@@ -6281,6 +6503,7 @@ async function boot(){
       applyLang(); renderLegend(); renderMaps(); showStore(); setBrandSub();
       splash.classList.add('hide'); loop(); openSheet('maps');
       toast((L==='it' ? r.nm+' non si è caricata: riscaricala.'
+             : L==='fr' ? r.nm+' n\'a pas pu être chargée : retélécharge-la.'
                       : r.nm+' failed to load: download it again.'), 9000);
       return;
     }
@@ -6340,6 +6563,8 @@ async function boot(){
        fuori sembra solo che quelle funzioni non esistano. */
     setTimeout(()=>toast(L==='it'
       ? 'Aggiornamento disponibile per: '+nomi+'. Su questa copia mancano autostrade, svincoli e pendenza. Apri Mappe, elimina e riscarica.'
+      : L==='fr'
+      ? 'Mise à jour disponible pour : '+nomi+'. Il manque sur cette copie les autoroutes, les bretelles et la pente. Ouvre Cartes, supprime et retélécharge.'
       : 'Update available for: '+nomi+'. This copy is missing motorways, slip roads and gradient. Open Maps, delete and download again.', 12000), 1500);
   }
   const kmN = att.reduce((a,r)=>a+r.km,0), ncN = att.reduce((a,r)=>a+r.curve,0);
@@ -6347,7 +6572,7 @@ async function boot(){
         ne=E.length.toLocaleString('it-IT');
   const nomi = att.map(r=>r.nm), gen = att.map(r=>r.gen).sort().pop();
   const lista = n => n.length===1 ? '<b>'+n[0]+'</b>'
-    : n.slice(0,-1).map(x=>'<b>'+x+'</b>').join(', ')+(L==='it'?' e ':' and ')+'<b>'+n[n.length-1]+'</b>';
+    : n.slice(0,-1).map(x=>'<b>'+x+'</b>').join(', ')+(L==='it'?' e ':L==='fr'?' et ':' and ')+'<b>'+n[n.length-1]+'</b>';
   BRAND = {n:att.length, nome:nomi[0], km, nc};
   setBrandSub();
   document.getElementById('infoStats').innerHTML =
@@ -6356,11 +6581,15 @@ async function boot(){
   document.getElementById('infoStatsEn').innerHTML =
     'Active maps: '+lista(nomi)+' — <b>'+km+' km</b> of roads classified corner by corner, <b>'+
     nc+'</b> annotated corners across '+ne+' segments. More regions from the <b>Maps</b> panel.';
+  document.getElementById('infoStatsFr').innerHTML =
+    'Cartes actives : '+lista(nomi)+' — <b>'+km+' km</b> de routes classées virage par virage, <b>'+
+    nc+'</b> virages annotés sur '+ne+' tronçons. D\'autres régions depuis le panneau <b>Cartes</b>.';
   const msExp = att.reduce((a,r)=>a+(r.msExp||0),0), msInf = att.reduce((a,r)=>a+(r.msInf||0),0);
   if(msExp+msInf){
     const pct=Math.round(msExp/(msExp+msInf)*100);
     for(const [id,txt] of [['limPct','Solo il <b>'+pct+'%</b> dei tratti porta il limite scritto in OpenStreetMap, quindi il cartello tratteggiato comparirà spesso: fidati della segnaletica vera.'],
-                           ['limPctEn','Only <b>'+pct+'%</b> of segments carry an explicit limit in OpenStreetMap, so the dashed sign will show up often: trust the real road signs.']]){
+                           ['limPctEn','Only <b>'+pct+'%</b> of segments carry an explicit limit in OpenStreetMap, so the dashed sign will show up often: trust the real road signs.'],
+                           ['limPctFr','Seuls <b>'+pct+'%</b> des tronçons portent une limite indiquée dans OpenStreetMap, donc le panneau pointillé apparaîtra souvent : fie-toi à la signalisation réelle.']]){
       const el=document.getElementById(id); if(el) el.innerHTML=txt;
     }
   }
@@ -6374,6 +6603,11 @@ async function boot(){
     'comes from the circumcircle of point triplets every 10 m; the reference speed from √(a·R) and '+
     'the gear from the ratios and usable rev band of the car picked in the <b>My car</b> panel, '+
     'where you can also calibrate km/h per 1000 rpm.';
+  document.getElementById('infoDataFr').innerHTML =
+    'Géométries © contributeurs <b>OpenStreetMap</b> (ODbL), extraites le '+gen+'. Le rayon de chaque '+
+    'virage est estimé par le cercle circonscrit à des triplets de points tous les 10 m ; la vitesse de '+
+    'référence par √(a·R) et la vitesse par les rapports et la plage utile de la voiture choisie dans le '+
+    'panneau <b>Ma voiture</b>, où tu peux aussi calibrer les km/h par 1000 tours.';
   applyLang(); renderLegend();
   /* Vista iniziale: il primo preferito della prima regione attiva.
      Lo zoom si ricava dal viewport, non è un numero fisso: `scale` è in pixel per
