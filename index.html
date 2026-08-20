@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '172';
+const APPVER = '173';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4956,11 +4956,36 @@ function durataFrase(chiavi){
 const SESSIONE = ('audioSession' in navigator) ? navigator.audioSession : null;
 nota(SESSIONE ? 'sessione audio disponibile: la musica si abbassa quando parlo'
               : 'sessione audio non disponibile: la musica non si abbassera\' (normale fuori da Safari)');
-let duckFino = 0, duckTimer = 0;
+let duckFino = 0, duckTimer = 0, duckDetto = false;
+/* Quanto si aspetta, dopo aver chiesto l'abbassamento, prima di far partire la voce.
+   PRIMA NON C'ERA, ed e' quasi certamente il motivo per cui Tiago il 2026-08-20 ha
+   detto «la musica ancora non si abbassa quando parla»: la nota partiva 20 ms dopo la
+   richiesta. Cambiare categoria di sessione audio su iOS non e' un'assegnazione, e'
+   una rinegoziazione col sistema, e l'abbassamento dell'altra app ha una sua dissolvenza
+   — nell'ordine dei decimi di secondo. In 20 ms non fa in tempo a succedere niente: la
+   frase finiva prima che la musica cominciasse a scendere, e l'effetto era zero.
+   250 ms escono dal margine di reazione (2,6 s in Comfort), quindi non mangiano
+   l'anticipo: la nota parte un quarto di secondo dopo e finisce un quarto di secondo
+   dopo, dentro un margine che e' dieci volte tanto. */
+const DUCK_ANTICIPO = 0.25;
 function musicaGiu(){
-  if(!SESSIONE) return;
-  try{ if(SESSIONE.type !== 'transient') SESSIONE.type = 'transient' }
-  catch(e){ nota('tipo di sessione audio rifiutato: '+e.message) }
+  if(!SESSIONE) return 0;
+  if(SESSIONE.type === 'transient') return 0;      // gia' abbassata: non si riaspetta
+  try{
+    SESSIONE.type = 'transient';
+    /* Il RILEGGERE e' la parte che serviva e non c'era. Se la piattaforma rifiuta il
+       tipo non lancia niente: assegni e il valore resta quello di prima. Senza questa
+       riga il difetto e' muto due volte — non si sente la musica abbassarsi e non si
+       vede da nessuna parte perche'. Si scrive una volta sola per sessione, se no
+       riempie il registro a ogni curva. */
+    if(!duckDetto){
+      duckDetto = true;
+      nota(SESSIONE.type === 'transient'
+           ? 'musica: il sistema ha accettato di abbassarla mentre parlo'
+           : 'musica: il sistema ha RIFIUTATO l\'abbassamento (tipo rimasto "'+SESSIONE.type+'")');
+    }
+    return DUCK_ANTICIPO;
+  }catch(e){ nota('tipo di sessione audio rifiutato: '+e.message); return 0 }
 }
 function musicaSu(secondi){
   if(!SESSIONE || !(secondi > 0)) return;
@@ -4982,8 +5007,10 @@ function dilo(chiavi, urgente){
      manovra: sbagliare strada si rimedia, una curva no. */
   if(urgente && VOCE.sorgente){ try{VOCE.sorgente.forEach(s=>s.stop())}catch(e){} }
   if(!urgente && VOCE.fino > VOCE.ctx.currentTime) return 0;   // sta già parlando
-  musicaGiu();               // prima di programmare: il sistema ci mette un istante
-  const t0 = Math.max(VOCE.ctx.currentTime, urgente?0:VOCE.fino||0) + 0.02;
+  /* L'attesa torna da `musicaGiu`: e' zero se la musica e' gia' abbassata o se il
+     sistema non sa abbassarla, cioe' non si paga quando non serve. */
+  const attesa = musicaGiu();
+  const t0 = Math.max(VOCE.ctx.currentTime + attesa, urgente?0:VOCE.fino||0) + 0.02;
   let t=t0; const nodi=[];
   for(const k of chiavi){
     const c=ix[k]; if(!c) continue;
@@ -5140,7 +5167,12 @@ function piatta(a){
      Restano in piedi gli altri due filtri, che sono di natura diversa e che Tiago ha
      confermato di volere: `troppoAmpia` (5 e 6 mute su autostrada e superstrada, sua
      richiesta di allora) e `mutoQui` (autostrada vera). */
-  if(S.pace) return false;
+  /* Non TUTTE pero': la 6 no. Provata la v172 su strada, Tiago ha chiesto di
+     tenere le 5 e lasciar cadere le 6 — e ha ragione sul ritmo, perche' la 6 e' un
+     raggio da 250 a 450 m, cioe' una piega che a un pacenote serve solo se stai
+     davvero forte. La 6 torna quindi alla regola normale: si chiama se non si
+     prende in scioltezza, tace se si prende in scioltezza. */
+  if(S.pace && a.c.c <= 5) return false;
   if(S.v < 8) return false;                      // da fermi non si filtra niente
   const kmh = curveKmh(a.c.r, a.e, a.dir, a.c.d0);
   return kmh >= S.v*3.6 + 8;
