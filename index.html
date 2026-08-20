@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '171';
+const APPVER = '172';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -5128,6 +5128,19 @@ const mutoQui = a => (a.e && a.e.cls|0) === 2;
    sente meno note di chi guida in «fondo chiuso», perché per lui più curve sono
    davvero irrilevanti. */
 function piatta(a){
+  /* IN PACENOTE QUESTO FILTRO NON ESISTE, ed e' il punto: un navigatore da rally
+     chiama OGNI curva, anche quella che si prende in pieno — «sei destra, lungo» e'
+     una nota normale, perche' la nota descrive la strada, non avvisa di frenare.
+     Tacere le veloci ha senso da navigatore stradale e contraddice la modalita' che
+     si e' scelta accendendo il pacenote.
+     Segnalato da Tiago il 2026-08-20: «non capisco perche' ancora certe curve 5 o 6
+     non le annuncia a voce». Misurato il perche' prima di toccare niente: con la C43
+     in Comfort una classe 5 da 200 m tace sotto i 76 km/h e una classe 6 da 350 m
+     sotto i 103 — cioe' su una statale non le sentiva quasi mai.
+     Restano in piedi gli altri due filtri, che sono di natura diversa e che Tiago ha
+     confermato di volere: `troppoAmpia` (5 e 6 mute su autostrada e superstrada, sua
+     richiesta di allora) e `mutoQui` (autostrada vera). */
+  if(S.pace) return false;
   if(S.v < 8) return false;                      // da fermi non si filtra niente
   const kmh = curveKmh(a.c.r, a.e, a.dir, a.c.d0);
   return kmh >= S.v*3.6 + 8;
