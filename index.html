@@ -552,6 +552,17 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <h3><span data-lang="it">Stile di guida</span><span data-lang="en">Driving style</span><span data-lang="fr">Style de conduite</span></h3>
   <div class="row2" id="styleChips"></div>
   <p style="margin-top:9px" id="styleDesc"></p>
+  <!-- L'anticipo della voce e' legato allo stile, ma i due non sono la stessa cosa:
+       si puo' voler passare in curva da Sport ed essere avvisati da Tranquillo. Questo
+       cursore serve a scollegarli, e si tara GUIDANDO — per questo mostra i secondi
+       liberi risultanti e non una percentuale, che non si potrebbe sentire. -->
+  <h3><span data-lang="it">Anticipo della voce</span><span data-lang="en">Voice lead</span><span data-lang="fr">Anticipation de la voix</span></h3>
+  <div class="slider">
+    <input type="range" id="anticSlider" min="-1" max="3" step="0.2">
+    <div class="val"><span id="anticVal">0</span><small style="display:block;font-size:9px;
+      color:var(--ink2);letter-spacing:.06em">SEC</small></div>
+  </div>
+  <p style="margin-top:6px;font-size:11.5px" id="anticDesc"></p>
   <label class="opt"><input type="checkbox" id="legalChk">
     <span data-lang="it">Non superare mai il limite della strada</span>
     <span data-lang="en">Never exceed the road speed limit</span><span data-lang="fr">Ne jamais dépasser la limite de la route</span></label>
@@ -760,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '165';
+const APPVER = '171';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -2469,7 +2480,12 @@ const CARS = {
        d_en:"Full stage 3+, TD04 turbo, 320 hp and 350 Nm, 5-speed manual, full boost from 3,700 "+
             "to 7,500 rpm. The suggested gear is the highest one still on boost at the apex: full "+
             "torque with no mid-corner shift. In hairpins it prefers 2nd over 1st whenever the revs "+
-            "hold — with 350 Nm through the front wheels, 1st on exit is just wheelspin."},
+            "hold — with 350 Nm through the front wheels, 1st on exit is just wheelspin.",
+       d_fr:"Full stage 3+, turbo TD04, 320 ch et 350 Nm, boîte manuelle à 5 rapports, plein boost "+
+            "de 3 700 à 7 500 tr/min. Le rapport conseillé est le plus long qui reste en boost à la "+
+            "corde : couple plein sans changer de rapport en virage. Dans les épingles elle préfère "+
+            "la 2e à la 1re tant que le régime tient — avec 350 Nm sur un train avant, la 1re en "+
+            "sortie n'est que du patinage."},
   cla:{nm:'Mercedes CLA 200 d', sub:'Shooting Brake 2017 · 136 CV · 300 Nm · 7G-DCT',
        /* 7G-DCT 724.0: 3,857 · 2,429 · 1,536 · 1,049 · 0,776 · 0,604 · 0,480, finale 4,130,
           normalizzati sulla 7ª. Coi paddle la marcia la sceglie chi guida, quindi si suggerisce.
@@ -2487,7 +2503,14 @@ const CARS = {
             "1,555 kg. With the wheel paddles you pick the gear, so the co-driver calls it: being a "+
             "diesel the sweet spot is 2,000-4,600 rpm, far lower than the MiTo's, and the suggested "+
             "gears are taller. Reference grip is lower than the MiTo's (tall, heavy estate on "+
-            "everyday tyres), so the same radii come out slower."},
+            "everyday tyres), so the same radii come out slower.",
+       d_fr:"D'origine : 2 143 cm³ diesel, 136 ch, 300 Nm déjà pleins à 1 400 tr/min, double "+
+            "embrayage 7G-DCT à 7 rapports, 1 555 kg. Avec les palettes au volant c'est toi qui "+
+            "choisis le rapport, donc le copilote te l'annonce : sur un diesel la plage utile est "+
+            "2 000-4 600 tr/min, bien plus bas que sur la MiTo, et les rapports conseillés sont "+
+            "plus longs. Face à la MiTo l'adhérence de référence est plus basse (break haut et "+
+            "lourd, pneus de tous les jours), donc les mêmes rayons sortent avec des chiffres "+
+            "plus bas."},
   c43:{nm:'Mercedes-AMG C43', sub:'2019 · V6 biturbo · 9 marce · 4MATIC',
        /* 9G-TRONIC 725.0: 5,35 · 3,24 · 2,25 · 1,64 · 1,21 · 1,00 · 0,865 · 0,717 · 0,601,
           finale 3,06, normalizzati sulla 9ª. Con 255/35 R19 dietro (circonferenza 2,077 m)
@@ -2513,7 +2536,16 @@ const CARS = {
             "roughly at 470-500 hp and 650-700 Nm — dyno figures to confirm, and the co-driver "+
             "does not use them for the calls. What it does use are the ratios and the usable band: "+
             "all-wheel drive and wide tyres put reference grip above the MiTo's, so the same radii "+
-            "come out faster."},
+            "come out faster.",
+       d_fr:"3.0 V6 biturbo M276, 4MATIC, boîte AMG à 9 rapports avec palettes. Préparation en "+
+            "cours : admission Weistec High Flow, ligne d'échappement Supersprint complète, "+
+            "downpipes 200 cellules, échangeur Wagner majoré, injection eau-méthanol Weistec, "+
+            "rupteur à 6 700 tr/min. D'origine c'est 390 ch et 520 Nm ; avec cette liste, et avec "+
+            "la cartographie qu'exige l'eau-méthanol, on est autour de 470-500 ch et 650-700 Nm — "+
+            "des chiffres à confirmer au banc, que le copilote n'utilise pas pour les notes. Ce "+
+            "qu'il utilise, ce sont les rapports et la plage utile : quatre roues motrices et "+
+            "pneus larges placent l'adhérence de référence au-dessus de celle de la MiTo, donc "+
+            "les mêmes rayons sortent avec des chiffres plus hauts."},
   c220:{nm:'Mercedes C 220 d', sub:'Station S206 · 200 CV · 440 Nm · 9 marce · 4MATIC',
        /* Stesso 9G-TRONIC 725.0 della C43, quindi la SPAZIATURA fra i rapporti e' la
           stessa (5,35 · 3,24 · 2,25 · 1,64 · 1,21 · 1,00 · 0,865 · 0,717 · 0,601,
@@ -2548,7 +2580,17 @@ const CARS = {
             "downshifting: when the co-driver calls a gear it is normally to keep you under "+
             "4,500 on exit, not to bring you down. Reference grip sits above the CLA (newer "+
             "chassis, 4MATIC, wider tyres) but below the C43: this is a touring estate, not a "+
-            "sports saloon, so the same radii come out in between."},
+            "sports saloon, so the same radii come out in between.",
+       d_fr:"2.0 diesel OM654M avec réseau 48V, 200 ch et 440 Nm de 1 800 à 2 800 tr/min, "+
+            "9G-TRONIC à 9 rapports avec palettes, un break d'un peu moins de 1 800 kg. Avec les "+
+            "palettes c'est toi qui choisis le rapport, donc le copilote te l'annonce : la plage "+
+            "utile est 1 600-4 500 tr/min, plus basse et plus étroite que sur n'importe quelle "+
+            "essence ici, et les rapports conseillés sortent longs. Avec neuf rapports tu es "+
+            "presque toujours déjà là où il faut sans rétrograder : quand le copilote annonce un "+
+            "rapport, c'est en général pour ne pas te retrouver au-dessus de 4 500 en sortie, pas "+
+            "pour te faire descendre. Adhérence de référence au-dessus de la CLA (châssis récent, "+
+            "4MATIC, pneus plus larges) mais en dessous de la C43 : c'est un break de voyage, pas "+
+            "une berline sportive, et les mêmes rayons sortent avec des chiffres intermédiaires."},
   glc:{nm:'Mercedes GLC 220 d', sub:'SUV X254 · 197 CV · 440 Nm · 9 marce · 4MATIC',
        /* Stesso motore e stesso 9G-TRONIC della Classe C: la spaziatura dei rapporti e'
           identica, e infatti `g` e' lo stesso array. Cambia il finale e cambiano le
@@ -2576,7 +2618,17 @@ const CARS = {
             "than for any other car here — that is not free caution: an SUV runs out of margin "+
             "sooner, and it runs out by leaning rather than by sliding, so by the time you feel "+
             "it there is little left to do. In tight hairpins and downhill the gap to the estate "+
-            "is obvious; on fast roads far less so."},
+            "is obvious; on fast roads far less so.",
+       d_fr:"Le même 2.0 diesel OM654M avec réseau 48V que la Classe C, 197 ch et 440 Nm, "+
+            "9G-TRONIC avec palettes, mais sur un SUV d'environ deux tonnes. Moteur et rapports "+
+            "sont les mêmes, donc les rapports conseillés ressemblent à ceux du break ; ce qui "+
+            "change vraiment, c'est l'adhérence de référence, et c'est la valeur la plus basse de "+
+            "toute la liste : centre de gravité haut, masse, pneus de confort. Sur les mêmes "+
+            "rayons le copilote annonce des chiffres plus bas que pour n'importe quelle autre "+
+            "voiture ici — ce n'est pas de la prudence gratuite : un SUV en appui épuise sa marge "+
+            "plus tôt, et il l'épuise en se couchant au lieu de glisser, donc quand tu t'en "+
+            "aperçois il ne te reste plus grand-chose à faire. Dans les épingles serrées et en "+
+            "descente l'écart avec le break se sent nettement, sur le rapide beaucoup moins."},
   fie:{nm:'Ford Fiesta ST-Line', sub:'2019 · 1.0 EcoBoost 3 cilindri · 101 CV · 6 marce',
        /* B6 a 6 rapporti: 3,727 · 2,048 · 1,321 · 0,951 · 0,756 · 0,614, finale 4,067,
           normalizzati sulla 6ª. Con 195/55 R16 (circonferenza 1,916 m) la 6ª fa ~46 km/h
@@ -2603,7 +2655,16 @@ const CARS = {
             "instinct says — above 5,000 rpm the triple makes noise and little else. Reference "+
             "grip sits just below the MiTo: ST-Line suspension and low weight help, but the "+
             "tyres are everyday ones. Servicing: 98 octane since 100,000 km, and the wet timing "+
-            "belt was replaced at 100,000 km — the known weak point of this engine."},
+            "belt was replaced at 100,000 km — the known weak point of this engine.",
+       d_fr:"999 cm³ trois cylindres turbo EcoBoost, 101 ch, 170 Nm de 1 400 à 4 500 tr/min, "+
+            "boîte manuelle à 6 rapports, un peu plus de 1 100 kg. C'est l'opposé de la MiTo : le "+
+            "couple est là juste au-dessus du ralenti et s'en va tôt, donc le rapport conseillé "+
+            "est presque toujours plus long que ce que l'instinct dicte — au-dessus de 5 000 "+
+            "tr/min le trois cylindres fait du bruit et rien d'autre. Adhérence de référence un "+
+            "peu en dessous de la MiTo : châssis ST-Line et poids réduit aident, mais les pneus "+
+            "et leur largeur sont de tous les jours. Entretien : SP-98 depuis 100 000 km, et à "+
+            "100 000 km la courroie de distribution à bain d'huile a été remplacée — le point "+
+            "faible connu de ce moteur."},
   m6: {nm:'Altra auto', sub:'cambio manuale 6 marce',
        auto:false, n:6, g:[0.190,0.3325,0.490,0.6425,0.810,1.0], ref:40,
        cv:150, kg:1300, cda:0.68, crr:0.012,
@@ -2613,7 +2674,10 @@ const CARS = {
        // nota: le stringhe qui sono a doppi apici apposta, così gli apostrofi e gli
        // accenti italiani si scrivono normali senza escape
        d_en:"Generic profile for another manual car: six ratios, useful torque between 3,000 and "+
-            "6,500 rpm. Set the final drive with the slider below."},
+            "6,500 rpm. Set the final drive with the slider below.",
+       d_fr:"Profil générique pour une autre voiture à boîte manuelle : six rapports, couple "+
+            "utile entre 3 000 et 6 500 tr/min. Règle le rapport de pont avec le curseur "+
+            "ci-dessous."},
 };
 const boostOf = () => CARS[S.car].boost || 3000;
 const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
@@ -2658,19 +2722,37 @@ function vTop(slope){
 /* Le CHIAVI restano quelle vecchie (calmo/strada/deciso/pista) anche se i nomi
    mostrati sono cambiati in Tranquillo/Comfort/Sport/Race: sono la chiave salvata
    in localStorage, e cambiarle butterebbe lo stile scelto sul telefono. */
+/* Ogni stile porta TRE numeri, non uno solo. Fino al 2026-08-20 c'era solo `a`, e
+   cambiava quanto forte si passa in curva ma NON quando te lo si dice: l'anticipo
+   della voce era cablato uguale per tutti (1,4 s di reazione, 3,0 m/s² di frenata).
+   Era incoerente — chi sceglie «Tranquillo» chiede piu' margine, non solo meno g —
+   ed e' quello che Tiago ha sentito guidando: «le indicazioni troppo ravvicinate
+   alla curva».
+     a    = accelerazione laterale di riferimento (m/s²): quanto forte in curva
+     reaz = secondi LIBERI fra la fine della frase e il punto in cui va iniziata la
+            frenata. E' il margine vero, l'unico numero che decide se la nota arriva
+            «in tempo» o «addosso».
+     dec  = decelerazione che si suppone tu usi (m/s²) per calcolare da quanto
+            lontano annunciare. Piu' bassa = si frena piu' dolce = si annuncia PRIMA.
+   I due sono legati allo stile e non alla modalita' pacenote: la lunghezza della
+   frase entra gia' da sola nel conto, tramite `parlato`. */
 const STYLES = {
-  calmo:  {a:2.0, nm_it:'Tranquillo', nm_en:'Calm',
-           d_it:'Passeggeri a bordo, bagnato, buio, strada che non conosci. I numeri restano bassi apposta.',
-           d_en:'Passengers aboard, wet, dark, a road you do not know. The figures stay low on purpose.'},
-  strada: {a:2.6, nm_it:'Comfort', nm_en:'Comfort',
+  calmo:  {a:2.0, reaz:3.2, dec:2.2, nm_it:'Tranquillo', nm_en:'Calm', nm_fr:'Tranquille',
+           d_it:'Passeggeri a bordo, bagnato, buio, strada che non conosci. I numeri restano bassi apposta, e la voce avvisa prima.',
+           d_en:'Passengers aboard, wet, dark, a road you do not know. The figures stay low on purpose, and the voice warns earlier.',
+           d_fr:'Passagers à bord, mouillé, nuit, route inconnue. Les chiffres restent bas exprès, et la voix prévient plus tôt.'},
+  strada: {a:2.6, reaz:2.6, dec:3.0, nm_it:'Comfort', nm_en:'Comfort', nm_fr:'Confort',
            d_it:'Andatura fluida su strada aperta: margine per traffico, fondo sporco e curve cieche. È il modo di tutti i giorni.',
-           d_en:'Flowing pace on an open road: margin for traffic, dirty surface and blind corners. The everyday setting.'},
-  deciso: {a:3.2, nm_it:'Sport', nm_en:'Sport',
+           d_en:'Flowing pace on an open road: margin for traffic, dirty surface and blind corners. The everyday setting.',
+           d_fr:'Allure fluide sur route ouverte : marge pour le trafic, la chaussée sale et les virages sans visibilité. Le réglage de tous les jours.'},
+  deciso: {a:3.2, reaz:2.0, dec:3.8, nm_it:'Sport', nm_en:'Sport', nm_fr:'Sport',
            d_it:'Asfalto asciutto e strada che conosci. Resta un uso stradale, non un tempo sul giro.',
-           d_en:'Dry tarmac on a road you know. Still road use, not a lap time.'},
-  pista:  {a:4.6, nm_it:'Race', nm_en:'Race',
-           d_it:'Numeri da strada chiusa. Su strada aperta sono il tetto assoluto, mai un obiettivo.',
-           d_en:'Closed-road figures. On a public road they are the absolute ceiling, never a target.'},
+           d_en:'Dry tarmac on a road you know. Still road use, not a lap time.',
+           d_fr:'Bitume sec et route connue. Cela reste un usage routier, pas un temps au tour.'},
+  pista:  {a:4.6, reaz:1.4, dec:4.8, nm_it:'Race', nm_en:'Race', nm_fr:'Race',
+           d_it:'Numeri da strada chiusa. Su strada aperta sono il tetto assoluto, mai un obiettivo. La voce arriva tardi apposta.',
+           d_en:'Closed-road figures. On a public road they are the absolute ceiling, never a target. The voice comes late on purpose.',
+           d_fr:'Chiffres de route fermée. Sur route ouverte c\'est le plafond absolu, jamais un objectif. La voix arrive tard exprès.'},
 };
 /* ---- lingue ---- */
 const T = {
@@ -2878,7 +2960,9 @@ const S = {
   pos:null, acc:0, v:0, hd:null,
   dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
-  car:'m5', cal:36, calG:0, style:'strada', legal:true,   // calG = marcia su cui si legge la taratura (0 = decidila tu)
+  car:'m5', cal:36, calG:0, style:'strada', legal:true,
+  antic:0,            // secondi di anticipo voce IN PIU' (o in meno) rispetto allo stile
+   // calG = marcia su cui si legge la taratura (0 = decidila tu)
   snap:null,          // {e, i, t, dir, dist}
   nav:null,           // percorso attivo: {archi, c0, tot, man, mi, k, idx, dest, jA, path}
   navRipreso:false,   // il percorso salvato è già stato ripreso dopo una ricarica
@@ -2890,6 +2974,7 @@ try{
   const st=JSON.parse(localStorage.getItem('copilota2')||'{}');
   if(st.car&&CARS[st.car])S.car=st.car;
   if(st.tema==='chiaro'||st.tema==='scuro')S.tema=st.tema;
+  if(typeof st.antic==='number') S.antic=Math.max(-1,Math.min(3,st.antic));
   if(st.style&&STYLES[st.style])S.style=st.style;   // i vecchi 'd'/'n'/'a' cadono su 'strada'
   if(typeof st.cal==='number')S.cal=st.cal;
   if(typeof st.calG==='number')S.calG=st.calG;
@@ -2901,7 +2986,7 @@ try{
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 
 /* velocità (km/h) per 1000 giri, per marcia */
 function gearKmh(){ const c=CARS[S.car]; return c.g.map(r=>r*S.cal); }
@@ -4845,6 +4930,49 @@ function durataFrase(chiavi){
 }
 
 /* Suona una sequenza di clip. Ritorna la durata totale, 0 se non ha suonato. */
+/* ============ abbassare la musica mentre parla ============
+   Una pagina web NON puo' toccare il volume di un'altra app: non esiste un'API per
+   farlo, e non e' un limite da aggirare. L'unica leva vera e' dichiarare al sistema
+   CHE COS'E' il nostro audio, e lasciare che sia lui a decidere cosa fare della
+   musica. Quella leva e' l'Audio Session API (`navigator.audioSession`).
+
+   Due tipi descrivono il nostro caso, e la differenza si sente:
+     `transient`       suona SOPRA l'altro audio e lo fa ABBASSARE  <- chiesto da Tiago
+     `transient-solo`  mette in PAUSA tutto il resto e poi riprende (le indicazioni
+                       stradali dei navigatori fanno cosi')
+   Si cambia una parola sola se l'abbassamento risultasse troppo timido da sentire.
+
+   Perche' il tipo si mette e si TOGLIE a ogni nota invece di lasciarlo acceso: il
+   nostro AudioContext resta `running` anche quando tace, e un tipo `transient`
+   perenne rischia di tenere la musica abbassata per tutto il viaggio. Si abbassa
+   quando c'e' qualcosa da dire e si risale quando ha finito, con 250 ms di coda per
+   non tagliare l'ultima parola.
+
+   L'API oggi e' implementata SOLO da Safari — che e' esattamente dove si guida
+   (iPhone, app sulla schermata Home). Altrove `SESSIONE` resta null e non succede
+   nulla: nessun errore, nessun comportamento diverso da prima. Va provata su un
+   telefono vero, perche' nessun banco puo' dire come il sistema tratta la musica:
+   il registro (pannello Info) scrive se il tipo e' stato accettato o rifiutato. */
+const SESSIONE = ('audioSession' in navigator) ? navigator.audioSession : null;
+nota(SESSIONE ? 'sessione audio disponibile: la musica si abbassa quando parlo'
+              : 'sessione audio non disponibile: la musica non si abbassera\' (normale fuori da Safari)');
+let duckFino = 0, duckTimer = 0;
+function musicaGiu(){
+  if(!SESSIONE) return;
+  try{ if(SESSIONE.type !== 'transient') SESSIONE.type = 'transient' }
+  catch(e){ nota('tipo di sessione audio rifiutato: '+e.message) }
+}
+function musicaSu(secondi){
+  if(!SESSIONE || !(secondi > 0)) return;
+  /* Una nota che arriva mentre ne sta finendo un'altra deve SPOSTARE il ripristino
+     in avanti, non lasciare che quello vecchio risalga la musica in mezzo. */
+  duckFino = Math.max(duckFino, performance.now() + secondi*1000 + 250);
+  clearTimeout(duckTimer);
+  duckTimer = setTimeout(() => {
+    try{ SESSIONE.type = 'auto' }catch(e){}
+  }, Math.max(0, duckFino - performance.now()));
+}
+
 function dilo(chiavi, urgente){
   if(!S.audio) return 0;
   const buf=VOCE.buf[L], ix=VOCE.idx[L];
@@ -4854,6 +4982,7 @@ function dilo(chiavi, urgente){
      manovra: sbagliare strada si rimedia, una curva no. */
   if(urgente && VOCE.sorgente){ try{VOCE.sorgente.forEach(s=>s.stop())}catch(e){} }
   if(!urgente && VOCE.fino > VOCE.ctx.currentTime) return 0;   // sta già parlando
+  musicaGiu();               // prima di programmare: il sistema ci mette un istante
   const t0 = Math.max(VOCE.ctx.currentTime, urgente?0:VOCE.fino||0) + 0.02;
   let t=t0; const nodi=[];
   for(const k of chiavi){
@@ -4871,6 +5000,7 @@ function dilo(chiavi, urgente){
     t += q.d + GAP;
   }
   VOCE.sorgente=nodi; VOCE.fino=t;
+  musicaSu(t - VOCE.ctx.currentTime);
   return t-t0;
 }
 VOCE.fino = 0;
@@ -5148,9 +5278,19 @@ function updateNote(){
          abbastanza presto da dare tempo ma non così presto da farla dimenticare.
      (c) Si somma la distanza di frenata per scendere alla velocità della curva:
          è il modo in cui ragiona un copilota vero, che tara la chiamata sulla
-         velocità che si aspetta di tenere. */
+         velocità che si aspetta di tenere.
+     (d) Dal 2026-08-20 reazione e frenata NON sono piu' due costanti uguali per
+         tutti: le porta lo STILE DI GUIDA (`reaz`, `dec` in `STYLES`). Prima lo
+         stile cambiava quanto forte si passa in curva ma non quando te lo si
+         diceva, il che è incoerente — chi sceglie «Tranquillo» chiede margine,
+         non solo meno g. Fra «Tranquillo» e «Race» la stessa curva viene ora
+         annunciata a distanze che stanno in rapporto ~1,6 a 1. */
+  const st = STYLES[S.style];
   const vRif = curveKmh(a.c.r, a.e, a.dir, a.c.d0)/3.6;
-  const frenata = S.v>vRif ? (S.v*S.v - vRif*vRif)/(2*3.0) : 0;   // 3 m/s², prudente
+  /* La frenata si calcola con la decelerazione DELLO STILE, non con un 3,0 fisso.
+     Piu' dolce freni, piu' lontano va detta la nota: e' lo stesso conto che fa un
+     copilota vero quando conosce il suo pilota. */
+  const frenata = S.v>vRif ? (S.v*S.v - vRif*vRif)/(2*st.dec) : 0;
   /* La nota si COMPONE prima di decidere se dirla. In pacenote la frase e' piu' lunga
      (distanza + modificatori + fino a tre elementi): misurare l'anticipo sulla sola
      prima curva vorrebbe dire cominciare in tempo e finire dentro la curva. Comporre
@@ -5158,18 +5298,42 @@ function updateNote(){
   const el = catenaNota();
   const ch = el ? chiaviNota(el) : null;
   const parlato = (ch ? durataFrase(ch) : 0) || 1.2;
-  /* Il TETTO deve conoscere la frase, non solo l'andatura. I 9 secondi di strada erano
-     tarati su una nota da 2-4 s: con le note concatenate della modalita' pacenote la
-     frase peggiore misurata sta a 8,18 s (italiano; francese 7,98, inglese 7,42), quindi
-     il tetto la tagliava lasciando 0,8 s di margine — e quel margine non veniva dal
-     progetto, veniva dal caso che due costanti si sfiorassero. Un tetto che tronca la
-     frase fa esattamente il danno che il tetto doveva evitare: la voce finisce DENTRO la
-     curva. Ora il tetto non scende mai sotto «la frase piu' due secondi».
-     In modalita' normale non cambia niente per costruzione: li' la frase piu' lunga
-     possibile e' 4,41 s (inglese, due curve con marcia e «chiude»), cioe' 6,41 col
-     margine, che sta sotto i 9 di prima. */
-  const tetto = S.v * Math.max(9, parlato + 2.0);
-  const lead = Math.min(tetto, Math.max(S.v*2.2, S.v*(parlato+1.4) + frenata));
+  /* ---- l'anticipo, in tre pezzi che si sommano e basta ----
+       [ frase ] + [ reazione ] + [ frenata ]
+     Ognuno e' una distanza che percorri davvero, quindi vanno SOMMATI, e nessuno dei
+     tre puo' essere tagliato senza rompere gli altri due.
+
+     QUI C'ERA IL DIFETTO, ed e' quello che Tiago ha sentito guidando il 2026-08-20
+     («le indicazioni troppo ravvicinate alla curva»). C'era un tetto:
+
+         const tetto = S.v * Math.max(9, parlato + 2.0);
+         const lead  = Math.min(tetto, Math.max(S.v*2.2, S.v*(parlato+1.4) + frenata));
+
+     Il tetto e' un multiplo di `parlato`, cioe' limita il TOTALE a «frase + 2 secondi»
+     — ma `frenata` era gia' stata sommata dentro, quindi il `min` se la mangiava. Il
+     risultato non e' «annuncio un po' piu' tardi»: e' che il pezzo di FISICA sparisce
+     mentre quello di RETORICA resta. Misurato, secondi liberi fra la fine della frase
+     e il punto in cui va iniziata la frenata:
+
+         normale 90->60  frase 2,5 s   +1,4 s
+         normale 110->50 frase 4,4 s   +0,6 s
+         RALLY   90->45  frase 8,2 s   -1,1 s   <- parla ancora mentre dovresti frenare
+         RALLY   130->80 frase 8,2 s   -1,7 s
+
+     Non e' un difetto nuovo: e' lo STESSO gia' corretto una volta portando il tetto da
+     `v*9` a `frase+2`. Quella correzione ha spostato il punto di rottura invece di
+     toglierlo, perche' ha lasciato un tetto sopra un termine fisico. Ora il tetto non
+     c'e' proprio: non serve, perche' ogni pezzo e' gia' il minimo indispensabile.
+     Resta solo il PAVIMENTO di 2,2 s, che serve a passo d'uomo, dove la frenata e'
+     quasi nulla e la frase brevissima. */
+  /* `S.antic` e' il cursore dell'utente: si somma alla REAZIONE, non al totale, e
+     non tocca ne' la frase ne' la frenata — quelle non sono opinioni. Il pavimento
+     di 0,6 s esiste perche' col cursore tutto a sinistra la somma potrebbe scendere
+     sotto la frase stessa, e la voce finirebbe dentro la curva: cioe' il difetto che
+     questo blocco esiste per evitare. Un comando che puo' rompere la sicurezza non
+     e' un comando, e' una trappola. */
+  const reaz = Math.max(0.6, st.reaz + (S.antic||0));
+  const lead = Math.max(S.v*2.2, S.v*(parlato + reaz) + frenata);
   /* Dopo un buco di segnale la voce TACE finché la posizione non è di nuovo
      credibile (vedi `S.gpsBuco`). È la trappola peggiore di tutta questa parte:
      uscendo da una galleria il primo fix è quasi sempre sporco, e riagganciare
@@ -6114,6 +6278,9 @@ const carChips=document.getElementById('carChips'), styleChips=document.getEleme
       styleDesc=document.getElementById('styleDesc'), carDesc=document.getElementById('carDesc'),
       gearBox=document.getElementById('gearBox'), legalChk=document.getElementById('legalChk'),
       autoChk=document.getElementById('autoChk'),
+      anticSlider=document.getElementById('anticSlider'),
+      anticVal=document.getElementById('anticVal'),
+      anticDesc=document.getElementById('anticDesc'),
       legalDesc=document.getElementById('legalDesc');
 function gearTableHtml(){
   /* Il tetto (vTop) si applica QUI, alla presentazione, e non dentro gearKmh:
@@ -6152,6 +6319,7 @@ function renderCar(){
     styleChips.appendChild(b);
   }
   styleDesc.textContent=STYLES[S.style]['d_'+L];
+  renderAntic();
   // con l'automatico non c'è nessuna marcia da consigliare: via rapporti e tabella
   gearBox.hidden = isAuto();
   if(!isAuto()){
@@ -6182,6 +6350,32 @@ function renderCal(){
   }
   gearTable.innerHTML=gearTableHtml();
 }
+/* Il numero mostrato NON e' il valore del cursore ma il RISULTATO: i secondi liberi
+   fra la fine della frase e il punto in cui va iniziata la frenata. E' l'unica cosa
+   che si possa davvero riconoscere guidando — «+0,6» non si sente, «3,2 secondi per
+   reagire» si'. Il valore del cursore resta scritto accanto, per sapere dove si e'. */
+function renderAntic(){
+  if(!anticSlider) return;
+  anticSlider.value=S.antic;
+  const reaz=Math.max(0.6, STYLES[S.style].reaz + S.antic);
+  const seg = n => (L==='en' ? n.toFixed(1) : n.toFixed(1).replace('.',','));
+  anticVal.textContent=(S.antic>0?'+':'')+seg(S.antic);
+  anticDesc.textContent = L==='it'
+    ? 'Ti restano '+seg(reaz)+' s liberi fra la fine della frase e il punto in cui iniziare a frenare. '
+      +'Lo stile '+STYLES[S.style].nm_it+' da solo ne darebbe '+seg(STYLES[S.style].reaz)+'.'
+    : L==='fr'
+    ? 'Il te reste '+seg(reaz)+' s libres entre la fin de la phrase et le point où il faut freiner. '
+      +'Le style '+STYLES[S.style].nm_fr+' seul en donnerait '+seg(STYLES[S.style].reaz)+'.'
+    : 'You get '+seg(reaz)+' s free between the end of the phrase and the point where braking must start. '
+      +'The '+STYLES[S.style].nm_en+' style alone would give '+seg(STYLES[S.style].reaz)+'.';
+}
+anticSlider.oninput=()=>{ S.antic=parseFloat(anticSlider.value)||0; renderAntic() };
+/* Il salvataggio e lo svuotamento del gia'-detto stanno su `change` e non su `input`:
+   trascinando il cursore `input` scatta a ogni pixel, e si scriverebbe in localStorage
+   cinquanta volte per un gesto solo. `S.said.clear()` serve perche' le curve gia'
+   annunciate con la taratura vecchia vanno rimesse in gioco, se no il cursore sembra
+   non fare niente finche' non cambi strada. */
+anticSlider.onchange=()=>{ S.said.clear(); save(); updateNote(); S.need=true };
 legalChk.onchange=()=>{S.legal=legalChk.checked; save(); renderCar(); updateNote(); S.need=true};
 /* `S.said` si svuota apposta: le note gia' annunciate contengono la marcia, e senza
    ripulire il gia'-detto la prima curva dopo l'interruttore resterebbe muta o
