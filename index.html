@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '173';
+const APPVER = '175';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1829,7 +1829,40 @@ function geomRotta(archi, tot){
   /* Tagliare gli angoli accorcia di qualche metro su tutto il percorso. Il progresso
      però si misura sugli archi grezzi: `k` riporta l'uno sull'altro, così la finestra
      di disegno e le frecce restano al loro posto invece di scivolare avanti. */
-  return {xy, np:n, cum, path, lung, k: tot>0 ? lung/tot : 1};
+  const k = tot>0 ? lung/tot : 1;
+  return {xy, np:n, cum, path, lung, k, z: quoteRotta(archi, cum, n, k)};
+}
+/* Il profilo di quota del PERCORSO. La rete stradale ce l'ha per arco, ma il percorso
+   e' una collana di archi ricucita e poi smussata: i suoi vertici non corrispondono
+   piu' a quelli di nessun arco, quindi la quota va ricamminata.
+   Si fa UNA volta, quando il percorso nasce, non a ogni fotogramma: senza questo il
+   nastro viola resterebbe piatto mentre la strada sotto sale, e si vedrebbe staccarsi
+   dall'asfalto — cioe' proprio il difetto che il rilievo doveva togliere.
+   `cum` e' misurato sulla polilinea smussata, che e' piu' corta degli archi grezzi:
+   `k` riporta l'una sugli altri, ed e' lo stesso fattore con cui il navigatore tiene
+   allineato il progresso. Senza, la quota scivolerebbe in avanti lungo il percorso.
+   I buchi (galleria, ponte, arco senza sidecar) NON si interpolano: si tiene l'ultima
+   quota buona. Interpolare attraverso una galleria disegnerebbe una salita continua
+   dove in realta' non si sa niente, ed e' meglio un tratto piatto onesto di una rampa
+   inventata. */
+function quoteRotta(archi, cum, n, k){
+  if(!n || !archi || !archi.length) return null;
+  const z=new Float32Array(n);
+  let ia=0, base=0, ultima=null, trovata=false, primo=-1;
+  for(let i=0;i<n;i++){
+    const d=cum[i]/(k||1);
+    while(ia<archi.length-1 && d>base+archi[ia].e.len){ base+=archi[ia].e.len; ia++ }
+    const a=archi[ia], e=a.e;
+    let dl=d-base; if(!(dl>0)) dl=0; if(dl>e.len) dl=e.len;
+    const q=quotaAt(e, a.verso>0 ? dl : e.len-dl);
+    if(q!=null){ ultima=q; trovata=true; if(primo<0) primo=i }
+    z[i] = ultima!=null ? ultima : 0;
+  }
+  if(!trovata) return null;               // nessun arco con quota: percorso piatto
+  /* La coda iniziale prima della prima quota buona e' rimasta a zero, che sarebbe un
+     tuffo sotto il livello del mare: si riempie all'indietro col primo valore vero. */
+  for(let i=0;i<primo;i++) z[i]=z[primo];
+  return z;
 }
 /* NB: si chiama `indiceLungo` e non `cerca` perché `cerca(t)` esiste già in fondo al
    file — è la ricerca indirizzi. Le dichiarazioni di funzione sono issate e vince
@@ -2340,9 +2373,15 @@ function buildEdges(rid, map){
     const gj0=J(j0), gj1=J(j1);
     /* `zb`/`zo`/`zn` sono nel letterale anche quando il sidecar non c'è: così gli
        archi hanno tutti la stessa forma e il motore JS non deottimizza il campo
-       aggiunto dopo. Costano 3 slot su ~0,62 KB per arco misurati, cioè nulla. */
+       aggiunto dopo. Costano 3 slot su ~0,62 KB per arco misurati, cioè nulla.
+       `zs` sta qui per la STESSA ragione, ed è la ragione per cui è scritto: le quote
+       per vertice si calcolano solo per gli archi che si disegnano inclinati, quindi
+       verrebbe naturale attaccarle al volo la prima volta — cioè cambiare la forma di
+       un oggetto su cui il disegno gira migliaia di volte per fotogramma. `undefined`
+       vuol dire «non ancora calcolate», `null` «questo arco non ha quota»: due stati
+       diversi, se no si riproverebbe a ogni fotogramma sugli archi in galleria. */
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
-               zb:RALT?RALT.z:null, zo, zn, dos:dosArr,
+               zb:RALT?RALT.z:null, zo, zn, zs:undefined, dos:dosArr,
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                // il nome sta nel dizionario della sua regione, non in un campo per arco
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : '',
@@ -2629,6 +2668,56 @@ const CARS = {
             "plus tôt, et il l'épuise en se couchant au lieu de glisser, donc quand tu t'en "+
             "aperçois il ne te reste plus grand-chose à faire. Dans les épingles serrées et en "+
             "descente l'écart avec le break se sent nettement, sur le rapide beaucoup moins."},
+  a5:{nm:'Audi A5 Sportback', sub:'B8.5 · 2.0 TDI rimappata · 230 CV · 450 Nm · 7 marce · quattro',
+      /* Di serie 190 CV e 400 Nm; con mappa e filtro sta indicativamente a 230 CV e
+         ~450 Nm [quasi sicuro: da confermare al banco, come per la C43]. La rimappa di
+         un common rail non alza i giri: allarga la coppia e la tiene su piu' a lungo,
+         quindi quello che cambia per il copilota NON e' la fascia — resta da diesel —
+         ma il fatto che si possa restare in marcia dove prima si scalava.
+         S tronic 7 (DL501) coi paddle: la marcia la scegli tu, quindi si suggerisce.
+         I rapporti sono normalizzati sulla 7a e descrivono la SPAZIATURA, che e' cio'
+         che decide la marcia consigliata; il valore assoluto lo tara il cursore dei
+         km/h ogni 1000 giri. Spaziatura piu' larga in basso della CLA perche' e' un
+         longitudinale quattro e la prima e' piu' lunga [poco sicuro sui rapporti esatti].
+         `ref` 67: a 130 all'ora in 7a fa ~1.940 giri, che e' l'andatura da autostrada
+         di questo motore. Tenuta sopra la CLA (quattro permanente, piu' bassa e larga)
+         ma sotto la C43, che e' un'altra categoria. */
+      auto:false, n:7, ref:67, grip:0.95, boost:1700, rpmLim:4600,
+      cv:230, kg:1700, cda:0.63, crr:0.011,
+      g:[0.148,0.225,0.325,0.455,0.610,0.790,1.0],
+      d_it:"2.0 TDI common rail della B8.5, 190 CV di serie portati a 230 con mappa e "+
+           "filtro, circa 450 Nm. S tronic a 7 rapporti coi paddle e quattro permanente, "+
+           "Sportback da circa 1.700 kg. Con i paddle la marcia la scegli tu, quindi il "+
+           "copilota te la dice: la fascia utile e' 1.700-4.600 giri, da diesel, e la "+
+           "rimappa non l'ha spostata piu' in alto — ha reso piena la parte bassa. In "+
+           "pratica le marce consigliate escono ALTE e le scalate sono rare: dove di "+
+           "serie servivano due marce in meno per uscire da un tornante, adesso spesso "+
+           "ne basta una. Tenuta di riferimento sopra la CLA — quattro permanente, piu' "+
+           "bassa e con gomme piu' larghe — ma sotto la C43: e' una coupe' quattro porte "+
+           "da viaggio veloce, non una sportiva, e gli stessi raggi escono in mezzo.",
+      d_en:"2.0 TDI common rail from the B8.5, 190 hp as standard taken to 230 with a "+
+           "remap and filter, around 450 Nm. Seven-speed S tronic with paddles and "+
+           "permanent quattro, a Sportback of about 1,700 kg. With the paddles you pick "+
+           "the gear, so the co-driver calls it: the usable band is 1,700-4,600 rpm, "+
+           "diesel territory, and the remap did not move it higher — it filled in the "+
+           "bottom. In practice the suggested gears come out TALL and downshifts are "+
+           "rare: where the standard car needed two gears fewer to pull out of a "+
+           "hairpin, one is now often enough. Reference grip sits above the CLA — "+
+           "permanent quattro, lower, wider tyres — but below the C43: this is a fast "+
+           "touring four-door coupe, not a sports car, so the same radii come out in "+
+           "between.",
+      d_fr:"2.0 TDI common rail de la B8.5, 190 ch d'origine portes a 230 avec "+
+           "reprogrammation et filtre, environ 450 Nm. S tronic a 7 rapports avec "+
+           "palettes et quattro permanent, une Sportback d'environ 1 700 kg. Avec les "+
+           "palettes c'est toi qui choisis le rapport, donc le copilote te l'annonce : "+
+           "la plage utile est 1 700-4 600 tr/min, du diesel, et la reprogrammation ne "+
+           "l'a pas deplacee vers le haut — elle a rempli le bas. En pratique les "+
+           "rapports conseilles sortent LONGS et les retrogradages sont rares : la ou "+
+           "il fallait deux rapports de moins pour sortir d'un lacet, un seul suffit "+
+           "souvent. Adherence de reference au-dessus de la CLA — quattro permanent, "+
+           "plus basse, pneus plus larges — mais en dessous de la C43 : c'est un coupe "+
+           "quatre portes de voyage rapide, pas une sportive, et les memes rayons "+
+           "sortent au milieu."},
   fie:{nm:'Ford Fiesta ST-Line', sub:'2019 · 1.0 EcoBoost 3 cilindri · 101 CV · 6 marce',
        /* B6 a 6 rapporti: 3,727 · 2,048 · 1,321 · 0,951 · 0,756 · 0,614, finale 4,067,
           normalizzati sulla 6ª. Con 195/55 R16 (circonferenza 1,916 m) la 6ª fa ~46 km/h
@@ -2959,6 +3048,7 @@ const S = {
   mode:'free', audio:false, autoMode:false, pace:false, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
   dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
+  dvx:0, dvy:0, dvh:0, dva:0,   // e le loro VELOCITA': senza, l'inseguimento riparte da fermo a ogni fix e si sente
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
   car:'m5', cal:36, calG:0, style:'strada', legal:true,
   antic:0,            // secondi di anticipo voce IN PIU' (o in meno) rispetto allo stile
@@ -3084,7 +3174,7 @@ addEventListener('resize',resize);resize();
        sx = W/2 + f·X/profondità
        sy = H/2 − f·Y·cos p/profondità
    dove X è a destra e Y in avanti, in metri veri rispetto al centro. */
-const CAM = {c:1, s:0, cx:0, cy:0, f:800, R:800, sp:0, cp:1, on:false};
+const CAM = {c:1, s:0, cx:0, cy:0, f:800, R:800, sp:0, cp:1, on:false, z0:0, zOn:false};
 const NEAR = 0.06;                       // si taglia sotto questa frazione di R
 /* Inclinazione: adesso è anche un GESTO, non solo un automatismo della guida.
    `PITCH_MAX` a 60° perché oltre la vista radente non aggiunge strada e impasta il
@@ -3101,6 +3191,17 @@ function camAggiorna(){
   CAM.R=CAM.f/S.scale;                   // a inclinazione 0 la scala resta S.scale
   CAM.sp=Math.sin(S.pitch); CAM.cp=Math.cos(S.pitch);
   CAM.on=S.pitch>0.01;
+  /* ---- il rilievo ----
+     La quota si disegna RELATIVA a quella sotto le ruote, non assoluta: quello che si
+     vede dal parabrezza non e' «sono a 1.500 m», e' «la strada davanti sale di venti
+     metri». Con lo zero sul livello del mare un passo alpino sparirebbe fuori campo.
+     Se la quota sotto le ruote non si sa, il rilievo si SPEGNE invece di indovinare uno
+     zero: meglio la vista piatta di prima che una strada che si impenna perche' il
+     riferimento era sbagliato. Succede fuori strada mappata, prima del primo aggancio,
+     e con le mappe di una generazione vecchia ripescate dalla cache, dove il sidecar
+     delle quote viene scartato di proposito (doppia guardia sha+firma). */
+  CAM.z0 = S.quota != null ? S.quota : 0;
+  CAM.zOn = CAM.on && S.quota != null;
 }
 function camXY(x,y){                     // mondo -> metri camera (X destra, Y avanti)
   const ax=x-CAM.cx, ay=y-CAM.cy;
@@ -3117,9 +3218,18 @@ function w2s(x,y){
   }
   const ax=x-CAM.cx, ay=y-CAM.cy;
   const X=ax*CAM.c+ay*CAM.s, Y=-ax*CAM.s+ay*CAM.c;
-  const d=Y*CAM.sp+CAM.R;
+  /* Terzo asse. Con `Z=0` le due righe qui sotto tornano ESATTAMENTE quelle di prima —
+     e' la stessa formula, non una nuova: chi chiama senza quota non cambia di un pixel.
+     Il modello e' una camera inclinata di `pitch` sopra un piano: `d` e' la profondita'
+     davanti all'obiettivo e sale con la distanza, ma un punto piu' ALTO e' piu' vicino
+     alla camera, quindi `Z` gliela toglie; sullo schermo la quota spinge in su con
+     `sin(pitch)`, cioe' quanto piu' la vista e' radente tanto piu' il rilievo si vede.
+     A camera a piombo (`sp=0`) sparisce del tutto, che e' giusto: dall'alto una salita
+     non si vede. */
+  const Z=(CAM.zOn && z!=null)?(z-CAM.z0):0;
+  const d=Y*CAM.sp+CAM.R-Z*CAM.cp;
   if(d<CAM.R*NEAR) return null;
-  return [W/2+CAM.f*X/d, H/2-CAM.f*Y*CAM.cp/d];
+  return [W/2+CAM.f*X/d, H/2-CAM.f*(Y*CAM.cp+Z*CAM.sp)/d];
 }
 function s2w(px,py){
   if(!CAM.on){
@@ -3215,39 +3325,65 @@ function emettiMorbido(P, m){
     P.quadraticCurveTo(_tsx[i],_tsy[i], (_tsx[i]+_tsx[i+1])/2, (_tsy[i]+_tsy[i+1])/2);
   P.lineTo(_tsx[m-1],_tsy[m-1]);
 }
+/* Le quote dei vertici di un arco, ricavate dal profilo del sidecar `alt-` e tenute
+   in cache: il profilo ha un punto ogni 100 m, i vertici ogni 10, quindi qui si
+   interpola una volta sola e non a ogni fotogramma. Si costruisce alla prima volta che
+   l'arco si disegna inclinato, cosi' la memoria la pagano solo gli archi davvero
+   inquadrati in guida (poche centinaia) e non la regione intera.
+   `null` significa «questo arco non ha quota»: in galleria e sui ponti il DEM non dice
+   niente di utile e il sidecar salta l'arco. Si distingue da «non ancora calcolato»
+   con `undefined`, se no si riproverebbe a ogni fotogramma per sempre. */
+function quoteArco(e){
+  if(e.zs !== undefined) return e.zs;
+  if(!e || !e.zb || e.zn<2 || !(e.len>0) || !e.cum) return (e.zs = null);
+  const n=e.np, zs=new Float32Array(n), pv=e.len/(e.zn-1);
+  for(let i=0;i<n;i++){
+    let t=(e.cum[i]*e.sc)/pv;
+    if(!(t>=0)) t=0; if(t>e.zn-1) t=e.zn-1;
+    const k=Math.min(e.zn-2, t|0), f=t-k;
+    zs[i]=e.zb[e.zo+k]*(1-f)+e.zb[e.zo+k+1]*f;
+  }
+  return (e.zs = zs);
+}
 /* Niente funzioncina interna per «metti un punto»: questa gira qualche migliaio di
    volte per fotogramma e una chiusura per chiamata sono migliaia di oggetti al
    secondo dati al garbage collector, cioè gli scatti che si stanno togliendo. Le tre
    righe si ripetono a mano. */
-function traccia(P, xy, a, b){
+function traccia(P, xy, a, b, zs){
   const near=CAM.R*NEAR, cap=_tsx.length;
-  let px=0, py=0, pd=0, giu=true, m=0;
+  /* `zk` e' 0 o 1 e non un `if` dentro il ciclo: moltiplicare per zero costa meno di
+     un salto condizionale ripetuto qualche migliaio di volte per fotogramma, e tiene
+     una sola versione del codice invece di due che possono divergere. Con `zk=0` ogni
+     riga qui sotto torna identica a com'era prima del rilievo. */
+  const zOn=(zs && CAM.zOn)?1:0, z0=CAM.z0;
+  let px=0, py=0, pd=0, pZ=0, giu=true, m=0;
   for(let i=a;i<=b;i++){
     const ax=xy[2*i]-CAM.cx, ay=xy[2*i+1]-CAM.cy;
     const X=ax*CAM.c+ay*CAM.s, Y=-ax*CAM.s+ay*CAM.c;
-    const d=Y*CAM.sp+CAM.R;
+    const Z=zOn?(zs[i]-z0):0;
+    const d=Y*CAM.sp+CAM.R-Z*CAM.cp;
     if(d<near){
       if(!giu){
         if(pd>=near && m<cap){                 // esce: taglia sul piano vicino
           const t=(pd-near)/(pd-d);
-          const cx2=px+(X-px)*t, cy2=py+(Y-py)*t;
-          _tsx[m]=W/2+CAM.f*cx2/near; _tsy[m]=H/2-CAM.f*cy2*CAM.cp/near; m++;
+          const cx2=px+(X-px)*t, cy2=py+(Y-py)*t, cz2=pZ+(Z-pZ)*t;
+          _tsx[m]=W/2+CAM.f*cx2/near; _tsy[m]=H/2-CAM.f*(cy2*CAM.cp+cz2*CAM.sp)/near; m++;
         }
         emettiMorbido(P,m); m=0;               // sottotracciato chiuso qui
       }
-      px=X; py=Y; pd=d; giu=true; continue;
+      px=X; py=Y; pd=d; pZ=Z; giu=true; continue;
     }
     if(giu){
       m=0;
       if(pd<near && pd!==0){                   // rientra: parti dal taglio
         const t=(near-pd)/(d-pd);
-        const cx2=px+(X-px)*t, cy2=py+(Y-py)*t;
-        _tsx[m]=W/2+CAM.f*cx2/near; _tsy[m]=H/2-CAM.f*cy2*CAM.cp/near; m++;
+        const cx2=px+(X-px)*t, cy2=py+(Y-py)*t, cz2=pZ+(Z-pZ)*t;
+        _tsx[m]=W/2+CAM.f*cx2/near; _tsy[m]=H/2-CAM.f*(cy2*CAM.cp+cz2*CAM.sp)/near; m++;
       }
       giu=false;
     }
-    if(m<cap){ _tsx[m]=W/2+CAM.f*X/d; _tsy[m]=H/2-CAM.f*Y*CAM.cp/d; m++ }
-    px=X; py=Y; pd=d;
+    if(m<cap){ _tsx[m]=W/2+CAM.f*X/d; _tsy[m]=H/2-CAM.f*(Y*CAM.cp+Z*CAM.sp)/d; m++ }
+    px=X; py=Y; pd=d; pZ=Z;
   }
   emettiMorbido(P,m);
 }
@@ -3276,7 +3412,7 @@ function tracciati3d(c0,c1,r0,r1){
       let a=0;
       for(let n=0;n<e.runs.length;n+=2){
         const cl=e.runs[n+1];
-        traccia(banda===0 ? grey[f] : banda===2 ? pmin[cl][f] : paths[cl][f], xy, a, e.runs[n]);
+        traccia(banda===0 ? grey[f] : banda===2 ? pmin[cl][f] : paths[cl][f], xy, a, e.runs[n], quoteArco(e));
         a=e.runs[n];
       }
     }
@@ -3567,7 +3703,7 @@ function disegna3d(c0,c1,r0,r1){
     const nv=S.nav, g=nv.geo, lim=vista3d()*1.6, f=(nv.fatto||0)*g.k;
     const i0=indiceLungo(g.cum, f-140), i1=indiceLungo(g.cum, f+lim);
     const P=new Path2D();
-    traccia(P, g.xy, i0, i1);
+    traccia(P, g.xy, i0, i1, g.z);
     ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=20; ctx.stroke(P);
     ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=12; ctx.stroke(P);
   }
@@ -3603,7 +3739,7 @@ function disegna3d(c0,c1,r0,r1){
   }
   if(S.snap && S.mode!=='free'){
     const P=new Path2D();
-    for(const seg of S.aheadSegs||[]) traccia(P, seg.e.xy, seg.i0, seg.i1);
+    for(const seg of S.aheadSegs||[]) traccia(P, seg.e.xy, seg.i0, seg.i1, quoteArco(seg.e));
     ctx.strokeStyle=('rgba('+TC.alone+',.20)'); ctx.lineWidth=10; ctx.stroke(P);
   }
   /* Il fondo dell'inquadratura sfuma nel colore di sfondo: senza, le strade lontane
@@ -4401,6 +4537,52 @@ function clampCam(){
   return true;
 }
 
+/* ============ inseguimento della camera ============
+   Fino al 2026-08-21 la posizione e la direzione mostrate inseguivano quelle vere con
+   un'attenuazione esponenziale: `nuovo += (meta - nuovo) * k`, con `k = 1 - 0,002^dt`,
+   cioe' una costante di tempo di 161 ms. E' morbida a guardarla ferma, ma ha un
+   difetto che si sente in mano: la VELOCITA' non e' continua. Quando arriva un fix
+   nuovo — una volta al secondo — la meta' salta, e l'attenuazione esponenziale
+   risponde con la sua velocita' MASSIMA nell'istante subito dopo il salto, poi
+   decade. Ogni secondo la mappa riceve uno strappo e poi rallenta. E' esattamente
+   «non strappa, e' il movimento che vorrei piu' morbido» di Tiago.
+   Uno smorzatore CRITICO insegue con la velocita' continua: parte piano, accelera,
+   arriva e si ferma senza oltrepassare. E' quello che i motori di gioco chiamano
+   `SmoothDamp`, ed e' il modo standard di far inseguire una camera. Non aggiunge
+   ritardo — il tempo di assestamento resta quello di prima — toglie lo scalino.
+   Non oscilla per costruzione: e' smorzato criticamente, non una molla.
+   La velocita' si tiene fra un fotogramma e l'altro (`S.dvx` e compagni): e' TUTTO il
+   meccanismo. Buttarla via a ogni fotogramma riporterebbe l'esponenziale di prima. */
+let _smv = 0;
+function smorza(ora, meta, tempo, vel, dt){
+  const omega = 2/tempo, x = omega*dt;
+  /* Approssimazione di Pade' di e^-x: qui serve perche' questa gira a ogni fotogramma
+     su quattro grandezze, e perche' e' STABILE anche con dt grossi — un `Math.exp`
+     con dt fuori scala manda l'inseguimento a oltrepassare, che su una camera si
+     vede come un rimbalzo. */
+  const ex = 1/(1 + x + 0.48*x*x + 0.235*x*x*x);
+  const d = ora - meta;
+  const temp = (vel + omega*d)*dt;
+  _smv = (vel - omega*temp)*ex;
+  return meta + (d + temp)*ex;
+}
+/* Tempi di assestamento, TARATI e non scelti a occhio. Al banco, guidando a 90 all'ora
+   con un fix al secondo che corregge di 3 metri:
+
+     tempo   strappo (m/s²)   assestamento
+     prima         1167           0,37 s     <- l'esponenziale
+     0,18           161           0,35 s
+     0,20           132           0,38 s     <- scelto per la posizione
+     0,28            70           0,53 s
+
+   0,20 e' il punto in cui l'assestamento pareggia quello di prima (0,38 contro 0,37,
+   cioe' la stessa reattivita' in mano) e lo strappo scende di NOVE volte. Piu' in la'
+   si guadagna ancora morbidezza ma si comincia a pagare ritardo, e un segnaposto che
+   resta indietro su una curva e' peggio di uno scatto.
+   La direzione e' un po' piu' lenta della posizione: e' la rotazione a dare il senso
+   di scatto, perche' muove TUTTO lo schermo invece del solo segnaposto. L'anticipo e'
+   il piu' lento dei tre perche' cambia solo fermandosi e ripartendo. */
+const SM_POS = 0.20, SM_DIR = 0.26, SM_AV = 0.45;
 let camT = 0;
 function cameraTick(now){
   let anima=false;
@@ -4427,7 +4609,12 @@ function cameraTickAuto(now){
     S.need=true;
   }
   if(S.mode==='free' || !S.pos) return false;
-  if(!S.dp){ S.dp=[S.pos[0],S.pos[1]]; S.dhd=S.hd; camT=now; S.cx=S.dp[0]; S.cy=S.dp[1]; return true }
+  /* Primo aggancio: ci si mette esattamente dove si e', con le velocita' a zero. Senza
+     azzerarle, quelle rimaste da un inseguimento precedente farebbero partire la camera
+     alla deriva da ferma — si vede riaprendo l'app dopo una pausa. */
+  if(!S.dp){ S.dp=[S.pos[0],S.pos[1]]; S.dhd=S.hd; camT=now;
+             S.dvx=0; S.dvy=0; S.dvh=0; S.dva=0;
+             S.cx=S.dp[0]; S.cy=S.dp[1]; return true }
   const dt = Math.min(2.5, (now-(S.fixT||now))/1000);   // se il GPS tace, non estrapolare all'infinito
   let tx = S.pos[0] + (S.vx||0)*dt, ty = S.pos[1] + (S.vy||0)*dt;
   /* AGGANCIO VISIVO ALLA CARREGGIATA. Prima il segnaposto stava sulla posizione
@@ -4467,26 +4654,37 @@ function cameraTickAuto(now){
      misurato, la posizione mostrata scappava di 140 m per fotogramma nel verso
      opposto alla marcia. Con dt=0 viene k=0, cioè fermo, che è il comportamento
      giusto per un fotogramma che non ha visto passare tempo. */
-  const k = 1 - Math.pow(0.002, Math.max(0, Math.min(0.12, (now-camT)/1000)));
+  /* Il tetto a 0,12 s serve al ritorno da schermo spento, e il PAVIMENTO A ZERO e' la
+     difesa che gia' c'era e resta: con un `dt` negativo l'inseguimento si rovescia e
+     diverge — misurato all'epoca, la posizione mostrata scappava di 140 m per
+     fotogramma nel verso opposto alla marcia. Con dt=0 non si muove niente, che e' il
+     comportamento giusto per un fotogramma che non ha visto passare tempo. */
+  const dts = Math.max(0, Math.min(0.12, (now-camT)/1000));
   camT = now;
   const ddx = tx-S.dp[0], ddy = ty-S.dp[1];
-  S.dp[0] += ddx*k; S.dp[1] += ddy*k;
+  S.dp[0] = smorza(S.dp[0], tx, SM_POS, S.dvx, dts); S.dvx = _smv;
+  S.dp[1] = smorza(S.dp[1], ty, SM_POS, S.dvy, dts); S.dvy = _smv;
   let dh = 0;
   const hdRif = hdStrada!=null ? hdStrada : S.hd;
   if(hdRif!=null){
-    if(S.dhd==null) S.dhd=hdRif;
+    if(S.dhd==null){ S.dhd=hdRif; S.dvh=0 }
     dh = hdRif-S.dhd;
     while(dh>Math.PI)dh-=2*Math.PI; while(dh<-Math.PI)dh+=2*Math.PI;
-    S.dhd += dh*k;
+    /* Si smorza sull'ERRORE gia' normalizzato invece che sull'angolo assoluto: passando
+       per nord l'angolo vero salta di 2π e la camera farebbe un giro completo su se
+       stessa. Sommando `dh` a dove siamo, la meta' e' sempre a meno di mezzo giro. */
+    S.dhd = smorza(S.dhd, S.dhd+dh, SM_DIR, S.dvh, dts); S.dvh = _smv;
   }
   /* L'auto non sta al centro: la camera è spostata in avanti lungo la direzione di
      marcia, così il veicolo finisce nel terzo basso e lo schermo mostra la strada
      che deve ancora arrivare invece di quella già fatta. È quello che fanno tutti
      i navigatori, e con le note di curva conta il doppio. Da fermi si ricentra. */
   const avantiTarget = (S.mode!=='free' && S.dhd!=null && S.v>2) ? (H*0.20)/S.scale : 0;
-  // anche questo va attenuato: passando di colpo da 200 m a zero, la mappa
-  // sobbalzerebbe ogni volta che ci si ferma a un semaforo
-  S.avanti += (avantiTarget - S.avanti) * k;
+  /* Anche questo va attenuato: passando di colpo da 200 m a zero, la mappa
+     sobbalzerebbe ogni volta che ci si ferma a un semaforo. E' il piu' lento dei tre
+     perche' e' quello che si nota di meno e che, muovendosi, sposta l'inquadratura
+     intera: se e' brusco sembra che la mappa scivoli via da sola. */
+  S.avanti = smorza(S.avanti, avantiTarget, SM_AV, S.dva, dts); S.dva = _smv;
   S.cx = S.dp[0] + (S.dhd!=null ? Math.cos(S.dhd)*S.avanti : 0);
   S.cy = S.dp[1] + (S.dhd!=null ? Math.sin(S.dhd)*S.avanti : 0);
   if(S.mode==='follow' && S.dhd!=null && S.v>1.2) S.rot=S.dhd-Math.PI/2;
@@ -4527,8 +4725,14 @@ function cameraTickAuto(now){
   }
   // da fermi non c'è niente da animare: si smette di ridisegnare invece di
   // bruciare batteria a 60 fps col telefono in tasca
+  /* `|| le velocita'` e' necessario, non prudenza: con lo smorzatore l'errore puo'
+     essere quasi zero mentre la camera sta ancora scorrendo, e fermare il disegno li'
+     congelerebbe il movimento a un dito dalla fine — proprio lo scatto che si vuole
+     togliere. Da fermi le velocita' vanno a zero da sole e si smette di ridisegnare
+     come prima, senza bruciare batteria col telefono in tasca. */
   return cambiata || Math.abs(ddx)+Math.abs(ddy) > 0.05 || Math.abs(dh) > 0.0004
-      || Math.abs(avantiTarget-S.avanti) > 0.5;
+      || Math.abs(avantiTarget-S.avanti) > 0.5
+      || Math.abs(S.dvx)+Math.abs(S.dvy) > 0.05 || Math.abs(S.dvh) > 0.0004;
 }
 /* Frequenza davvero raggiunta. `requestAnimationFrame` segue la frequenza dello
    schermo: su un iPhone Pro con ProMotion sono 120 al secondo, altrove 60, e in
@@ -4873,7 +5077,7 @@ async function caricaVoce(lang){
       prendi('voce-'+lang+'.json').then(r=>r.json()),
       prendi('voce-'+lang+'.m4a').then(r=>r.arrayBuffer()),
     ]);
-    VOCE.ctx = VOCE.ctx || new (window.AudioContext||window.webkitAudioContext)();
+    creaCtx();
     VOCE.idx[lang] = j.clip;
     VOCE.buf[lang] = await VOCE.ctx.decodeAudioData(a);
     return true;
@@ -4883,7 +5087,7 @@ async function caricaVoce(lang){
 /* iOS non lascia partire l'audio fuori da un gesto: il primo tocco che accende il
    copilota apre il contesto e lo tiene aperto. Senza questo la prima nota è muta. */
 function svegliaVoce(){
-  if(!VOCE.ctx) VOCE.ctx = new (window.AudioContext||window.webkitAudioContext)();
+  creaCtx();
   if(VOCE.ctx.state==='suspended'){
     /* `resume()` FUORI da un gesto utente viene RIFIUTATO da iOS, e la promessa
        rifiutata senza `catch` non lascia traccia da nessuna parte: le note vengono
@@ -4952,40 +5156,100 @@ function durataFrase(chiavi){
    (iPhone, app sulla schermata Home). Altrove `SESSIONE` resta null e non succede
    nulla: nessun errore, nessun comportamento diverso da prima. Va provata su un
    telefono vero, perche' nessun banco puo' dire come il sistema tratta la musica:
-   il registro (pannello Info) scrive se il tipo e' stato accettato o rifiutato. */
+   il registro (pannello Info) scrive che cosa e' stato CHIESTO. Attenzione a non
+   chiedergli di piu': rileggere `SESSIONE.type` dice solo che la proprieta' si e'
+   lasciata scrivere, non che iOS abbia abbassato qualcosa. Un rifiuto e' una notizia
+   certa, un'accettazione non e' una notizia. */
 const SESSIONE = ('audioSession' in navigator) ? navigator.audioSession : null;
-nota(SESSIONE ? 'sessione audio disponibile: la musica si abbassa quando parlo'
+nota(SESSIONE ? 'sessione audio disponibile: si puo\' CHIEDERE al sistema di abbassare la musica'
               : 'sessione audio non disponibile: la musica non si abbassera\' (normale fuori da Safari)');
-let duckFino = 0, duckTimer = 0, duckDetto = false;
-/* Quanto si aspetta, dopo aver chiesto l'abbassamento, prima di far partire la voce.
-   PRIMA NON C'ERA, ed e' quasi certamente il motivo per cui Tiago il 2026-08-20 ha
-   detto «la musica ancora non si abbassa quando parla»: la nota partiva 20 ms dopo la
-   richiesta. Cambiare categoria di sessione audio su iOS non e' un'assegnazione, e'
-   una rinegoziazione col sistema, e l'abbassamento dell'altra app ha una sua dissolvenza
-   — nell'ordine dei decimi di secondo. In 20 ms non fa in tempo a succedere niente: la
-   frase finiva prima che la musica cominciasse a scendere, e l'effetto era zero.
-   250 ms escono dal margine di reazione (2,6 s in Comfort), quindi non mangiano
-   l'anticipo: la nota parte un quarto di secondo dopo e finisce un quarto di secondo
-   dopo, dentro un margine che e' dieci volte tanto. */
-const DUCK_ANTICIPO = 0.25;
+let duckFino = 0, duckTimer = 0, duckDetto = false, duckChiesto = 0, duckKey = null;
+/* `transient` suona SOPRA l'altro audio e lo fa ABBASSARE; `transient-solo` lo mette
+   in PAUSA e poi lo fa riprendere, che e' quello che fanno le indicazioni dei
+   navigatori. Tiago ha chiesto l'abbassamento, quindi si parte da `transient`. La
+   parola sta isolata qui perche' se col preavviso l'abbassamento continua a non
+   sentirsi, la causa non e' piu' il TEMPO ma la QUANTITA': iOS abbassa di pochi dB e
+   in auto il rumore di rotolamento se li mangia. In quel caso si cambia questa riga
+   e nient'altro — ma e' una domanda per Tiago (pausa o niente), non una scelta
+   tecnica da prendere qui. */
+const TIPO_GIU = 'transient';
+/* Il tipo di sessione si dichiara anche PRIMA di aprire il contesto, non solo quando
+   c'e' qualcosa da dire. Su WebKit la categoria audio puo' essere legata al momento in
+   cui il contesto NASCE: se e' cosi', impostarla dopo non produce niente, e il difetto
+   passa muto attraverso il controllo perche' `SESSIONE.type` continua a rileggersi
+   giusto lo stesso. Dichiararlo qui costa zero e toglie di mezzo l'ipotesi. Si torna
+   subito ad `auto` per non nascere con la musica gia' abbassata. */
+function creaCtx(){
+  if(!VOCE.ctx){
+    try{ if('audioSession' in navigator) navigator.audioSession.type = TIPO_GIU }catch(e){}
+    VOCE.ctx = new (window.AudioContext||window.webkitAudioContext)();
+    try{ if('audioSession' in navigator) navigator.audioSession.type = 'auto' }catch(e){}
+  }
+  return VOCE.ctx;
+}
+/* Quanto ci mette l'abbassamento a diventare udibile, da quando lo si chiede. Cambiare
+   categoria audio su iOS non e' un'assegnazione ma una rinegoziazione col sistema, e
+   la dissolvenza di chi sta suonando ha una sua durata: siamo nei decimi di secondo.
+   PRIMA questo tempo si pagava RITARDANDO la voce (`DUCK_ANTICIPO`, 250 ms). Era un
+   cerotto per due motivi: mangiava il margine di reazione, che e' il numero da cui
+   dipende se una nota arriva in tempo, e 250 ms si sono comunque rivelati pochi —
+   Tiago il 2026-08-21 ha detto che la musica ANCORA non si abbassa, con la v173 gia'
+   online. Adesso non si ritarda piu' niente, perche' l'abbassamento si chiede prima:
+   vedi `musicaPreavvisa`. Questo valore resta solo per le note che nessuno ha
+   preavvisato — le urgenti e quelle del navigatore — dove il ritardo e' l'unica leva
+   che rimane. */
+const DUCK_MATURA = 0.35;
+/* Chiede l'abbassamento se non e' gia' stato chiesto, e torna quanti secondi mancano
+   perche' sia udibile: ZERO per chi ha ricevuto il preavviso, che quindi non paga
+   nessun ritardo. */
 function musicaGiu(){
   if(!SESSIONE) return 0;
-  if(SESSIONE.type === 'transient') return 0;      // gia' abbassata: non si riaspetta
-  try{
-    SESSIONE.type = 'transient';
-    /* Il RILEGGERE e' la parte che serviva e non c'era. Se la piattaforma rifiuta il
-       tipo non lancia niente: assegni e il valore resta quello di prima. Senza questa
-       riga il difetto e' muto due volte — non si sente la musica abbassarsi e non si
-       vede da nessuna parte perche'. Si scrive una volta sola per sessione, se no
-       riempie il registro a ogni curva. */
+  const ora = performance.now();
+  if(!duckChiesto){
+    try{ SESSIONE.type = TIPO_GIU }
+    catch(e){ nota('tipo di sessione audio rifiutato: '+e.message); return 0 }
+    duckChiesto = ora;
     if(!duckDetto){
       duckDetto = true;
-      nota(SESSIONE.type === 'transient'
-           ? 'musica: il sistema ha accettato di abbassarla mentre parlo'
+      /* Una riga sola per sessione, se no il registro si riempie a ogni curva. E dice
+         cosa e' stato CHIESTO, non «il sistema ha accettato»: rileggere `SESSIONE.type`
+         restituisce il valore che gli hai assegnato un attimo prima, non quello che
+         iOS ne ha fatto. Il messaggio di prima diceva «accettato» e faceva credere che
+         il difetto fosse altrove — su quella parola questo giro di correzioni e'
+         partito da una diagnosi sbagliata.
+         E il ramo «RIFIUTATO» qui sotto non va creduto piu' di quanto valga: assegnare
+         un valore VALIDO dell'enum riesce sempre e l'attributo lo tiene, mentre uno non
+         valido lancia e finisce nel `catch`. Quindi quel ramo non scatta quasi mai, e
+         l'unica diagnosi vera di tutto il blocco e' l'eccezione. Resta perche' costa
+         zero, non perche' sia un segnale su cui contare. */
+      nota(SESSIONE.type === TIPO_GIU
+           ? 'musica: chiesto il tipo «'+TIPO_GIU+'». Che poi la abbassi davvero, la pagina non puo\' saperlo: lo dice solo l\'orecchio in auto'
            : 'musica: il sistema ha RIFIUTATO l\'abbassamento (tipo rimasto "'+SESSIONE.type+'")');
     }
-    return DUCK_ANTICIPO;
-  }catch(e){ nota('tipo di sessione audio rifiutato: '+e.message); return 0 }
+  }
+  return Math.max(0, DUCK_MATURA - (ora - duckChiesto)/1000);
+}
+/* IL PREAVVISO, che e' la correzione vera. L'abbassamento si chiede quando la curva e'
+   ancora un secondo di strada PIU' LONTANA del punto in cui si parlera': da li' il
+   sistema ha un secondo pieno per abbassare, e la voce parte al suo orario esatto.
+   L'anticipo della nota non si tocca di un millisecondo.
+   E' la differenza fra pagare il tempo di reazione del sistema col margine del pilota
+   — quello che si faceva prima — e pagarlo con del tempo che c'era gia'. L'orario di
+   inizio e di fine di ogni frase e' noto: le clip sono `AudioBufferSourceNode`
+   programmati con `start(t)`, non una sintesi che parte quando le pare.
+   Se poi la nota non parte (curva filtrata, voce occupata, `dilo` che rifiuta) la
+   musica risale da sola dopo 0,8 s: ci si e' abbassati a vuoto per un secondo, che e'
+   il prezzo giusto per non arrivare mai tardi. */
+function musicaPreavvisa(key){
+  if(!SESSIONE) return;
+  /* Una volta sola per curva. `updateNote` gira a OGNI fotogramma, quindi senza questo
+     il preavviso si riarmerebbe sessanta volte al secondo: sessanta `clearTimeout` e
+     sessanta `setTimeout` per un lavoro che va fatto una volta. Non e' un difetto
+     visibile, e' il tipo di spreco che si accumula in guida col telefono che scalda. */
+  if(duckKey === key) return;
+  duckKey = key;
+  musicaGiu();
+  musicaSu(0.8);
 }
 function musicaSu(secondi){
   if(!SESSIONE || !(secondi > 0)) return;
@@ -4995,6 +5259,9 @@ function musicaSu(secondi){
   clearTimeout(duckTimer);
   duckTimer = setTimeout(() => {
     try{ SESSIONE.type = 'auto' }catch(e){}
+    /* Azzerato QUI e non altrove: finche' la musica e' giu' non si ripaga la
+       maturazione, e appena risale la nota dopo ricomincia il giro da capo. */
+    duckChiesto = 0;
   }, Math.max(0, duckFino - performance.now()));
 }
 
@@ -5385,7 +5652,15 @@ function updateNote(){
      subito vuol dire annunciare una curva sulla strada sbagliata. Una nota mancata
      si perdona, una nota falsa no — meglio un rientro lento e muto che uno pronto e
      bugiardo. La mappa intanto continua a seguirti: si zittisce la voce, non l'app. */
-  if(!a.inside && a.dist<=lead && !S.said.has(a.key) && !S.gpsBuco && !mutoQui(a) && !piatta(a) && !troppoAmpia(a)){
+  /* Le condizioni per cui questa curva SI DICE, separate dalla distanza: servono due
+     volte, una per il preavviso alla musica e una per la nota vera, e scritte due
+     volte tornerebbero a divergere. */
+  const dicibile = !a.inside && !S.said.has(a.key) && !S.gpsBuco && !mutoQui(a) && !piatta(a) && !troppoAmpia(a);
+  /* Un secondo di strada PRIMA del punto in cui si parlera', si chiede alla musica di
+     abbassarsi: `S.v` e' in m/s, quindi `S.v` metri sono esattamente un secondo a
+     qualunque velocita'. Non anticipa la voce, anticipa solo la richiesta al sistema. */
+  if(dicibile && a.dist <= lead + S.v) musicaPreavvisa(a.key);
+  if(dicibile && a.dist<=lead){
     const now=performance.now();
     if(now-S.lastSaid>900){
       /* Si segna il gia'-detto SOLO se la voce ha parlato davvero. `dilo` RIFIUTA una
