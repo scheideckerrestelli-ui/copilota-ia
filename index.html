@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '181';
+const APPVER = '182';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -878,22 +878,22 @@ async function loadRegion(r, onProgress){
    Separati perché il dataset di guida è già pubblicato e pesa 206 MB: rifarlo per
    aggiungerci dei nomi sarebbe stato un pomeriggio di elaborazione e un push da
    capo. Così invece si aggiungono, si aggiornano e si saltano da soli. */
-const geoUrl = r => r.geo ? r.geo+'?v='+r.gv : null;
-const civUrl = r => r.civ ? r.civ+'?v='+r.cv : null;
+const geoUrl = r => scUrl(r, SIDECAR[0]);
+const civUrl = r => scUrl(r, SIDECAR[1]);
 /* Terzo sidecar, stessa logica: alt-<reg>.json porta il PROFILO DI QUOTA degli
    archi (una quota ogni 100 m), da cui esce la pendenza sotto le ruote. Lo calcola
    `quote.py` leggendo il dataset GIA' PUBBLICATO, non rigenerandolo: i 368 MB di
    tracciati non si toccano e nessuno riscarica una mappa. Chi ha una regione
    scaricata da prima non vede niente di rotto — solo pendenza 0, cioe' com'era. */
-const altUrl = r => r.alt ? r.alt+'?v='+r.av : null;
+const altUrl = r => scUrl(r, SIDECAR[2]);
 /* Quarto sidecar: dos-<reg>.json porta i DOSSI ARTIFICIALI, come scostamento in
    metri dall'inizio dell'arco su cui stanno. Lo calcola `dossi.py` leggendo gli
    estratti OSM e agganciandoli al dataset GIA' PUBBLICATO — quindi non si tocca
    un byte dei tracciati e nessuno riscarica una mappa per averli. Pesa fra mezzo
    KB e 8 KB a regione. Chi ha una mappa vecchia non vede niente di rotto: i dossi
    semplicemente non ci sono, cioe' com'era prima. */
-const dosUrl = r => r.dos ? r.dos+'?v='+r.dv : null;
-const camsUrl = r => r.cams ? r.cams+'?v='+r.csv : null;
+const dosUrl = r => scUrl(r, SIDECAR[3]);
+const camsUrl = r => scUrl(r, SIDECAR[4]);
 /* Sesto sidecar: bas-<reg>.json e' lo SFONDO — acqua, verde, aree urbane. Serve a
    togliere il nero ai lati della strada, che non e' una questione di bellezza:
    senza niente attorno non si distingue un lago da un bosco da un paese, e la
@@ -902,17 +902,55 @@ const camsUrl = r => r.cams ? r.cams+'?v='+r.csv : null;
    quindi non porta `firma` e non c'e' niente da confrontare col dataset. E'
    geometria a se'; l'unica cosa che deve tornare e' il sistema di coordinate, e
    quello se lo porta scritto dentro (vedi `preparaBas`). */
-const basUrl = r => r.bas ? r.bas+'?v='+r.bsv : null;
+const basUrl = r => scUrl(r, SIDECAR[5]);
 /* Settimo sidecar: case-<reg>.json sono LE CASE dei paesi, da `case.py`. Stessa
    natura di `bas-` — geometria a se', nessuna `firma`, si aggancia solo alle
    coordinate — ma e' il piu' pesante di tutti (+33% sulla regione), il che lo rende
    anche quello che conviene di piu' poter non avere: chi non lo scarica vede la mappa
    esattamente come prima. */
-const caseUrl = r => r.case ? r.case+'?v='+r.kv : null;
+const caseUrl = r => scUrl(r, SIDECAR[6]);
+/* ============ LA TAVOLA DEI SIDECAR ============
+   Una sola, e tutto il resto si DERIVA da qui: l'URL, il peso annunciato, il
+   download in cache, la guardia che dice se il file e' quello giusto.
+
+   Perche' esiste. Il 2026-08-21, provando le case, e' saltato fuori che
+   `installRegion` metteva in cache solo `geo`, `civ` e `alt`: dossi, autovelox e
+   sfondo non ci finivano mai, quindi esistevano solo finche' c'era rete — su un
+   navigatore da montagna, dove la rete e' la cosa che manca. Il difetto era stato
+   fatto DUE VOLTE dalla stessa mano a 24 ore di distanza (con `cams-` il 18 e con
+   `bas-` il 19): non e' distrazione, e' che la lista era scritta a mano e nessuno
+   ha motivo di ricordarsi di un posto che non sta vicino a quello che sta toccando.
+
+   La prima correzione e' stata una lista a mano piu' lunga, e non bastava: chiudeva
+   l'istanza e lasciava aperta la classe, cioe' il prossimo sidecar sarebbe caduto
+   nello stesso buco. E' la stessa lezione che sta scritta in `verifica-push.py` —
+   una lista che va aggiornata a mano quando nasce un cantiere e' una lista che prima
+   o poi non verra' aggiornata. Segnalata da un'altra sessione, che aveva ragione.
+
+   Adesso aggiungere un sidecar e' UNA riga qui dentro. Se manca, non manca «solo in
+   cache»: non ha URL, non e' contato nel peso e non si scarica, cioe' il guasto e'
+   totale e immediato invece che parziale e silenzioso — che e' esattamente come si
+   vuole che sia un errore.
+
+   `ok` non e' una formalita': i sidecar tornano JSON diversi e una risposta 200 che
+   non e' il file giusto (un captive portal d'albergo, una pagina d'errore) verrebbe
+   messa in cache per sempre. Nota che `cams` e `case` usano tutti e due la chiave
+   `c`, ma uno e' un array e l'altro una stringa: le guardie li distinguono. */
+const SIDECAR = [
+  {url:'geo',  ver:'gv',  peso:'gb',  ok:j=>!!j.st},
+  {url:'civ',  ver:'cv',  peso:'cb',  ok:j=>!!j.civ},
+  {url:'alt',  ver:'av',  peso:'ab',  ok:j=>!!j.z},
+  {url:'dos',  ver:'dv',  peso:'db',  ok:j=>!!j.d},
+  {url:'cams', ver:'csv', peso:'csb', ok:j=>Array.isArray(j.c)},
+  {url:'bas',  ver:'bsv', peso:'bsb', ok:j=>!!(j.a||j.v||j.u)},
+  {url:'case', ver:'kv',  peso:'kb',  ok:j=>typeof j.c === 'string'},
+];
+function scUrl(r, s){ return r[s.url] ? r[s.url]+'?v='+r[s.ver] : null }
 /* `csb` mancava: gli autovelox erano l'unico sidecar a non essere contato nel peso
    annunciato in Mappe. Svista mia di ieri quando ho aggiunto `cams-`, non una scelta. */
-const pesoTot = r => (r.bytes||0)+(r.gb||0)+(r.cb||0)+(r.ab||0)+(r.db||0)
-                     +(r.csb||0)+(r.bsb||0)+(r.kb||0);
+/* Derivato dalla tavola: prima era una somma scritta a mano, ed e' il motivo per cui
+   gli autovelox erano rimasti fuori dal peso annunciato per un giorno intero. */
+const pesoTot = r => SIDECAR.reduce((s,x)=>s+(r[x.peso]||0), r.bytes||0);
 
 /* Regioni per cui si è finiti a servire una copia VECCHIA dalla cache. Non è un
    errore — «una copia vecchia batte il nulla» è la scelta giusta per l'uso offline —
@@ -983,16 +1021,8 @@ async function installRegion(r, onProgress){
      toccare la guardia lo avrebbe fatto scartare sempre — un modo silenzioso di non
      scaricare niente. */
   let fatto = r.bytes;
-  const sidecar = [
-    [geoUrl(r),  j => !!j.st],
-    [civUrl(r),  j => !!j.civ],
-    [altUrl(r),  j => !!j.z],
-    [dosUrl(r),  j => !!(j.d || j.dos)],
-    [camsUrl(r), j => !!(j.cams || j.c)],
-    [basUrl(r),  j => !!(j.a || j.v || j.u)],
-    [caseUrl(r), j => typeof j.c === 'string'],
-  ];
-  for(const [u, valido] of sidecar){
+  for(const s of SIDECAR){
+    const u = scUrl(r, s), valido = s.ok;
     if(!u) continue;
     try{
       const b = await readStream(await fetch(u), got=>onProgress(fatto+got, tot));
