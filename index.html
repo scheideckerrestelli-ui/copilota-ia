@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '175';
+const APPVER = '181';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -903,10 +903,16 @@ const camsUrl = r => r.cams ? r.cams+'?v='+r.csv : null;
    geometria a se'; l'unica cosa che deve tornare e' il sistema di coordinate, e
    quello se lo porta scritto dentro (vedi `preparaBas`). */
 const basUrl = r => r.bas ? r.bas+'?v='+r.bsv : null;
+/* Settimo sidecar: case-<reg>.json sono LE CASE dei paesi, da `case.py`. Stessa
+   natura di `bas-` — geometria a se', nessuna `firma`, si aggancia solo alle
+   coordinate — ma e' il piu' pesante di tutti (+33% sulla regione), il che lo rende
+   anche quello che conviene di piu' poter non avere: chi non lo scarica vede la mappa
+   esattamente come prima. */
+const caseUrl = r => r.case ? r.case+'?v='+r.kv : null;
 /* `csb` mancava: gli autovelox erano l'unico sidecar a non essere contato nel peso
    annunciato in Mappe. Svista mia di ieri quando ho aggiunto `cams-`, non una scelta. */
 const pesoTot = r => (r.bytes||0)+(r.gb||0)+(r.cb||0)+(r.ab||0)+(r.db||0)
-                     +(r.csb||0)+(r.bsb||0);
+                     +(r.csb||0)+(r.bsb||0)+(r.kb||0);
 
 /* Regioni per cui si è finiti a servire una copia VECCHIA dalla cache. Non è un
    errore — «una copia vecchia batte il nulla» è la scelta giusta per l'uso offline —
@@ -960,19 +966,42 @@ async function installRegion(r, onProgress){
   const c = await caches.open(cacheName(r.id));
   for(const k of await c.keys()) await c.delete(k);      // via le versioni vecchie
   await c.put(url, new Response(buf, {headers:{'Content-Type':'application/json'}}));
-  /* L'indirizzario si scarica subito dopo, ma se cade la rete a metà la mappa
-     resta buona: senza indirizzario si guida lo stesso, si cerca solo peggio. */
+  /* I sidecar si scaricano subito dopo, ma se cade la rete a metà la mappa resta
+     buona: senza indirizzario si guida lo stesso, si cerca solo peggio.
+
+     QUESTA LISTA ERA INCOMPLETA, ed e' un difetto trovato il 2026-08-21 provando le
+     case in locale: c'erano solo `geo`, `civ` e `alt`. Dossi, autovelox e SFONDO non
+     finivano mai in cache, quindi esistevano solo finche' c'era rete — e questa e'
+     un'app che si usa in montagna, dove la rete e' esattamente la cosa che manca. Chi
+     scaricava una regione per andare offline si ritrovava la mappa giusta e il fondo
+     nero, senza un errore da nessuna parte. Il difetto non era delle case: le case
+     l'hanno solo fatto vedere, perche' sono il primo sidecar cosi' grosso che
+     scaricarlo al volo non e' un'opzione.
+
+     La validazione e' PER TIPO e non piu' una condizione sola: `j.st || j.civ || j.z`
+     era vera solo per i tre di prima, quindi aggiungere un sidecar alla lista senza
+     toccare la guardia lo avrebbe fatto scartare sempre — un modo silenzioso di non
+     scaricare niente. */
   let fatto = r.bytes;
-  for(const u of [geoUrl(r), civUrl(r), altUrl(r)]){
+  const sidecar = [
+    [geoUrl(r),  j => !!j.st],
+    [civUrl(r),  j => !!j.civ],
+    [altUrl(r),  j => !!j.z],
+    [dosUrl(r),  j => !!(j.d || j.dos)],
+    [camsUrl(r), j => !!(j.cams || j.c)],
+    [basUrl(r),  j => !!(j.a || j.v || j.u)],
+    [caseUrl(r), j => typeof j.c === 'string'],
+  ];
+  for(const [u, valido] of sidecar){
     if(!u) continue;
     try{
       const b = await readStream(await fetch(u), got=>onProgress(fatto+got, tot));
       const t = new TextDecoder().decode(b);
       const j = JSON.parse(t);
-      if(!j || !(j.st || j.civ || j.z)) throw new Error('sidecar incompleto');
+      if(!j || !valido(j)) throw new Error('sidecar incompleto');
       await c.put(u, new Response(b, {headers:{'Content-Type':'application/json'}}));
       fatto += b.length;
-    }catch(e){ console.warn('indirizzario non scaricato:', u, e.message) }
+    }catch(e){ console.warn('sidecar non scaricato:', u, e.message) }
   }
   if(!RSTATE.inst.includes(r.id)) RSTATE.inst.push(r.id);
   rsave();
@@ -1007,12 +1036,16 @@ const TEMI = {
      scuro e più scura del chiaro: se lo sfondo si avvicina, la rete smette di
      staccare e si perde la cosa per cui l'app esiste. Sono masse di contesto, non
      informazione da leggere — se si notano, sono sbagliate. */
-  scuro:  {acqua:'#0e1d2c', verde:'#141d17', urbano:'#191e24',
+  /* `casa` sta un gradino sopra `urbano` nello scuro e uno sotto nel chiaro: le case
+     devono staccarsi dalla macchia del costruito quel tanto che basta a leggerle come
+     edifici, restando sotto al corpo strada. Se si notano piu' della strada sono
+     sbagliate, come tutto il resto dello sfondo. */
+  scuro:  {acqua:'#0e1d2c', verde:'#141d17', urbano:'#191e24', casa:'#232b34',
            bg:'#101418', corpo:'#39434d', grigia:'#1b2229', ink2:'#8b98a5',
            accent:'#4fd6ff', inkVia:'#c8d2db', inkPaese:'#c3ccd4', inkFioco:'#6b7783',
            inkForte:'#e8edf2', ombra:'rgba(0,0,0,.55)', bordoPos:'rgba(246,251,255,.95)',
            anello:'rgba(10,13,16,.75)', alone:'79,214,255'},
-  chiaro: {acqua:'#c7dbf0', verde:'#d7e7d2', urbano:'#dde3ea',
+  chiaro: {acqua:'#c7dbf0', verde:'#d7e7d2', urbano:'#dde3ea', casa:'#c9d2dc',
            bg:'#e9eef3', corpo:'#2b3540', grigia:'#aeb9c4', ink2:'#5a6774',
            accent:'#0b6fd0', inkVia:'#33404c', inkPaese:'#16202a', inkFioco:'#79848f',
            inkForte:'#16202a', ombra:'rgba(20,30,40,.28)', bordoPos:'rgba(16,24,32,.92)',
@@ -2219,6 +2252,175 @@ function preparaBas(j, r){
   }
   return n;
 }
+/* ============ le case dei paesi ============
+   Il formato non e' quello di `bas-`, e la differenza e' tutta nel numero: gli sfondi
+   sono qualche migliaio di poligoni per regione, le case sessantamila. A quel conto
+   ogni byte di contorno per casa vale mezzo megabyte sulla regione, e ogni oggetto JS
+   per casa vale un blocco del garbage collector in guida.
+   Quindi: UNA stringa sola per tutta la regione invece di una lista (in JSON ogni
+   elemento costa virgolette e virgola, tre caratteri a casa — 178 KB in Valle d'Aosta
+   di sola punteggiatura); i punti in CATENA da una casa all'altra dopo averle ordinate
+   per vicinanza, cosi' il primo punto di ognuna e' un delta corto invece di una
+   coordinata assoluta da 8 caratteri; e l'anello si chiude da solo, senza ripetere il
+   primo vertice in fondo. Le tre cose insieme hanno tolto il 40% al file.
+   In memoria: DUE array tipizzati per regione — i vertici di fila e gli offset di
+   inizio — invece di sessantamila Float32Array. */
+const CASE = {bl:[], n:0, grid:new Map(), pth:new Map()};
+const CCELL = 250;                       // la griglia delle case: la vista in guida ne prende poche
+/* Sotto questa scala una casa e' meno di quattro pixel: un puntino che costa quanto un
+   edificio e non dice niente. E' lo stesso criterio del filtro sullo sfondo — la
+   dimensione SULLO SCHERMO, non lo zoom in se'. */
+const CASE_SCALA = 0.40;
+function preparaCase(j, r){
+  if(!j || !j.meta || typeof j.c !== 'string' || !j.c.length) return 0;
+  const q=j.meta.q||1, latS=j.meta.lat0, lonS=j.meta.lon0;
+  if(!(latS>=-90&&latS<=90) || !(lonS>=-180&&lonS<=180)){
+    nota('case scartate: manca il riferimento di coordinate ('+r.id+')');
+    return 0 }
+  const bx = 111320*Math.cos(latS*Math.PI/180);
+  const sx = KX/bx, ox = (lonS-M.lon0)*KX, oy = (latS-M.lat0)*KY;
+  const s=j.c, n=s.length;
+  /* Si alloca a occhio e si taglia dopo, invece di decodificare due volte: ogni
+     coordinata costa almeno un carattere, quindi i vertici non possono essere piu'
+     della meta' della stringa. Sovrastima larga su una allocazione sola. */
+  const xy=new Float32Array(n), off=new Int32Array((j.meta.n|0)+2);
+  let i=0, x=0, y=0, v=0, m=0;
+  while(i<n){
+    let r2=0, sh=0, b;
+    do{ b=s.charCodeAt(i++)-63; r2|=(b&0x1f)<<sh; sh+=5 }while(b>=0x20);
+    const k=r2;                                    // quanti vertici ha questa casa
+    if(k<3 || i>=n) break;
+    if(m+1>=off.length || v+2*k>xy.length) break;  // file piu' lungo del dichiarato
+    off[m++]=v;
+    for(let p=0;p<k;p++){
+      r2=0; sh=0;
+      do{ b=s.charCodeAt(i++)-63; r2|=(b&0x1f)<<sh; sh+=5 }while(b>=0x20);
+      x += (r2&1)? ~(r2>>1) : (r2>>1);
+      r2=0; sh=0;
+      do{ b=s.charCodeAt(i++)-63; r2|=(b&0x1f)<<sh; sh+=5 }while(b>=0x20);
+      y += (r2&1)? ~(r2>>1) : (r2>>1);
+      xy[v++]=x*q*sx+ox; xy[v++]=y*q+oy;
+    }
+  }
+  off[m]=v;
+  const bi=CASE.bl.length;
+  CASE.bl.push({xy:xy.slice(0,v), off:off.slice(0,m+1), m});
+  /* Indice a celle. La chiave impacchetta blocco e casa in un intero solo: con piu'
+     regioni caricate insieme servono tutti e due, e due array paralleli per cella
+     sarebbero il doppio degli oggetti. */
+  for(let a=0;a<m;a++){
+    const o=off[a];
+    const cx=Math.floor(xy[o]/CCELL), cy=Math.floor(xy[o+1]/CCELL);
+    const k=cx+','+cy; let L=CASE.grid.get(k);
+    if(!L){ L=[]; CASE.grid.set(k,L) }
+    L.push(bi*16777216+a);
+  }
+  CASE.n += m;
+  return m;
+}
+/* Le case inquadrate, come indici impacchettati. Torna un array riusato: questa gira
+   a ogni fotogramma e allocarne uno nuovo ogni volta sarebbe spazzatura a 60 Hz. */
+const CASEBUF=[];
+function caseInquadrate(bx0,by0,bx1,by1){
+  CASEBUF.length=0;
+  if(!CASE.n) return CASEBUF;
+  const i0=Math.floor(bx0/CCELL), i1=Math.floor(bx1/CCELL);
+  const j0=Math.floor(by0/CCELL), j1=Math.floor(by1/CCELL);
+  /* Tetto sulle celle: da lontano il riquadro puo' coprirne decine di migliaia, e
+     scorrerle tutte costerebbe piu' del disegno. Sopra il tetto non si disegna niente,
+     ed e' giusto: a quello zoom le case sono comunque sotto il pixel. */
+  if((i1-i0+1)*(j1-j0+1) > 4096) return CASEBUF;
+  for(let cx=i0;cx<=i1;cx++) for(let cy=j0;cy<=j1;cy++){
+    const L=CASE.grid.get(cx+','+cy);
+    if(L) for(const id of L) CASEBUF.push(id);
+  }
+  return CASEBUF;
+}
+/* Vista piana: un Path2D per cella, in coordinate mondo, tenuto in cache. Le case non
+   si muovono, quindi la cache non scade mai — si svuota solo quando cresce troppo,
+   come quella dei tracciati. */
+function casePathCella(cx,cy){
+  const k=cx+','+cy;
+  let p=CASE.pth.get(k);
+  if(p!==undefined) return p;
+  const L=CASE.grid.get(k);
+  if(!L){ CASE.pth.set(k,null); return null }
+  p=new Path2D();
+  for(const id of L){
+    const b=CASE.bl[id>>>24], a=id&0xffffff;
+    const o=b.off[a], e=b.off[a+1], xy=b.xy;
+    if(e-o<6) continue;
+    p.moveTo(xy[o],xy[o+1]);
+    for(let i=o+2;i<e;i+=2) p.lineTo(xy[i],xy[i+1]);
+    p.closePath();
+  }
+  if(CASE.pth.size>600) CASE.pth.clear();
+  CASE.pth.set(k,p);
+  return p;
+}
+function disegnaCasePiano(bx0,by0,bx1,by1){
+  if(!CASE.n || S.scale<CASE_SCALA) return;
+  const i0=Math.floor(bx0/CCELL), i1=Math.floor(bx1/CCELL);
+  const j0=Math.floor(by0/CCELL), j1=Math.floor(by1/CCELL);
+  if((i1-i0+1)*(j1-j0+1) > 4096) return;
+  ctx.fillStyle=TC.casa;
+  for(let cx=i0;cx<=i1;cx++) for(let cy=j0;cy<=j1;cy++){
+    const p=casePathCella(cx,cy);
+    if(p) ctx.fill(p);
+  }
+}
+/* Vista inclinata: si proietta a mano come le strade, e per la stessa ragione — in
+   prospettiva non esiste una trasformazione del contesto che faccia il lavoro.
+   Le case restano sul PIANO DI RIFERIMENTO, cioe' non seguono il rilievo della strada:
+   il DEM da' la quota lungo gli archi, non su un punto qualunque del terreno, e
+   inventarla sotto una casa vorrebbe dire farle galleggiare in modo diverso a ogni
+   fotogramma. E' lo stesso compromesso dello sfondo, ed e' visibile solo dove la
+   pendenza e' forte. */
+/* Quanto lontano si disegnano le case in vista inclinata. NON e' `vista3d()`, che e'
+   il limite della RETE: una strada lontana e' una linea che si legge ancora, una casa
+   lontana e' due pixel di grigio dentro altro grigio.
+   Il numero viene da una misura, non da un'impressione. Con la vista piena, in citta',
+   le case costavano 5,13 ms per fotogramma contro gli 0,36 di TUTTO il resto del
+   disegno: quattordici volte la mappa intera, su un budget di 16,7 ms a 60 Hz — e di
+   8,3 su un iPhone con ProMotion, dove sarebbero stati piu' di metà fotogramma.
+   Sarebbe stato consegnare le case peggiorando la fluidita' che Tiago ha chiesto nello
+   stesso messaggio in cui le ha chieste.
+   L'area cresce col quadrato del raggio, quindi tagliare la distanza e' la leva piu'
+   efficace che c'e': da 300 a 200 m si dimezzano le case e non si perde niente che si
+   potesse vedere. */
+const CASE_LONTANO = 200;
+function disegnaCase3d(){
+  if(!CASE.n || S.scale<CASE_SCALA) return;
+  const lim=Math.min(vista3d(), CASE_LONTANO);
+  const near=CAM.R*NEAR;
+  const P=new Path2D();
+  let disegnate=0;
+  const bx0=S.cx-lim, bx1=S.cx+lim, by0=S.cy-lim, by1=S.cy+lim;
+  const lista=caseInquadrate(bx0,by0,bx1,by1);
+  for(const id of lista){
+    const b=CASE.bl[id>>>24], a=id&0xffffff;
+    const o=b.off[a], e=b.off[a+1], xy=b.xy;
+    if(e-o<6) continue;
+    let primo=true, buona=true;
+    for(let i=o;i<e;i+=2){
+      const ax=xy[i]-CAM.cx, ay=xy[i+1]-CAM.cy;
+      const X=ax*CAM.c+ay*CAM.s, Y=-ax*CAM.s+ay*CAM.c;
+      const d=Y*CAM.sp+CAM.R;
+      /* Una casa e' piccola: se anche un solo vertice finisce dietro il piano vicino
+         si butta tutta invece di ritagliarla. Ritagliare un anello vuol dire ricucirlo
+         sul bordo dell'inquadratura, e per un oggetto di dieci metri il ritaglio costa
+         piu' della casa. Quelle scartate sono sotto il cofano, dove non si vedono. */
+      if(d<near){ buona=false; break }
+      const sx2=W/2+CAM.f*X/d, sy2=H/2-CAM.f*Y*CAM.cp/d;
+      if(primo){ P.moveTo(sx2,sy2); primo=false } else P.lineTo(sx2,sy2);
+    }
+    if(buona){ P.closePath(); disegnate++ }
+  }
+  if(!disegnate) return;
+  ctx.fillStyle=TC.casa;
+  ctx.fill(P);
+}
+
 /* Raccoglie gli sfondi inquadrati, divisi per categoria. Il filtro vero non e' lo
    zoom ma la DIMENSIONE SULLO SCHERMO: sotto una decina di pixel un poligono e' un
    puntino che costa quanto un lago, e toglierlo e' insieme il LOD e il risparmio.
@@ -3557,6 +3759,12 @@ function disegnaPiano(c0,c1,r0,r1){
       for(const id of BASBUCK[k]) ctx.fill(basPath(id));
     }
   }
+  /* Le case DOPO lo sfondo e PRIMA della rete: stanno dentro la macchia dell'urbano,
+     quindi vanno sopra di essa, ma la strada deve restare sopra tutto.
+     I limiti si ricavano dalle CELLE e non dal riquadro della vista: qui dentro
+     `bx0..by1` non esistono — sono di `draw()` — ed e' lo stesso conto che fa la riga
+     dello sfondo due sopra. */
+  disegnaCasePiano(c0*CELL, r0*CELL, (c1+1)*CELL, (r1+1)*CELL);
 
   /* Il percorso va SOTTO la rete, non sopra: disegnato sopra copriva i colori delle
      curve proprio lungo la strada che stai facendo, cioè cancellava la cosa per cui
@@ -3688,6 +3896,7 @@ function sfondo3d(c0,c1,r0,r1){
 function disegna3d(c0,c1,r0,r1){
   ctx.lineCap='round'; ctx.lineJoin='round';
   sfondo3d(c0,c1,r0,r1);                    // per primo: sta sotto tutto
+  disegnaCase3d();                          // poi le case, ancora sotto la rete
   const T=tracciati3d(c0,c1,r0,r1);
   // il percorso sotto la rete, come nella vista piana: se no copre le curve
   if(S.nav && S.nav.geo && S.nav.geo.np>1){
@@ -7519,6 +7728,11 @@ async function boot(){
        prima che questo esistesse, o file illeggibile — resta il nero di sempre. */
     try{ preparaBas(await leggiFile(basUrl(r), r.id), r) }
     catch(err){ console.warn('sfondo non caricato:', err.message) }
+    /* Le case come lo sfondo: si accumulano da se', non entrano in `buildEdges`, e se
+       mancano la mappa e' quella di prima. Una regione scaricata prima che questo
+       esistesse non ha `r.case`, quindi `caseUrl` torna null e non si chiede niente. */
+    try{ preparaCase(await leggiFile(caseUrl(r), r.id), r) }
+    catch(err){ console.warn('case non caricate:', err.message) }
     const map = new Int32Array(RAW.edges.length);   // indice arco locale -> globale
     buildEdges(r.id, map); buildGrey(); buildCams(map); buildRestr();
     for(const p of RAW.places){
