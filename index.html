@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '183';
+const APPVER = '186';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3473,7 +3473,19 @@ function camXY(x,y){                     // mondo -> metri camera (X destra, Y a
 /* Ritorna null quando il punto è dietro la camera. I chiamanti in spazio schermo
    devono saltarlo: senza il taglio la divisione cambia segno e sputa un punto
    dall'altra parte dello schermo — è il modo classico di sbagliare la prospettiva. */
-function w2s(x,y){
+/* La `z` DEVE stare nella firma. Il 2026-08-21 il terzo asse e' stato aggiunto al
+   CORPO di questa funzione e non ai suoi parametri: `z` restava un identificatore non
+   dichiarato e ogni valutazione lanciava `ReferenceError` — ma SOLO con `CAM.zOn` vero,
+   perche' l'`&&` cortocircuita e senza quota `z` non viene nemmeno guardata.
+   `CAM.zOn` e' vero quando la camera e' inclinata E si conosce la quota: cioe' esattamente
+   quando si guida con la propria posizione agganciata alla strada. Da li' `draw()`
+   lanciava a ogni fotogramma dentro `disegnaSopra` e l'app si piantava — Tiago: «mi fa
+   muovere finche' non metto la mia posizione attuale; appena va sulla mia posizione si
+   freeza tutto».
+   Nessuno dei 13 chiamanti passa una quota: con `z` non passata resta `undefined`,
+   `z!=null` e' falso, `Z` vale 0 e la formula torna quella di sempre — che e' proprio
+   cio' che il commento del terzo asse prometteva e che non poteva succedere. */
+function w2s(x,y,z){
   if(!CAM.on){
     const dx=(x-S.cx)*S.scale, dy=-(y-S.cy)*S.scale;
     const c=Math.cos(S.rot), s=Math.sin(S.rot);
@@ -4981,6 +4993,17 @@ function cameraTickAuto(now){
     }
     const pitchT=1.02*(1-stretta)*Math.min(1, S.v/6);       // da fermi piatta
     if(stretta>0.35) scalaT*=1+stretta*0.5;                 // e sul tecnico stringe
+    /* `k` era l'attenuazione esponenziale della camera, ed e' stata TOLTA quando
+       l'inseguimento e' passato allo smorzatore critico: qui era rimasto il suo unico
+       altro uso, e da quel momento questa riga lanciava `ReferenceError: k is not
+       defined`. Scatta dentro `if(S.d3)`, cioe' con la vista guida 3D accesa: l'altra
+       meta' del blocco di Tiago, insieme alla `z` di `w2s`.
+       Si ricostruisce qui con la stessa formula di prima invece di passare anche
+       zoom e inclinazione allo smorzatore: `dts` e' gia' il `dt` limitato come lo era
+       allora, quindi il valore e' identico al centesimo e il comportamento di questa
+       parte — che Tiago ha tarato guidando — non cambia di niente. Passarla allo
+       smorzatore e' un lavoro che si fa a mente fredda, non mentre l'app e' rotta. */
+    const k=1-Math.pow(0.002, dts);
     const kk=Math.min(1, k*0.75);                           // più lenta della camera:
     if(!S.pitchLibero){                                     // se no pompa a ogni curva
       const dpi=(pitchT-S.pitch)*kk;                        // (e se l'hai inclinata tu, comandi tu)
