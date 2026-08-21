@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '182';
+const APPVER = '183';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -908,7 +908,7 @@ const basUrl = r => scUrl(r, SIDECAR[5]);
    coordinate — ma e' il piu' pesante di tutti (+33% sulla regione), il che lo rende
    anche quello che conviene di piu' poter non avere: chi non lo scarica vede la mappa
    esattamente come prima. */
-const caseUrl = r => scUrl(r, SIDECAR[6]);
+const caseUrl = r => null;        // spento con CASE_ON: vedi preparaCase
 /* ============ LA TAVOLA DEI SIDECAR ============
    Una sola, e tutto il resto si DERIVA da qui: l'URL, il peso annunciato, il
    download in cache, la guardia che dice se il file e' quello giusto.
@@ -943,7 +943,10 @@ const SIDECAR = [
   {url:'dos',  ver:'dv',  peso:'db',  ok:j=>!!j.d},
   {url:'cams', ver:'csv', peso:'csb', ok:j=>Array.isArray(j.c)},
   {url:'bas',  ver:'bsv', peso:'bsb', ok:j=>!!(j.a||j.v||j.u)},
-  {url:'case', ver:'kv',  peso:'kb',  ok:j=>typeof j.c === 'string'},
+  /* `case` sta fuori dalla tavola finche' `CASE_ON` e' false: e' il sidecar piu'
+     grosso di tutti e scaricarlo per non usarlo sarebbe 168 MB di banda per niente.
+     Riaccendendolo va rimessa QUESTA riga insieme a `CASE_ON`. */
+  // {url:'case', ver:'kv',  peso:'kb',  ok:j=>typeof j.c === 'string'},
 ];
 function scUrl(r, s){ return r[s.url] ? r[s.url]+'?v='+r[s.ver] : null }
 /* `csb` mancava: gli autovelox erano l'unico sidecar a non essere contato nel peso
@@ -2301,7 +2304,35 @@ const CCELL = 250;                       // la griglia delle case: la vista in g
    edificio e non dice niente. E' lo stesso criterio del filtro sullo sfondo — la
    dimensione SULLO SCHERMO, non lo zoom in se'. */
 const CASE_SCALA = 0.40;
+/* ============ LE CASE SONO SPENTE ============
+   Spente il 2026-08-21 alle 15:4x, poche decine di minuti dopo averle pubblicate,
+   perche' Tiago ha trovato l'app BLOCCATA all'apertura. La v182 e' l'unica cosa che
+   ha aggiunto le case, quindi la responsabilita' e' qui e non altrove.
+
+   Causa quasi certa, e non e' il disegno: la riga
+       const xy = new Float32Array(n)        // n = lunghezza della stringa
+   qui sotto. Il ragionamento era «ogni coordinata costa almeno un carattere, quindi
+   i vertici non possono essere piu' della meta' della stringa»: vero, ma poi alloco
+   `n` FLOAT, cioe' 4n byte, per un file che di byte ne ha n. Su una regione piccola
+   non si vede (Valle d'Aosta: 0,7 MB di file, 2,8 MB di allocazione temporanea). Sulle
+   Fiandre, 39,3 MB di file, sono **156 MB in una botta sola** — piu' la stringa JSON
+   da 78 MB che JSON.parse ha appena creato. Oltre 250 MB di picco per una regione, su
+   un telefono dove Safari ne concede qualche centinaio in tutto.
+   Ed e' esattamente il sintomo giusto: si blocca APRENDO, non muovendo la mappa.
+
+   Il secondo difetto, che va corretto insieme ma da solo non spiegherebbe il blocco
+   all'avvio: `casePathCella` svuota la cache dei Path2D quando supera 600 elementi, e
+   se le celle inquadrate sono di piu' la cache si azzera a ogni fotogramma — non e'
+   una cache lenta, e' una cache che si autodistrugge.
+
+   Si spegne il CARICAMENTO e non il disegno, cosi' non resta niente in memoria: senza
+   `CASE.n` il disegno non parte da solo. Il sidecar continua a stare nel manifesto e
+   nei dati pubblicati, quindi riaccenderlo e' togliere questa riga.
+   NON si e' tornati alla v175: il rilievo 3D, lo smorzatore della camera e il
+   preavviso della musica non c'entrano niente con questo e restano. */
+const CASE_ON = false;
 function preparaCase(j, r){
+  if(!CASE_ON) return 0;
   if(!j || !j.meta || typeof j.c !== 'string' || !j.c.length) return 0;
   const q=j.meta.q||1, latS=j.meta.lat0, lonS=j.meta.lon0;
   if(!(latS>=-90&&latS<=90) || !(lonS>=-180&&lonS<=180)){
