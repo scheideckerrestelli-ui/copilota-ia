@@ -802,7 +802,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '202';
+const APPVER = '203';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3920,6 +3920,73 @@ function traccia(P, xy, a, b, zs){
   }
   emettiMorbido(P,m);
 }
+/* Sorella di `traccia()` per la RETE: sceglie la fascia di larghezza punto per punto
+   invece di riceverne una sola per tutto il tratto.
+   IL DIFETTO CHE CHIUDE (Tiago, 2026-08-22: «la strada e' disegnata male, spezzata,
+   pezzi staccati» — solo in 3D). La fascia veniva presa una volta per arco, dal suo
+   punto piu' VICINO. Un arco lungo che si allontana attraversa piu' fasce ma veniva
+   disegnato tutto con la larghezza della prima: misurato nella vista di prova, la
+   SS 26 cominciava in fascia 1 e finiva in fascia 3, la SR 39 da 0 a 3. Al confine
+   con l'arco successivo — che sta nella SUA fascia — la larghezza saltava di colpo
+   del 45% (0,84 contro 0,58). Su una strada che deve assottigliarsi con continuita'
+   verso l'orizzonte quel salto si legge come una spezzatura, ed e' il motivo per cui
+   il difetto si vedeva SOLO inclinando: in piano le fasce non esistono.
+   Prendere il punto piu' vicino non era un errore ma una toppa: correggeva il caso
+   opposto (arco che ti passa sotto disegnato sottile come il suo centro lontano).
+   Scegliendo per punto spariscono tutti e due i casi e la toppa non serve piu'.
+   Costo: `fasciaDi` non si chiama per punto — la fascia si aggiorna per PASSI, salendo
+   o scendendo di uno, perche' lungo una strada la profondita' cambia con continuita'.
+   In pratica e' un confronto per punto e un cambio ogni qualche decina. */
+function tracciaRete(Pf, xy, a, b, zs){
+  const near=CAM.R*NEAR, cap=_tsx.length, scala=CAM.R*1.2;
+  const zOn=(zs && CAM.zOn)?1:0, z0=CAM.z0;
+  let px=0, py=0, pd=0, pZ=0, giu=true, m=0, f=-1;
+  for(let i=a;i<=b;i++){
+    const ax=xy[2*i]-CAM.cx, ay=xy[2*i+1]-CAM.cy;
+    const X=ax*CAM.c+ay*CAM.s, Y=-ax*CAM.s+ay*CAM.c;
+    const Z=zOn?(zs[i]-z0):0;
+    const d=Y*CAM.sp+CAM.R-Z*CAM.cp;
+    if(d<near){
+      if(!giu){
+        if(pd>=near && m<cap){
+          const t=(pd-near)/(pd-d);
+          const cx2=px+(X-px)*t, cy2=py+(Y-py)*t, cz2=pZ+(Z-pZ)*t;
+          _tsx[m]=W/2+CAM.f*cx2/near; _tsy[m]=H/2-CAM.f*(cy2*CAM.cp+cz2*CAM.sp)/near; m++;
+        }
+        if(f>=0) emettiMorbido(Pf[f],m);
+        m=0;
+      }
+      px=X; py=Y; pd=d; pZ=Z; giu=true; continue;
+    }
+    /* La fascia di QUESTO punto. Si parte da quella di prima e si scorre: lungo una
+       strada la profondita' e' monotona a tratti, quindi il ciclo gira zero volte
+       quasi sempre e una volta ai confini. */
+    const t=d/scala;
+    let nf = f<0 ? 0 : f;
+    while(nf>0 && t < FMUL[nf-1]) nf--;
+    while(nf<NFASCE-1 && t >= FMUL[nf]) nf++;
+    if(giu){
+      m=0;
+      if(pd<near && pd!==0){
+        const tt=(near-pd)/(d-pd);
+        const cx2=px+(X-px)*tt, cy2=py+(Y-py)*tt, cz2=pZ+(Z-pZ)*tt;
+        _tsx[m]=W/2+CAM.f*cx2/near; _tsy[m]=H/2-CAM.f*(cy2*CAM.cp+cz2*CAM.sp)/near; m++;
+      }
+      giu=false; f=nf;
+    } else if(nf!==f){
+      /* Confine di fascia: si chiude il sottotracciato QUI e si riapre da QUI. Il
+         punto di confine sta in tutti e due, se no fra le due larghezze resta una
+         fessura di un pixel — che e' lo stesso difetto in piccolo. */
+      if(m<cap){ _tsx[m]=W/2+CAM.f*X/d; _tsy[m]=H/2-CAM.f*(Y*CAM.cp+Z*CAM.sp)/d; m++ }
+      emettiMorbido(Pf[f], m);
+      _tsx[0]=_tsx[m-1]; _tsy[0]=_tsy[m-1]; m=1;
+      f=nf;
+    }
+    if(m<cap){ _tsx[m]=W/2+CAM.f*X/d; _tsy[m]=H/2-CAM.f*(Y*CAM.cp+Z*CAM.sp)/d; m++ }
+    px=X; py=Y; pd=d; pZ=Z;
+  }
+  if(f>=0) emettiMorbido(Pf[f], m);
+}
 /* Tutta la rete inquadrata, proiettata e divisa per classe di curva e fascia. */
 function tracciati3d(c0,c1,r0,r1){
   const paths=[], pmin=[], grey=fasceVuote();
@@ -3962,12 +4029,14 @@ function tracciati3d(c0,c1,r0,r1){
       const Yb=-(xy[u]-CAM.cx)*CAM.s+(xy[u+1]-CAM.cy)*CAM.c;
       const Y=Ym<Ya?(Ym<Yb?Ym:Yb):(Ya<Yb?Ya:Yb);
       if(Y>lim*1.25) continue;                 // troppo lontano per contare qualcosa
-      const f=fasciaDi(Math.max(0,Y)*CAM.sp+CAM.R);
+      /* Niente piu' `fasciaDi` per arco: la sceglie `tracciaRete` punto per punto.
+         Quello che resta qui e' solo il taglio di distanza qui sopra. */
       const banda = e.rank>=RANGO.grigio ? 0 : e.rank>=RANGO.sfuma ? 2 : 1;
+      const zq = quoteArco(e);
       let a=0;
       for(let n=0;n<e.runs.length;n+=2){
         const cl=e.runs[n+1];
-        traccia(banda===0 ? grey[f] : banda===2 ? pmin[cl][f] : paths[cl][f], xy, a, e.runs[n], quoteArco(e));
+        tracciaRete(banda===0 ? grey : banda===2 ? pmin[cl] : paths[cl], xy, a, e.runs[n], zq);
         a=e.runs[n];
       }
     }
