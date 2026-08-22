@@ -790,7 +790,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '200';
+const APPVER = '201';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -5673,7 +5673,27 @@ function buildAhead(){
     for(const c of list){
       const cs = dir>0?c.d0:c.d1, ce = dir>0?c.d1:c.d0;
       const ahead = dir>0 ? cs-d0 : d0-cs;
-      const inside = (dir>0) ? (d0>=c.d0-6 && d0<=c.d1) : (d0<=c.d1+6 && d0>=c.d0);
+      /* `inside` VALE SOLO SULL'ARCO SOTTO LE RUOTE (`hops===0`), ed e' il difetto che
+         Tiago segnalava da giorni con «alcune curve non me le segna».
+         Sugli archi a valle si riparte da `d0 = 0` (riga in fondo al ciclo), e con
+         `d0 = 0` la condizione `d0 >= c.d0-6` e' vera per QUALUNQUE curva che comincia
+         entro 6 m dall'inizio di quell'arco — anche a 200 m di distanza. Non e' una
+         svista di soglia: `d0` li' non e' piu' «dove sei», e' «dove comincia l'arco».
+         Poi la `sort()` qui sotto mette gli `inside` in testa, quindi quella curva
+         fantasma diventa `S.ahead[0]` — l'unica che `updateNote` guarda — e siccome
+         `dicibile` comincia con `!a.inside`, la voce tace su TUTTO: non solo su quella
+         curva, ma anche su quella vera piu' vicina che le sta dietro nell'elenco.
+
+         Misurato su dataset veri (339 km in Vallonia, 239 in Valle d'Aosta): la testa
+         risultava `inside` in 4.286 fix su 18.913, di cui 1.331 FINTI, con distanza
+         media dichiarata di 212 m; in 697 casi la curva finta scavalcava una curva
+         piu' vicina. Curve annunciate: 67,4% -> 88,7% in Vallonia, 60,6% -> 77,7% in
+         Valle d'Aosta. Il prezzo e' 1,23 -> 1,61 chiamate al chilometro.
+
+         Perche' `hops===0` e non una soglia piu' furba: sull'arco a valle non ci sei
+         MAI dentro, per definizione — ci arrivi dopo. Non c'e' niente da tarare. */
+      const inside = hops===0 &&
+        ((dir>0) ? (d0>=c.d0-6 && d0<=c.d1) : (d0<=c.d1+6 && d0>=c.d0));
       if(!inside && ahead<0) continue;
       const dist = acc + Math.max(0, ahead);
       if(dist>HORIZON) break;
