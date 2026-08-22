@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '195';
+const APPVER = '197';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -5961,10 +5961,18 @@ function catenaNota(){
 /* Le parole. In pacenote lo stacco fra due curve si dice in METRI invece che con
    «poi» — e' esattamente cio' che fa un copilota vero: «destra tre, cinquanta,
    sinistra quattro». Il legato resta «in»/«into»/«sur», che e' un'informazione di
-   guida diversa dalla distanza (l'assetto della prima condiziona la seconda). */
+   guida diversa dalla distanza (l'assetto della prima condiziona la seconda).
+
+   La distanza ALLA PRIMA curva pero' dice anche «metri»/«meters»/«mètres», a
+   differenza dello stacco fra due curve. Richiesta di Tiago il 2026-08-22: un
+   numero nudo in apertura di frase non si distingue da una marcia, una classe di
+   curva o un limite — sono tutti numeri nudi nello stesso vocabolario, e quello
+   e' l'unico dei tre casi senza una parola prima a dare contesto. Lo stacco fra
+   due curve resta senza «metri»: li' il numero segue gia' una chiamata di curva
+   («destra tre, cinquanta») e il contesto lo disambigua da solo. */
 function chiaviNota(el){
   let ch = chiaviCurva(el[0], !S.pace);
-  if(S.pace){ const dk=clipDist(el[0].dist); if(dk) ch=[dk].concat(ch) }
+  if(S.pace){ const dk=clipDist(el[0].dist); if(dk) ch=[dk,'d.metri'].concat(ch) }
   for(let n=1;n<el.length;n++){
     const gap = el[n].dist - el[n-1].dist;
     const legato = gap <= Math.max(30, S.v*1.4);
@@ -6060,11 +6068,32 @@ function phrase(a){
   return a.c.c===0 ? (t0.hairW+s) : (s+' '+t0.cWords[a.c.c]);
 }
 
+/* Sotto questa velocita', esplorando la mappa, il copilota tace: e' la meta' «da fermo
+   no, ovviamente» della richiesta di Tiago del 2026-08-22. 2,5 m/s sono 9 km/h — sopra
+   il rumore di un GPS fermo (che con pochi satelliti da' da solo un paio di m/s) e
+   sotto qualunque andatura vera, anche a passo d'uomo in paese. Vale SOLO esplorando:
+   inseguendo si annuncia come sempre, perche' li' la striscia e' a schermo e la voce
+   va con lei. */
+const V_ESPLORA_MUTO = 2.5;
 function updateNote(){
   const t0=tr();
-  if(S.mode==='free'||!S.pos){nEl.classList.remove('show');return}
+  /* ESPLORANDO LA MAPPA LA VOCE CONTINUA, LA STRISCIA NO — se ti stai muovendo.
+     Prima qui si usciva e basta, e aveva senso finche' spostare la mappa spegneva il
+     GPS: senza posizione non c'era niente da dire. Da quando il puntino resta vivo
+     (v194) quel silenzio e' diventato un difetto — guardi dove sei e perdi il
+     copilota proprio mentre stai guidando.
+     La striscia invece resta spenta di proposito: hai spostato la mappa per vedere la
+     mappa, coprirle il fondo sarebbe toglierti quello che sei andato a cercare.
+     Quindi le parole si', i pixel no.
+     `mostra()` e' l'unico interruttore, e i quattro punti che accendevano la striscia
+     passano tutti di qui: scritta quattro volte, fra qualche mese uno dei quattro la
+     riaccenderebbe da solo e nessuno saprebbe perche'. */
+  const esplorando = S.mode==='free';
+  const mostra = (...c) => { if(!esplorando) nEl.classList.add(...c) };
+  if(!S.pos || (esplorando && S.v < V_ESPLORA_MUTO)){ nEl.classList.remove('show'); return }
+  if(esplorando) nEl.classList.remove('show');
   if(!S.snap || S.snap.d>70){
-    nEl.classList.add('show','off'); nCall.style.color='';
+    mostra('show','off'); nCall.style.color='';
     nCall.textContent = S.local ? t0.localCall : t0.off;
     nSub.textContent  = S.local ? t0.localSub  : t0.offSub;
     nDist.textContent='—'; nLab.textContent=''; nGear.hidden=true;
@@ -6117,7 +6146,7 @@ function updateNote(){
   }
   // il banner mostra l'autovelox quando è la cosa più vicina davanti
   if(cam0 && cam0.dist<Math.max(650,S.v*16) && (!a || (!a.inside && cam0.dist<a.dist))){
-    nEl.classList.add('show');
+    mostra('show');
     nCall.style.color='#ff8a1e'; nCall.textContent=t0.cam;
     nSub.textContent=(cam0.cam.ms? t0.lim+' '+cam0.cam.ms+' km/h · ':'')+t0.fixed;
     nGear.hidden=true;
@@ -6128,13 +6157,13 @@ function updateNote(){
     return;
   }
   if(!a){
-    nEl.classList.add('show'); nCall.style.color=CLS[6].col;
+    mostra('show'); nCall.style.color=CLS[6].col;
     nCall.textContent=t0.straight; nSub.textContent=t0.noCurve;
     nDist.textContent='—'; nLab.textContent=''; nGear.hidden=true;
     ni.setTransform(2,0,0,2,0,0); ni.clearRect(0,0,64,64);
     return;
   }
-  nEl.classList.add('show');
+  mostra('show');
   const kmh=curveKmh(a.c.r, a.e, a.dir, a.c.d0);
   nCall.style.color=CLS[a.c.c].col;
   nCall.textContent=(isRight(a)?t0.right+' ':t0.left+' ')+(a.c.c===0?t0.hairpin:CLS[a.c.c].nm);
@@ -6456,11 +6485,18 @@ function tickNav(){
   if(!pr){
     navD.textContent=kmTxt(nv.tot); navKm.textContent=kmTxt(nv.tot);
     navMin.textContent=minTxt(nv.secondi); disegnaNavIcona(0);
-    if(S.mode==='free' || !S.pos){ navVia.textContent=t0.navNoGps; return }
+    /* «Nessun GPS» va detto solo quando davvero non c'è: da quando la posizione
+       sopravvive all'esplorazione (v194), scriverlo perché hai spostato la mappa era
+       diventata una bugia a schermo — la stessa riga era vera fino al giorno prima. */
+    if(!S.pos){ navVia.textContent=t0.navNoGps; return }
     navVia.textContent=t0.navRecalc;
     /* Non si ricalcola al primo fix fuori: un aggancio ballerino a bordo strada
-       rifarebbe il percorso di continuo. Tre fix di fila, cioè ~3 secondi. */
-    if(++nv.fuori>=3){ nv.fuori=0; ricalcolaNav() }
+       rifarebbe il percorso di continuo. Tre fix di fila, cioè ~3 secondi.
+       E non si ricalcola MENTRE ESPLORI: su una tratta lunga `ricalcolaNav()` blocca
+       4-5 secondi, e bloccarli sotto il dito che sta trascinando la mappa è il
+       peggior momento possibile. Il conteggio intanto continua, quindi rientrando
+       nell'inseguimento il ricalcolo parte subito: rimandato, non perso. */
+    if(++nv.fuori>=3 && S.mode!=='free'){ nv.fuori=0; ricalcolaNav() }
     return;
   }
   nv.fuori=0;
