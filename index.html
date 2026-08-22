@@ -484,6 +484,18 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
          resta com'era. Sta DOPO il limite, non in mezzo: infilata fra velocità e
          limite spezzava l'unico accostamento che conta davvero, «vado a X, posso
          andare a Y», e quei due numeri si leggono con la coda dell'occhio. -->
+    <!-- Velocità di curva: il terzo termine della frase che i primi due già dicono
+         («vado a X, il limite è Y, la curva ne regge Z»). Sta DOPO il limite per non
+         spezzare l'accostamento velocità↔limite, e prima della pendenza perché è
+         l'unico dei tre che cambia da un secondo all'altro.
+
+         NON ha la forma del cartello tondo col bordo rosso: quello è un obbligo di
+         legge, questo è un suggerimento che dipende dall'auto e dallo stile scelto.
+         Dargli l'aspetto di un segnale stradale sarebbe la cosa peggiore da fare —
+         chi guida legge la forma prima del contenuto. -->
+    <div class="tile" id="curvTile" hidden>
+      <div class="v" id="curvV">—</div><small id="curvLab">CURVA</small>
+    </div>
     <div class="tile" id="pendTile" hidden><div class="v" id="pendV">0%</div><small id="quotaV">—</small></div>
   </div>
 </div>
@@ -790,7 +802,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '201';
+const APPVER = '202';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3331,7 +3343,7 @@ const T = {
     right:'DESTRA', left:'SINISTRA', hairpin:'· TORNANTE', straight:'RETTILINEO',
     cam:'AUTOVELOX', camVoice:'autovelox', lim:'limite', fixed:'postazione fissa',
     noCurve:'nessuna curva nel raggio utile', inC:'IN', inC2:'CURVA', m:'METRI', now:'ORA',
-    gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', lean:'piega', flat:'· in pieno', rpm:'giri',
+    gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', curvLab:'CURVA', lean:'piega', flat:'· in pieno', rpm:'giri',
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale',5:'Strada di paese'},
     roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo',
@@ -3399,7 +3411,7 @@ const T = {
     right:'RIGHT', left:'LEFT', hairpin:'· HAIRPIN', straight:'STRAIGHT',
     cam:'SPEED CAMERA', camVoice:'speed camera', lim:'limit', fixed:'fixed camera',
     noCurve:'no corner within range', inC:'IN', inC2:'CORNER', m:'METERS', now:'NOW',
-    gear:'GEAR', then:'then', radius:'radius', ref:'ref.', lean:'lean', flat:'· flat out', rpm:'rpm',
+    gear:'GEAR', then:'then', radius:'radius', ref:'ref.', curvLab:'CORNER', lean:'lean', flat:'· flat out', rpm:'rpm',
     off:'Off mapped roads', offSub:'get closer to a mapped road to resume pacenotes',
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road',5:'Residential street'},
     roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active',
@@ -3460,7 +3472,7 @@ const T = {
     right:'DROITE', left:'GAUCHE', hairpin:'· ÉPINGLE', straight:'LIGNE DROITE',
     cam:'RADAR', camVoice:'radar', lim:'limite', fixed:'radar fixe',
     noCurve:'aucun virage à distance utile', inC:'DANS', inC2:'VIRAGE', m:'MÈTRES', now:'MAINTENANT',
-    gear:'VITESSE', then:'puis', radius:'rayon', ref:'réf.', lean:'inclinaison', flat:'· à fond', rpm:'tr/min',
+    gear:'VITESSE', then:'puis', radius:'rayon', ref:'réf.', curvLab:'VIRAGE', lean:'inclinaison', flat:'· à fond', rpm:'tr/min',
     off:'Hors des routes cartographiées', offSub:'rapproche-toi d\'une route pour reprendre les indications',
     roads:{0:'Route nationale',1:'Nationale / Provinciale',2:'Route provinciale',3:'Provinciale secondaire',4:'Route locale',5:'Rue de village'},
     roadOff:'hors des routes cartographiées', roadLocal:'route locale', voiceOn:'copilote actif',
@@ -6233,11 +6245,33 @@ function clipDist(m){
    serve PRIMA di decidere se parlare: da lei dipende la durata della frase, e dalla
    durata l'anticipo. Non tocca `S.said`: segnare il gia'-detto qui vorrebbe dire
    bruciare le curve anche nei giri in cui poi non si parla. */
+/* LA VOCE PARTE DALLA PRIMA CURVA ANNUNCIABILE, NON DALLA TESTA DELL'ELENCO
+   (dal 2026-08-22, richiesta di Tiago: «perche' tace nella curva, se ce n'e' una subito
+   dopo meglio che la dica no?»).
+
+   `S.ahead[0]` e' la curva in cui SEI, quando ci sei dentro — e la testa dell'elenco
+   serve allo SCHERMO, che deve scrivere «IN CURVA». Ma alla voce quella curva non serve
+   a niente: e' gia' sotto le ruote, dirla adesso e' tardi. E siccome `updateNote`
+   guardava solo la testa, mentre eri dentro una curva il copilota taceva su TUTTO,
+   compresa quella che arrivava subito dopo. In un tornante lungo sono secondi di
+   silenzio proprio dove servirebbe sapere cosa c'e' all'uscita.
+
+   Qui si filtra via cio' che e' gia' preso, e la catena si costruisce sul RESTO. Lo
+   schermo non cambia di un pixel: continua a leggere `S.ahead[0]`.
+
+   Perche' `filter` e non «salta la testa»: gli `inside` in testa possono essere piu' di
+   uno (due curve concatenate in cui stai entrando), e scorrendo per indice la catena
+   prenderebbe ancora una curva gia' presa come secondo elemento. Filtrare una volta
+   sola e poi scorrere `cand` e' l'unica forma che non si rompe al secondo caso.
+
+   Misurato dall'indagine sui dataset veri: curve annunciate 88,7% -> 94,8% in Vallonia
+   e 77,7% -> 90,9% in Valle d'Aosta, sopra la correzione delle curve fantasma. */
 function catenaNota(){
-  const a=S.ahead[0]; if(!a) return null;
+  const cand = S.ahead.filter(z => !z.inside);
+  const a=cand[0]; if(!a) return null;
   const el=[a], max = S.pace ? 3 : 2;
   for(let n=1; n<max; n++){
-    const b=S.ahead[n], prev=el[el.length-1];
+    const b=cand[n], prev=el[el.length-1];
     if(!b || piatta(b) || mutoQui(b) || troppoAmpia(b)) break;
     if(b.dist - prev.dist > Math.max(45, S.v*3.2)) break;
     el.push(b);
@@ -6317,6 +6351,40 @@ const mutoQui = a => (a.e && a.e.cls|0) === 2;
    sarebbe un difetto qui. Conseguenza voluta: chi guida in modalità tranquilla
    sente meno note di chi guida in «fondo chiuso», perché per lui più curve sono
    davvero irrilevanti. */
+/* LA VIA DI MEZZO (2026-08-22). Tiago: «il filtro si fallo in percentuale» e poi, subito
+   dopo, «mantieni la logica di prima, per non annunciare comunque ogni singola curva se
+   non serve in modalita' normale, vorrei una via di mezzo».
+
+   LA PERCENTUALE DA SOLA FA IL CONTRARIO DI QUELLO CHE SERVE, e non e' un'opinione:
+   misurato su 2.500 curve vere, guidando all'80% della velocita' di riferimento.
+
+       oggi, +8 km/h fissi                    12% annunciate
+       margine = 12% della TUA velocita'       0%   <- silenzio totale
+       margine = max(8 km/h, 12%)             12%
+       esentando le curve di classe <= 3      52%
+       esentando fino alla classe 4           85%
+
+   Il conto dietro lo zero: se guidi all'80% del riferimento, il divario fra curva e
+   velocita' e' il 20% — mentre un margine del 12% della tua velocita' e' MENO. Quindi
+   la condizione «passo in scioltezza» diventa sempre vera e tace tutto. Il margine in
+   percentuale morde piu' dell'assoluto proprio dove serviva mordere meno.
+
+   La leva vera e' un'altra: NON LASCIARE CHE IL FILTRO SI MANGI LE CURVE STRETTE. Una
+   classe <= 3 e' un evento a qualunque andatura — la chiami perche' c'e', non perche'
+   devi frenare. Sopra, il filtro resta quello di prima e continua a tacere le pieghe
+   larghe che passi lisce: e' la meta' «non ogni singola curva» della richiesta.
+
+   La percentuale resta ma come PAVIMENTO, non come sostituto: `max(8, 12%)`. Sotto i
+   67 km/h non cambia niente rispetto a prima, sopra il margine cresce — perche' a 130
+   «la passo in scioltezza» vuol dire un'altra cosa che a 40. Da sola varrebbe zero
+   (12% contro 12% nella tabella), e sta li' solo per non tornare a un assoluto puro.
+
+   PER TARARE: `PIATTA_SEMPRE`. A 3 da' il 52% (la via di mezzo di adesso), a 4 l'85%,
+   a -1 si torna al comportamento di prima. Un numero solo, e la tabella qui sopra dice
+   cosa aspettarsi da ognuno. */
+const PIATTA_MIN_KMH  = 8;      // il margine di sempre, ora pavimento invece che valore
+const PIATTA_FRAZIONE = 0.12;   // 8 km/h su 65 sono il 12,3%: sopra i 67 comanda questa
+const PIATTA_SEMPRE   = 3;      // classe <= 3: si chiama comunque, a qualunque andatura
 function piatta(a){
   /* IN PACENOTE QUESTO FILTRO NON ESISTE, ed e' il punto: un navigatore da rally
      chiama OGNI curva, anche quella che si prende in pieno — «sei destra, lungo» e'
@@ -6336,9 +6404,14 @@ function piatta(a){
      davvero forte. La 6 torna quindi alla regola normale: si chiama se non si
      prende in scioltezza, tace se si prende in scioltezza. */
   if(S.pace && a.c.c <= 5) return false;
+  /* Una curva stretta non e' mai «piatta», per quanto piano tu vada: e' un evento della
+     strada, non un avviso di frenata. Questa riga e' la via di mezzo — sopra la classe
+     `PIATTA_SEMPRE` il filtro continua a fare quello che ha sempre fatto. */
+  if(a.c.c <= PIATTA_SEMPRE) return false;
   if(S.v < 8) return false;                      // da fermi non si filtra niente
   const kmh = curveKmh(a.c.r, a.e, a.dir, a.c.d0);
-  return kmh >= S.v*3.6 + 8;
+  const mio = S.v*3.6;
+  return kmh >= mio + Math.max(PIATTA_MIN_KMH, mio*PIATTA_FRAZIONE);
 }
 /* Su strada a scorrimento veloce le curve larghe non sono curve, sono pieghe: a 130
    una classe 5 (raggio 140-250 m) o 6 (250-450 m) si prende senza togliere il piede, e
@@ -6467,20 +6540,31 @@ function updateNote(){
   const kmh=curveKmh(a.c.r, a.e, a.dir, a.c.d0);
   nCall.style.color=CLS[a.c.c].col;
   nCall.textContent=(isRight(a)?t0.right+' ':t0.left+' ')+(a.c.c===0?t0.hairpin:CLS[a.c.c].nm);
-  let sub=t0.radius+' ~'+a.c.r+' m · '+t0.ref+' '+kmh+' km/h';
-  if(isMoto()) sub += ' · '+t0.lean+' '+piegaDeg(kmh/3.6, a.c.r)+'°';   // la piega si vede, non si dice
-  if(cappedByLimit(a.c.r, a.e)) sub += ' ('+t0.byLimit+')';   // comanda il limite, non la curva
-  // a schermo il restringimento si vede sempre, come a voce: non e' stile, e' sicurezza
-  if((a.c.st|0) >= STRINGE_MIN) sub += ' · '+t0.tight;
-  if(!isAuto()){
-    const g0=bestGear(kmh);
-    sub += ' · '+Math.round(rpmAt(kmh,g0)/50)*50+' '+t0.rpm;
-  }
+  /* Il sottotitolo tecnico è stato TOLTO (richiesta di Tiago, 2026-08-22): raggio,
+     giri, piega, «comanda il limite», la curva dopo e «in pieno» erano scritti troppo
+     piccoli per leggerli guidando, cioè occupavano spazio senza mai essere letti. È
+     la stessa regola già fissata per questa interfaccia — indispensabile al pilota,
+     oppure dietro un tocco, oppure fuori.
+
+     Resta UNA cosa sola, e non è stile: «stringe». Il raggio che cala dentro la curva
+     è la cosa che fa più danni, la voce lo dice fuori dall'interruttore pacenote per
+     lo stesso motivo, e a schermo costa una parola. Il guadagno del taglio è anche
+     suo: comparendo da solo su una riga vuota si vede, mentre in fondo a una fila di
+     numeri era invisibile.
+
+     La velocità di riferimento non è persa: è salita nella tessera accanto al limite,
+     che è dove l'occhio va già. */
   const b=S.ahead[1];
-  if(b && b.dist-a.dist<190) sub+='   '+t0.then+' '+(isRight(b)?'→':'←')+' '+CLS[b.c.c].nm;
-  const flat = !a.inside && S.v>8 && kmh >= S.v*3.6+8;      // si passa senza frenare
-  if(flat) sub += '   '+t0.flat;
-  nSub.textContent=sub;
+  /* Il bordo del riquadro marcia dice «questa la passi senza frenare», ed e' la stessa
+     domanda che si fa `piatta()` — quindi lo stesso margine, preso dalle stesse due
+     costanti invece che da un `+8` scritto a mano qui. Restava indietro in silenzio al
+     primo che cambiava l'altro: e' il difetto delle liste scritte due volte, che su
+     questo file e' gia' costato caro. Il confronto e' solo di velocita' e NON eredita
+     l'esenzione delle curve strette: quella riguarda cosa vale la pena DIRE, non cosa
+     si passa lisci — una classe 2 la passi lisci lo stesso, ma la voce la chiama. */
+  const flat = !a.inside && S.v>8 &&
+               kmh >= S.v*3.6 + Math.max(PIATTA_MIN_KMH, S.v*3.6*PIATTA_FRAZIONE);
+  nSub.textContent = (a.c.st|0) >= STRINGE_MIN ? t0.tight : '';
   // col cambio automatico la marcia la sceglie l'auto: il riquadro sparisce
   nGear.hidden = isAuto();
   if(!isAuto()){
@@ -6516,17 +6600,24 @@ function updateNote(){
          non solo meno g. Fra «Tranquillo» e «Race» la stessa curva viene ora
          annunciata a distanze che stanno in rapporto ~1,6 a 1. */
   const st = stileAttivo();
-  const vRif = curveKmh(a.c.r, a.e, a.dir, a.c.d0)/3.6;
+  /* LA CURVA DELLA VOCE NON E' SEMPRE QUELLA DELLO SCHERMO, e da qui in giu' si ragiona
+     sulla sua. `a` (= `S.ahead[0]`) e' quella che il riquadro mostra: quando ci sei
+     dentro, scrive «IN CURVA», ed e' giusto. `av` e' la prima ANNUNCIABILE, che mentre
+     sei in curva e' gia' la successiva. Sono due domande diverse — «dove sono» e «cosa
+     devo dire» — e prima avevano una risposta sola.
+     Tutto il blocco dell'anticipo va spostato su `av`: velocita' di riferimento, spazio
+     di frenata e distanza. Calcolare l'anticipo sulla curva in cui sei gia' dentro
+     vorrebbe dire tararlo su una frenata che hai gia' fatto.
+     `el` si compone quindi PRIMA di `vRif`: e' `catenaNota()` che sceglie da dove parte
+     la voce, e finche' non ha scelto non c'e' niente su cui fare i conti. */
+  const el = catenaNota();
+  const ch = el ? chiaviNota(el) : null;
+  const av = el && el[0];
+  const vRif = av ? curveKmh(av.c.r, av.e, av.dir, av.c.d0)/3.6 : 0;
   /* La frenata si calcola con la decelerazione DELLO STILE, non con un 3,0 fisso.
      Piu' dolce freni, piu' lontano va detta la nota: e' lo stesso conto che fa un
      copilota vero quando conosce il suo pilota. */
-  const frenata = S.v>vRif ? (S.v*S.v - vRif*vRif)/(2*st.dec) : 0;
-  /* La nota si COMPONE prima di decidere se dirla. In pacenote la frase e' piu' lunga
-     (distanza + modificatori + fino a tre elementi): misurare l'anticipo sulla sola
-     prima curva vorrebbe dire cominciare in tempo e finire dentro la curva. Comporre
-     non ha effetti collaterali — il gia'-detto si segna solo quando si parla. */
-  const el = catenaNota();
-  const ch = el ? chiaviNota(el) : null;
+  const frenata = (av && S.v>vRif) ? (S.v*S.v - vRif*vRif)/(2*st.dec) : 0;
   const parlato = (ch ? durataFrase(ch) : 0) || 1.2;
   /* ---- l'anticipo, in tre pezzi che si sommano e basta ----
        [ frase ] + [ reazione ] + [ frenata ]
@@ -6573,12 +6664,17 @@ function updateNote(){
   /* Le condizioni per cui questa curva SI DICE, separate dalla distanza: servono due
      volte, una per il preavviso alla musica e una per la nota vera, e scritte due
      volte tornerebbero a divergere. */
-  const dicibile = !a.inside && !S.said.has(a.key) && !S.gpsBuco && !mutoQui(a) && !piatta(a) && !troppoAmpia(a);
+  /* Su `av`, non su `a`: la voce decide della curva che sta per dire. `!av.inside` non
+     serve piu' come guardia — `catenaNota()` filtra gia' gli `inside` — ma resta scritto
+     perche' costa niente e perche' se un domani quel filtro cambia, qui non si torna a
+     parlare di una curva gia' presa senza che nessuno se ne accorga. */
+  const dicibile = !!av && !av.inside && !S.said.has(av.key) && !S.gpsBuco
+                   && !mutoQui(av) && !piatta(av) && !troppoAmpia(av);
   /* Un secondo di strada PRIMA del punto in cui si parlera', si chiede alla musica di
      abbassarsi: `S.v` e' in m/s, quindi `S.v` metri sono esattamente un secondo a
      qualunque velocita'. Non anticipa la voce, anticipa solo la richiesta al sistema. */
-  if(dicibile && a.dist <= lead + S.v) musicaPreavvisa(a.key);
-  if(dicibile && a.dist<=lead){
+  if(dicibile && av.dist <= lead + S.v) musicaPreavvisa(av.key);
+  if(dicibile && av.dist<=lead){
     const now=performance.now();
     if(now-S.lastSaid>900){
       /* Si segna il gia'-detto SOLO se la voce ha parlato davvero. `dilo` RIFIUTA una
@@ -6958,6 +7054,7 @@ function feed(x,y,hd,v,acc){
   const kmhNow=Math.round(S.v*3.6);
   speedV.textContent=String(kmhNow);
   mostraPendenza();               // buildAhead() qui sopra ha già aggiornato S.pend
+  mostraCurva();                  // stessa cosa per S.ahead
   const limSign=document.getElementById('limSign');
   if(S.snap){
     const lim=edgeLimit(S.snap.e);
@@ -6977,6 +7074,50 @@ function feed(x,y,hd,v,acc){
      tr().roads/roadLocal/roadOff restano: le usa la legenda. */
   updateNote(); S.need=true;
 }
+/* Velocità che la curva davanti regge, con l'auto e lo stile scelti ADESSO.
+
+   Il numero non è nuovo: `curveKmh()` lo calcola già da `latA()` = stile × tenuta
+   dell'auto (e in moto passa dall'angolo di piega). Finora viveva solo dentro il
+   sottotitolo della nota, che si legge fermi e non guidando. Qui diventa una tessera
+   accanto al limite, che è dove l'occhio già va.
+
+   QUANDO SI NASCONDE, e perché conta più di quando si mostra:
+   - se non c'è una curva agganciata davanti → non c'è niente da dire;
+   - se la curva è oltre l'orizzonte utile → sarebbe un numero che non riguarda la
+     strada che stai facendo adesso;
+   - **se il limite è più basso della curva** → comanda il limite, che ha già la sua
+     tessera. Mostrarli tutti e due vorrebbe dire far scegliere a chi guida quale dei
+     due numeri conta, che è esattamente il lavoro che una tessera dovrebbe togliere.
+   Il risultato voluto è che in rettilineo e in città la riquadratura resta com'era. */
+function mostraCurva(){
+  const t=document.getElementById('curvTile'), v=document.getElementById('curvV');
+  if(!t||!v) return;
+  const a = S.snap && S.ahead && S.ahead[0];
+  if(!a || !a.c){ t.hidden=true; return }
+  const oriz = Math.max(160, S.v*9);           // ~9 s di strada, come il resto del file
+  if(!a.inside && a.dist > oriz){ t.hidden=true; return }
+
+  const kmh = curveKmh(a.c.r, a.e, a.dir, a.c.d0);
+  const lim = S.snap ? edgeLimit(S.snap.e).v : null;
+  if(lim != null && kmh >= lim){ t.hidden=true; return }   // comanda il limite
+
+  t.hidden=false;
+  v.textContent = String(kmh);
+  /* Il colore risponde a una domanda sola: ci arrivo troppo forte? Sotto, neutro.
+     Le soglie sono le stesse del limite (arancione subito, rosso a +5) perché due
+     scale diverse a fianco si leggono male. */
+  const now = S.v*3.6;
+  v.style.color = now > kmh+5 ? '#ff4438' : now > kmh ? '#ff8a1e' : '';
+  /* In moto la piega è l'equivalente della velocità di riferimento, e viveva nel
+     sottotitolo tecnico che è stato tolto perché illeggibile in marcia. Invece di
+     perderla la si porta QUI, sull'etichetta della tessera: stesso dato, in un punto
+     che si legge. In auto l'etichetta resta la parola secca. */
+  const lab = document.getElementById('curvLab');
+  lab.textContent = isMoto()
+    ? tr().curvLab + ' ' + piegaDeg(kmh/3.6, a.c.r) + '°'
+    : tr().curvLab;
+}
+
 function toast(m,ms){
   const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show');
   clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms||4500);
