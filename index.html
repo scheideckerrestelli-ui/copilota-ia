@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '197';
+const APPVER = '198';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -5727,8 +5727,39 @@ const TIPO_GIU = 'transient';
    Un ginocchio morbido fa il resto.
    Col limitatore in coda (soglia -3, rapporto 20, attacco 0,5 ms) il guadagno resta
    +5,95 dB e il picco scende a +0,13 — piu' basso del file originale, che gia' da solo
-   sta a +0,43 dBTP. Misurato con `OfflineAudioContext` sulle clip vere, non stimato. */
-const VOCE_GUADAGNO = 1.8;
+   sta a +0,43 dBTP. Misurato con `OfflineAudioContext` sulle clip vere, non stimato.
+
+   ---- 2026-08-22, secondo giro: «molto meglio ma mi servirebbe ancora un po' di piu'»
+
+   E QUI IL VOLUME E' FINITO. Misurato sulle 16 clip piu' lunghe, livello del PARLATO
+   (90° percentile su finestre da 20 ms), provando cinque catene diverse:
+
+       oggi          -7,03 dB        compressione media   -7,15
+       solo EQ       -7,44           compressione forte   -7,07
+
+   Non si muove di mezzo dB, e non e' un limite della catena: e' aritmetica. Il picco
+   sta a 0 dBFS per definizione e il parlato ha un fattore di cresta di ~10 dB, quindi
+   il livello medio STA dove sta. Alzarlo vuol dire schiacciare la cresta, cioe'
+   distorcere. Chiedere «piu' forte» a questo punto e' chiedere qualcosa che non c'e'.
+
+   QUELLO CHE INVECE C'E' E' LA CHIAREZZA, ed e' un'altra grandezza. Sopra la musica
+   non conta quanto e' forte la voce, conta quanta energia ha dove la musica non ce
+   l'ha: le consonanti stanno fra 2 e 4 kHz, la musica ha il grosso sotto il chilohertz.
+   Spostare l'equilibrio li' si sente come «piu' forte» anche a livello identico.
+   Misurato in quella banda, sempre sulle stesse clip:
+
+       oggi              -21,42 dB
+       questa catena     -18,94 dB      +2,48 dB dove si capisce
+
+   E LA COMPRESSIONE FORTE E' STATA SCARTATA DA UNA MISURA, non per prudenza. Alzava
+   il rumore fra le parole da -52 a -36,5 dB — 15,6 dB di soffio in piu' per guadagnare
+   2,5 dB di consonanti, cioe' una catena che «respira» fra una parola e l'altra. Questa
+   alza il silenzio di 4 dB soli. Le sibilanti (5-8 kHz) salgono di 0,33 dB: la voce
+   diventa piu' nitida, non piu' aspra — controllato apposta, perche' una punta di
+   presenza tirata troppo fa esattamente il contrario di quello che promette.
+
+   Picco +0,39 dBFS, 52 campioni su 1,1 milioni oltre il fondo scala (0,005%). */
+const VOCE_GUADAGNO = 2.2;
 function creaCtx(){
   if(!VOCE.ctx){
     /* QUI VA UN LETTERALE, NON `TIPO_GIU`, e la ragione e' costata un viaggio a Tiago.
@@ -5750,16 +5781,37 @@ function creaCtx(){
        `dilo` collega dritto all'uscita: si torna esattamente a com'era, voce piu'
        piano ma viva. Un copilota muto sarebbe molto peggio di uno sottovoce. */
     try{
+      /* I TRE FILTRI PRIMA DEL COMPRESSORE, in ordine di quanto contano.
+         `hp` a 120 Hz: sotto quella soglia una voce non porta nessuna informazione
+         parlata, solo corpo e sbuffi. Toglierlo non fa perdere una parola e libera
+         margine sul picco, che e' l'unica cosa scarsa in tutta la catena.
+         `mud` a 350 Hz, -4 dB: e' la zona in cui la voce e la musica si accavallano di
+         piu'. Togliere li' non toglie voce, toglie sovrapposizione.
+         `pres` a 2,8 kHz, +6 dB: le consonanti. E' il filtro che fa il lavoro — i
+         +2,48 dB misurati nella banda 2-4 kHz vengono quasi tutti da qui.
+         Q 0,9 e' largo apposta: stretto suonerebbe nasale, e la banda da coprire e'
+         un'ottava intera, non una frequenza. */
+      const hp = VOCE.ctx.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 120; hp.Q.value = 0.7;
+      const mud = VOCE.ctx.createBiquadFilter();
+      mud.type = 'peaking'; mud.frequency.value = 350; mud.Q.value = 1.0; mud.gain.value = -4;
+      const pres = VOCE.ctx.createBiquadFilter();
+      pres.type = 'peaking'; pres.frequency.value = 2800; pres.Q.value = 0.9; pres.gain.value = 6;
       const c = VOCE.ctx.createDynamicsCompressor();
       c.threshold.value = -18; c.knee.value = 6; c.ratio.value = 4;
       c.attack.value = 0.005; c.release.value = 0.2;
       const g = VOCE.ctx.createGain();
       g.gain.value = VOCE_GUADAGNO;
+      /* Limitatore piu' stretto di prima (-5/40/0,3 ms invece di -3/20/0,5 ms): l'EQ
+         aggiunge picchi nella banda di presenza, e col vecchio il picco saliva a +0,85
+         dBFS con 664 campioni oltre il fondo scala. Con questo: +0,39 e 52 campioni. */
       const L = VOCE.ctx.createDynamicsCompressor();
-      L.threshold.value = -3; L.knee.value = 0; L.ratio.value = 20;
-      L.attack.value = 0.0005; L.release.value = 0.05;
+      L.threshold.value = -5; L.knee.value = 0; L.ratio.value = 40;
+      L.attack.value = 0.0003; L.release.value = 0.04;
+      hp.connect(mud); mud.connect(pres); pres.connect(c);
       c.connect(g); g.connect(L); L.connect(VOCE.ctx.destination);
-      VOCE.comp = c; VOCE.gain = g; VOCE.lim = L; VOCE.testa = c;
+      VOCE.comp = c; VOCE.gain = g; VOCE.lim = L; VOCE.eq = [hp, mud, pres];
+      VOCE.testa = hp;                    // la catena comincia dall'EQ, non piu' dal compressore
     }catch(e){
       VOCE.testa = null;
       nota('voce senza compressore: '+e.message+' — si sentira\' piu\' piano');
@@ -5963,6 +6015,16 @@ function catenaNota(){
    sinistra quattro». Il legato resta «in»/«into»/«sur», che e' un'informazione di
    guida diversa dalla distanza (l'assetto della prima condiziona la seconda).
 
+   IL LEGATO E' «IN» SOLO IN PACENOTE (dal 2026-08-22). Su strada, due curve attaccate
+   si legano con «poi»: richiesta di Tiago dopo averlo sentito guidando. «Destra tre IN
+   sinistra quattro» e' una nota da rally — dice che l'assetto della prima condiziona la
+   seconda, ed e' un'informazione vera che in pacenote resta. Ma chi guida in strada e
+   non ha il vocabolario del rally in testa sente una preposizione dove si aspetta una
+   sequenza, e la nota diventa piu' difficile da seguire invece che piu' precisa.
+   Tiago aveva prima chiesto il cambio in tutte e due le modalita' e si e' corretto
+   subito dopo («in pacenote andava bene come stava, mi sono sbagliato»): quindi il
+   pacenote non cambia di una virgola, ed e' l'unico ramo che resta come prima.
+
    La distanza ALLA PRIMA curva pero' dice anche «metri»/«meters»/«mètres», a
    differenza dello stacco fra due curve. Richiesta di Tiago il 2026-08-22: un
    numero nudo in apertura di frase non si distingue da una marcia, una classe di
@@ -5976,7 +6038,11 @@ function chiaviNota(el){
   for(let n=1;n<el.length;n++){
     const gap = el[n].dist - el[n-1].dist;
     const legato = gap <= Math.max(30, S.v*1.4);
-    const legame = legato ? 'k.in' : ((S.pace && clipDist(gap)) || 'k.poi');
+    /* Su strada e' sempre «poi», attaccate o no: il ramo `legato` qui non decide piu'
+       niente, ma resta perche' e' il pacenote a usarlo — scritto come un solo ternario
+       annidato tornerebbe illeggibile alla prossima modifica. */
+    const legame = !S.pace ? 'k.poi'
+                 : (legato ? 'k.in' : (clipDist(gap) || 'k.poi'));
     ch = ch.concat([legame], chiaviCurva(el[n], false));
   }
   return ch;
