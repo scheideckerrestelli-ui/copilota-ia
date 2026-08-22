@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '186';
+const APPVER = '193';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1109,12 +1109,31 @@ function applicaTema(nome){
    "finalmente leggere" avrebbe voluto dire spezzare i tracciati anche per rango —
    cinque volte i Path2D — e cambiare l'aspetto della mappa, non un refactor a costo
    zero. Il rango entrerà dal LOD progressivo, che è il posto giusto. */
+/* LARGHEZZE. Allargate il 2026-08-22: Tiago, guidando, «vorrei che le strade si
+   vedessero un po' piu' larghe sulla mappa, non cosi' sottili, quando la sto
+   percorrendo». Era la seconda volta che lo chiedeva — la prima aveva prodotto il
+   CORPO STRADA qui sotto, che ha aiutato ma non e' bastato.
+
+     campo      prima  dopo   perche'
+     retto       4,2    6,0   la strada dritta e' quella che si guarda di piu'
+     curva<=2    6,4    8,6   tornanti e curve strette: la forma dev'essere leggibile
+     curva>2     5,6    7,6
+     corpo       3,4    4,4   sborda in proporzione, se no il colore mangia il corpo
+     grigia      3,0    3,6   il reticolo residenziale cresce di MENO apposta
+     bbRetto/bbCurva invariati: sono la vista d'insieme da fermo, non «mentre percorro»
+
+   Il rettilineo passa da 7,6 px totali (colore + corpo) a 10,4: e' la fascia in cui
+   sta Google Maps in navigazione, che e' il riferimento che Tiago cita da sempre.
+   Le grigie salgono solo del 20% perche' sono quelle che si impastano in citta': in
+   vista piana le larghezze sono in pixel COSTANTI, quindi a zoom largo un reticolo
+   fitto diventa una macchia. Chi sfuma davvero i ranghi minori e' `alphaMinori`, non
+   questi numeri, ma non serve aiutarla a sbagliare. */
 const SPESS = {
-  grigia: 3.0,                       // reticolo residenziale (rango >= 5)
-  retto: 4.2,                        // CLS[7], nessuna curva
-  curva: k => (k<=2 ? 6.4 : 5.6),    // tornante/1/2 più marcati del resto
+  grigia: 3.6,                       // reticolo residenziale (rango >= 5)
+  retto: 6.0,                        // CLS[7], nessuna curva
+  curva: k => (k<=2 ? 8.6 : 7.6),    // tornante/1/2 più marcati del resto
   bbRetto: 2.2, bbCurva: 3.0,        // vista d'insieme (backbone)
-  corpo: 3.4,                        // quanto il CORPO STRADA sborda dal colore
+  corpo: 4.4,                        // quanto il CORPO STRADA sborda dal colore
 };
 /* IL CORPO STRADA — la seconda versione del casing, quella che funziona.
    Il 2026-08-16 il casing "da manuale" (bordo PIÙ SCURO del fondo) è stato scritto,
@@ -3592,12 +3611,35 @@ const fasceVuote = () => { const a=new Array(NFASCE); for(let f=0;f<NFASCE;f++) 
    si emettono in blocco. Gli appoggi stanno fuori dalla funzione perché questa gira
    qualche migliaio di volte per fotogramma. */
 const _tsx=new Float64Array(4096), _tsy=new Float64Array(4096);
+/* QUANTO PUO' SCOSTARSI LA CURVA DAL VERTICE VERO, in pixel. Il vincolo non c'era, e
+   il 2026-08-22 Tiago ha detto «continua a deformare le strade»: era questa funzione.
+
+   In vista PIANA la smussatura sui punti medi e' sicura perche' i punti sono
+   equidistanti (ricampionati a 10 m) e la trasformazione e' affine: lo scostamento
+   massimo e' un quarto della freccia, cioe' meno di 2 m, invisibile.
+   IN PROSPETTIVA NO. La proiezione comprime la distanza in modo non uniforme: due
+   segmenti consecutivi lunghi uguali nel mondo diventano lunghissimo e cortissimo
+   sullo schermo, e una quadratica con una gamba corta e una lunga scappa via dal
+   vertice. MISURATO sul codice vero (arco della Valle d'Aosta, schermo 390x844,
+   camera a 0,85 rad): scostamento massimo 246 px, 22 punti oltre 20 px. Duecento
+   pixel su uno schermo largo 390 non sono un'imprecisione, sono un'altra strada.
+
+   Lo scostamento si calcola ESATTO e costa due sottrazioni: l'apice della quadratica
+   sta a |mezzo(P[i-1],P[i+1]) - P[i]| / 4 dal vertice. Dove supera la soglia si
+   emette un `lineTo` — cioe' si rinuncia alla smussatura proprio dove sarebbe una
+   bugia, e la si tiene dove serve. Non e' un'euristica sulle lunghezze: e' la
+   quantita' che si vuole limitare, limitata direttamente. */
+const MORBIDO_MAX = 4;
 function emettiMorbido(P, m){
   if(m<2) return;
   P.moveTo(_tsx[0],_tsy[0]);
   if(m<4){ for(let i=1;i<m;i++) P.lineTo(_tsx[i],_tsy[i]); return }
-  for(let i=1;i<m-1;i++)
-    P.quadraticCurveTo(_tsx[i],_tsy[i], (_tsx[i]+_tsx[i+1])/2, (_tsy[i]+_tsy[i+1])/2);
+  const lim2 = (MORBIDO_MAX*4)*(MORBIDO_MAX*4);      // confronto al quadrato, senza radici
+  for(let i=1;i<m-1;i++){
+    const dx=(_tsx[i-1]+_tsx[i+1])/2-_tsx[i], dy=(_tsy[i-1]+_tsy[i+1])/2-_tsy[i];
+    if(dx*dx+dy*dy > lim2) P.lineTo(_tsx[i],_tsy[i]);
+    else P.quadraticCurveTo(_tsx[i],_tsy[i], (_tsx[i]+_tsx[i+1])/2, (_tsy[i]+_tsy[i+1])/2);
+  }
   P.lineTo(_tsx[m-1],_tsy[m-1]);
 }
 /* Le quote dei vertici di un arco, ricavate dal profilo del sidecar `alt-` e tenute
@@ -3677,12 +3719,34 @@ function tracciati3d(c0,c1,r0,r1){
       if(visti.has(id)) continue;
       visti.add(id);
       const e=E[id], xy=e.xy;
-      // fascia dal punto di mezzo: basta, e costa una proiezione invece di np
-      const m=(e.np>>1)*2;
-      const ax=xy[m]-CAM.cx, ay=xy[m+1]-CAM.cy;
-      const Y=-ax*CAM.s+ay*CAM.c;
+      /* QUANTO E' LONTANO QUEST'ARCO: si guarda il punto piu' VICINO fra i due capi e
+         il mezzo, non il solo punto di mezzo.
+         Col solo punto di mezzo un arco LUNGO che ti passa sotto le ruote ha il centro
+         lontanissimo e veniva scartato tutto, compresa la meta' che hai addosso: il
+         buco era lungo quanto l'arco. E' il difetto gemello di quello gia' corretto per
+         il percorso viola qui sotto, dove sta scritto «IL BUDGET SI MISURA DA DOVE SEI,
+         non dall'inizio di un arco alle spalle» — li' era stato risolto, qui no.
+         Misurato sui dataset veri: perche' un arco sparisca da SOTTO le ruote deve
+         superare 2,5 volte la vista (1.750 m a bassa velocita'), e sono lo 0,10% degli
+         archi in Fiandra, 0,32% in Vallonia, 0,79% in Valle d'Aosta — raro ma non nullo,
+         e sulle AUTOSTRADE, dove gli archi lunghi sono la norma, tutt'altro che raro.
+         Il caso frequente e' l'altro: un arco che comincia a `d` metri e' scartato
+         appena `d + lunghezza/2` supera il limite, quindi a 500 m di distanza basta che
+         sia lungo 750 per sparire pur avendo il primo pezzo dentro l'inquadratura. Non
+         e' un buco sotto le ruote, e' la strada davanti che compare tardi.
+         Costa due proiezioni parziali in piu' per arco — quattro moltiplicazioni — su
+         una funzione che ne fa gia' una: il prezzo e' nel rumore.
+         La FASCIA (cioe' la larghezza) si prende dallo stesso punto piu' vicino e non
+         piu' dal centro: un arco lungo che ti passa sotto va disegnato con la larghezza
+         di QUI, non con quella del suo centro a un chilometro. Prima usciva sottile
+         proprio dove serve piu' spesso. */
+      const m=(e.np>>1)*2, u=(e.np-1)*2;
+      const Ym=-(xy[m]-CAM.cx)*CAM.s+(xy[m+1]-CAM.cy)*CAM.c;
+      const Ya=-(xy[0]-CAM.cx)*CAM.s+(xy[1]-CAM.cy)*CAM.c;
+      const Yb=-(xy[u]-CAM.cx)*CAM.s+(xy[u+1]-CAM.cy)*CAM.c;
+      const Y=Ym<Ya?(Ym<Yb?Ym:Yb):(Ya<Yb?Ya:Yb);
       if(Y>lim*1.25) continue;                 // troppo lontano per contare qualcosa
-      const f=fasciaDi(Y*CAM.sp+CAM.R);
+      const f=fasciaDi(Math.max(0,Y)*CAM.sp+CAM.R);
       const banda = e.rank>=RANGO.grigio ? 0 : e.rank>=RANGO.sfuma ? 2 : 1;
       let a=0;
       for(let n=0;n<e.runs.length;n+=2){
@@ -3695,21 +3759,39 @@ function tracciati3d(c0,c1,r0,r1){
     if(gids && S.scale>0.35) for(const gi of gids){
       if(visti.has('g'+gi)) continue;
       visti.add('g'+gi);
+      /* Stesso criterio degli archi, e va cambiato INSIEME a quello: correggendo solo
+         sopra il buco sparirebbe dalle strade principali e resterebbe sulle
+         residenziali, che e' il modo peggiore di correggere — sembra risolto.
+         NOTA: oggi questo ramo non gira mai. Il campo `grey` dei dataset e' VUOTO su
+         tutte le regioni (verificato: 0 elementi in Fiandra, Vallonia e Valle d'Aosta),
+         e le residenziali sono archi normali di rango >= 5 dentro `E[]` — il 51% degli
+         archi in Fiandra, il 44% in Vallonia. Si corregge lo stesso perche' un ramo
+         morto che torna in vita col criterio vecchio e' peggio di uno corretto: non
+         costa niente e non lascia una trappola. */
       const g=GREY[gi], np=g.length>>1;
-      const m=(np>>1)*2;
-      const ax=g[m]-CAM.cx, ay=g[m+1]-CAM.cy;
-      const Y=-ax*CAM.s+ay*CAM.c;
+      const m=(np>>1)*2, u=(np-1)*2;
+      const Ym=-(g[m]-CAM.cx)*CAM.s+(g[m+1]-CAM.cy)*CAM.c;
+      const Ya=-(g[0]-CAM.cx)*CAM.s+(g[1]-CAM.cy)*CAM.c;
+      const Yb=-(g[u]-CAM.cx)*CAM.s+(g[u+1]-CAM.cy)*CAM.c;
+      const Y=Ym<Ya?(Ym<Yb?Ym:Yb):(Ya<Yb?Ya:Yb);
       if(Y>lim) continue;
-      traccia(grey[fasciaDi(Y*CAM.sp+CAM.R)], g, 0, np-1);
+      traccia(grey[fasciaDi(Math.max(0,Y)*CAM.sp+CAM.R)], g, 0, np-1);
     }
   }
-  return {paths, pmin, grey};
+  return {paths, pmin, grey, visti};
 }
 
-/* Le polilinee della rete sono ricampionate a passo fisso da `process4.py` (DS = 10 m).
-   Su un rettilineo non si vede, ma in curva stretta quel passo E' la curva: un raggio
-   di 30 m cambia direzione di 10/30 = 0,33 rad ogni segmento, cioè 19° di spigolo, e
-   da vicino si legge il poligono invece della curva. È il «meno spigolose, simili a
+/* Le polilinee della rete sono ricampionate a 10 m da `process4.py` e poi
+   SEMPLIFICATE: quello che finisce nei dati pubblicati ha passo mediano 25-46 m e
+   90° percentile 95-210 m, e circa meta' degli archi ha due soli punti (misurato il
+   2026-08-22 su wallonia, flanders e valle_aosta). La riga che stava qui diceva
+   «ricampionate a passo fisso, DS = 10 m» e descriveva una fase INTERMEDIA della
+   pipeline, non il dato — un errore che ha portato a non mettere il vincolo sullo
+   scostamento, vedi sotto.
+   Dove il passo resta fitto — le curve strette, che la semplificazione non puo'
+   diradare senza perdere la forma — quel passo E' la curva: a 10 m su un raggio di
+   30 m la direzione cambia di 0,33 rad per segmento, cioe' 19° di spigolo, e da
+   vicino si legge il poligono invece della curva. È il «meno spigolose, simili a
    Google Maps» chiesto da Tiago il 2026-08-19.
 
    Si smussa al momento di costruire il Path2D, non nei dati: passando per i PUNTI DI
@@ -3727,13 +3809,45 @@ function tracciati3d(c0,c1,r0,r1){
    di al più un quarto della freccia. Su un vertice a 90° con gambe da 10 m fa 1,8 m —
    cioè meno del raggio di svolta di una strada vera. Sul disegno va bene; per lo snap
    e le distanze restano i vertici grezzi in `e.xy`, che non si toccano. */
+/* LO STESSO VINCOLO DELLA VERSIONE IN PROSPETTIVA, e serve anche qui — cosa che ho
+   scoperto solo dopo, e per un commento sbagliato mio.
+
+   Avevo scritto qui sopra che le polilinee sono «ricampionate a passo fisso da
+   process4.py, DS = 10 m», e su quello poggiava tutto: punti equidistanti, quindi
+   scostamento sotto i 2 m, quindi nessun vincolo necessario. MISURATO sui dati veri
+   il 2026-08-22, e' FALSO: `process4.py` ricampiona ma poi SEMPLIFICA, e quello che
+   e' pubblicato ha passo mediano 25-46 m e 90° percentile 95-210 m. Meta' degli archi
+   ha due soli punti. Il commento descriveva una fase intermedia della pipeline, non
+   il dato.
+
+   Con le gambe lunghe e disuguali la quadratica sui punti medi si allontana dal
+   vertice esattamente come in prospettiva. Misurato in Vallonia su 174.700 vertici:
+       scostamento mediano  1,4 m  ·  90° 12,6 m  ·  99° 45 m  ·  massimo 404 m
+   che a zoom di guida (2,2 px/m) fanno 3, 28, 99 px. Un vertice su cento spostato di
+   cento pixel non e' una smussatura, e' un'altra strada — lo stesso difetto che si
+   vedeva inclinando la camera, presente anche in piano e che nessuno aveva guardato.
+
+   Il limite qui e' in METRI e non in pixel perche' questo Path2D vive in coordinate
+   mondo ed e' in cache per cella: non sa a che zoom verra' disegnato. Due metri
+   valgono ~4 px a zoom di guida — la stessa soglia dell'altra versione — e meno di un
+   pixel da lontano, che e' il verso giusto in cui sbagliare.
+
+   E il vincolo tiene la smussatura DOVE SERVE: su un tornante le gambe sono corte
+   (10-25 m) e lo scostamento resta sotto i due metri, quindi si smussa; su due
+   rettilinei lunghi con una piega in mezzo la polilinea E' la forma della strada, e
+   smussarla vorrebbe dire inventare una curva che non c'e'. */
+const MORBIDO_MAX_M = 2.0;
 function morbido(P, xy, a, b){
   if(b-a<1) return;
   P.moveTo(xy[2*a],xy[2*a+1]);
   if(b-a<3){ for(let i=a+1;i<=b;i++) P.lineTo(xy[2*i],xy[2*i+1]); return }
-  for(let i=a+1;i<b;i++)
-    P.quadraticCurveTo(xy[2*i], xy[2*i+1],
-                       (xy[2*i]+xy[2*i+2])/2, (xy[2*i+1]+xy[2*i+3])/2);
+  const lim2 = (MORBIDO_MAX_M*4)*(MORBIDO_MAX_M*4);
+  for(let i=a+1;i<b;i++){
+    const dx=(xy[2*i-2]+xy[2*i+2])/2-xy[2*i], dy=(xy[2*i-1]+xy[2*i+3])/2-xy[2*i+1];
+    if(dx*dx+dy*dy > lim2) P.lineTo(xy[2*i],xy[2*i+1]);
+    else P.quadraticCurveTo(xy[2*i], xy[2*i+1],
+                            (xy[2*i]+xy[2*i+2])/2, (xy[2*i+1]+xy[2*i+3])/2);
+  }
   P.lineTo(xy[2*b],xy[2*b+1]);
 }
 
@@ -3844,8 +3958,15 @@ function disegnaPiano(c0,c1,r0,r1){
      esiste l'app. Sotto, e più largo delle strade, resta una fascia viola ai lati e
      il colore della curva si legge tutto. */
   if(S.nav && S.nav.geo){
-    ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=pw(20); ctx.stroke(S.nav.geo.path);
-    ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=pw(12); ctx.stroke(S.nav.geo.path);
+    /* Il nastro del percorso e' cresciuto con le strade (20/12 -> 26/16 il 2026-08-22).
+       Non e' un ritocco estetico: il pieno viola deve restare piu' largo della strada
+       che copre, se no il colore della curva gli esce da sotto e il percorso sembra una
+       riga tirata SOPRA la carreggiata invece che dentro. Con la carreggiata piu' larga
+       di prima (corpo compreso, fino a 13,0 px sulle curve strette) i 12 px di pieno
+       non bastavano piu'. A 16 il pieno torna a sbordare di un paio di pixel per lato e
+       l'ombra esterna di altri cinque: sono le proporzioni di prima, non numeri nuovi. */
+    ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=pw(26); ctx.stroke(S.nav.geo.path);
+    ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=pw(16); ctx.stroke(S.nav.geo.path);
   }
 
   if(nCells<=420){
@@ -3886,7 +4007,11 @@ function disegnaPiano(c0,c1,r0,r1){
 
   // tratto agganciato + curve davanti evidenziate
   if(S.snap && S.mode!=='free'){
-    ctx.strokeStyle=('rgba('+TC.alone+',.20)'); ctx.lineWidth=pw(10);
+    /* Legato a SPESS e non piu' un 10 scritto a mano: l'alone deve coprire la
+       carreggiata piu' larga che esiste, e se resta una costante alla prossima
+       taratura delle larghezze i due numeri divergono in silenzio — e' il difetto che
+       questo file ha gia' avuto due volte con le liste scritte a mano. */
+    ctx.strokeStyle=('rgba('+TC.alone+',.20)'); ctx.lineWidth=pw(SPESS.curva(0)+SPESS.corpo);
     for(const seg of S.aheadSegs||[]){
       const e=seg.e; ctx.beginPath();
       let f=true;
@@ -3966,11 +4091,65 @@ function sfondo3d(c0,c1,r0,r1){
     ctx.fillStyle=col[k]; ctx.fill(P);
   }
 }
+/* ============ SONDA: la strada che sto percorrendo e' stata disegnata? ============
+   Il 2026-08-22 Tiago: «a volte non mi carica la strada su cui sto passando». Il filtro
+   del punto di mezzo qui sopra ne spiegava una parte, ma le misure dicevano che da solo
+   non basta, e una schermata (28 km/h, zoom stretto, arco corto davanti) non si spiegava
+   con niente di quello che avevamo in mano.
+   Invece di continuare a indovinare, si fa dire all'app che cosa e' successo: quando
+   l'arco su cui il map-matching ha agganciato la posizione NON compare fra quelli
+   disegnati, si scrive nel registro PERCHE'.
+
+   Costa un `Set.has` per fotogramma quando c'e' un aggancio, e il calcolo della causa
+   si fa una volta sola per episodio, su UN arco. Zero quando va tutto bene.
+
+   I messaggi sono FISSI e senza numeri variabili apposta: `nota()` deduplica per testo
+   ed incrementa un contatore, quindi il registro dice da solo «x7» invece di riempirsi
+   di sette righe quasi uguali. Con numeri dentro, quarant'anni di registro si
+   consumerebbero in un viaggio.
+
+   Vale solo per la vista inclinata: e' quella in cui Tiago guida e l'unica in cui il
+   filtro della distanza esiste. In vista piana i tracciati stanno in cache per cella e
+   il percorso e' un altro — se il difetto si vedesse anche li', questa sonda tace e
+   quel silenzio e' a sua volta un'informazione. */
+let snapDetto = false;
+function sondaStradaMia(visti, c0, c1, r0, r1){
+  const sn = S.snap;
+  if(!sn || !sn.e || S.mode==='free'){ snapDetto = false; return }
+  const e = sn.e;
+  if(visti.has(e.id)){
+    if(snapDetto) nota('la strada che percorri e\' tornata sulla mappa');
+    snapDetto = false; return;
+  }
+  if(snapDetto) return;                       // gia' spiegato per questo episodio
+  snapDetto = true;
+  const xy=e.xy, m=(e.np>>1)*2, u=(e.np-1)*2;
+  const Ym=-(xy[m]-CAM.cx)*CAM.s+(xy[m+1]-CAM.cy)*CAM.c;
+  const Ya=-(xy[0]-CAM.cx)*CAM.s+(xy[1]-CAM.cy)*CAM.c;
+  const Yb=-(xy[u]-CAM.cx)*CAM.s+(xy[u+1]-CAM.cy)*CAM.c;
+  const Y=Ym<Ya?(Ym<Yb?Ym:Yb):(Ya<Yb?Ya:Yb);
+  if(Y > vista3d()*1.25){
+    nota('strada mia non disegnata: oltre il limite di vista');
+    return;
+  }
+  /* Dentro la vista ma non disegnata: o la sua cella non e' nel riquadro, o e' nel
+     riquadro e qualcos'altro l'ha esclusa. Il test della cella guarda i due capi e non
+     tutti i segmenti — la griglia indicizza i segmenti campionando ogni 140 m, quindi
+     un arco puo' stare in celle in cui non cade nessuno dei suoi capi. Se dice «fuori
+     dal riquadro» e' quasi certo; se dice «nel riquadro» resta il caso migliore da
+     indagare, perche' vuol dire che il difetto non e' ne' la distanza ne' le celle. */
+  const dentro = (x,y) => { const cx=Math.floor(x/CELL), cy=Math.floor(y/CELL);
+                            return cx>=c0 && cx<=c1 && cy>=r0 && cy<=r1 };
+  nota(dentro(xy[0],xy[1]) || dentro(xy[u],xy[u+1])
+       ? 'strada mia non disegnata: nel riquadro e dentro la vista, causa da trovare'
+       : 'strada mia non disegnata: la sua cella e\' fuori dal riquadro inquadrato');
+}
 function disegna3d(c0,c1,r0,r1){
   ctx.lineCap='round'; ctx.lineJoin='round';
   sfondo3d(c0,c1,r0,r1);                    // per primo: sta sotto tutto
   disegnaCase3d();                          // poi le case, ancora sotto la rete
   const T=tracciati3d(c0,c1,r0,r1);
+  sondaStradaMia(T.visti, c0, c1, r0, r1);
   // il percorso sotto la rete, come nella vista piana: se no copre le curve
   if(S.nav && S.nav.geo && S.nav.geo.np>1){
     /* IL BUDGET SI MISURA DA DOVE SEI, non dall'inizio di un arco alle spalle.
@@ -3986,8 +4165,8 @@ function disegna3d(c0,c1,r0,r1){
     const i0=indiceLungo(g.cum, f-140), i1=indiceLungo(g.cum, f+lim);
     const P=new Path2D();
     traccia(P, g.xy, i0, i1, g.z);
-    ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=20; ctx.stroke(P);
-    ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=12; ctx.stroke(P);
+    ctx.strokeStyle='rgba(138,109,255,.22)'; ctx.lineWidth=26; ctx.stroke(P);
+    ctx.strokeStyle='rgba(138,109,255,.85)'; ctx.lineWidth=16; ctx.stroke(P);
   }
   if(S.scale>0.35){
     ctx.strokeStyle=TC.grigia;
@@ -4022,7 +4201,7 @@ function disegna3d(c0,c1,r0,r1){
   if(S.snap && S.mode!=='free'){
     const P=new Path2D();
     for(const seg of S.aheadSegs||[]) traccia(P, seg.e.xy, seg.i0, seg.i1, quoteArco(seg.e));
-    ctx.strokeStyle=('rgba('+TC.alone+',.20)'); ctx.lineWidth=10; ctx.stroke(P);
+    ctx.strokeStyle=('rgba('+TC.alone+',.20)'); ctx.lineWidth=SPESS.curva(0)+SPESS.corpo; ctx.stroke(P);
   }
   /* Il fondo dell'inquadratura sfuma nel colore di sfondo: senza, le strade lontane
      si schiacciano una sull'altra e diventano un tappeto. */
@@ -5333,7 +5512,7 @@ function drawIcon(cls,right){
    Le parole vengono dagli onboard italiani trascritti, non da ipotesi: «attenzione»
    come prefisso, «più»/«meno» attaccati al numero, «apre»/«chiude», «in» per legare
    due curve che fluiscono l'una nell'altra e «poi» quando c'è uno stacco. */
-const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, sorgente:null};
+const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, comp:null, lim:null, testa:null, sorgente:null};
 
 /* Cache PROPRIA per la voce, e si legge da lì PRIMA di provare la rete.
 
@@ -5459,24 +5638,78 @@ nota(SESSIONE ? 'sessione audio disponibile: si puo\' CHIEDERE al sistema di abb
 let duckFino = 0, duckTimer = 0, duckDetto = false, duckChiesto = 0, duckKey = null;
 /* `transient` suona SOPRA l'altro audio e lo fa ABBASSARE; `transient-solo` lo mette
    in PAUSA e poi lo fa riprendere, che e' quello che fanno le indicazioni dei
-   navigatori. Tiago ha chiesto l'abbassamento, quindi si parte da `transient`. La
-   parola sta isolata qui perche' se col preavviso l'abbassamento continua a non
-   sentirsi, la causa non e' piu' il TEMPO ma la QUANTITA': iOS abbassa di pochi dB e
-   in auto il rumore di rotolamento se li mangia. In quel caso si cambia questa riga
-   e nient'altro — ma e' una domanda per Tiago (pausa o niente), non una scelta
-   tecnica da prendere qui. */
-const TIPO_GIU = 'transient';
+   navigatori. Si e' partiti da `transient` perche' Tiago aveva chiesto
+   l'abbassamento, e ci si e' rimasti attraverso due correzioni del TEMPO — il
+   preavviso da `updateNote`, la maturazione prima della frase. Alla terza
+   segnalazione («ancora adesso non si sente bene con la musica») il tempo era
+   escluso e restava la QUANTITA': iOS abbassa di pochi dB e in auto il rotolamento
+   se li mangia. Chiesto a Tiago in chiaro, con il costo dichiarato — in rally la
+   musica si spezzetta — e ha scelto la pausa INSIEME alla voce piu' alta.
+   Sono due leve INDIPENDENTI: se la pausa da' fastidio si torna a `transient`
+   cambiando questa parola, e il guadagno della voce resta dov'e'. */
+const TIPO_GIU = 'transient-solo';
 /* Il tipo di sessione si dichiara anche PRIMA di aprire il contesto, non solo quando
    c'e' qualcosa da dire. Su WebKit la categoria audio puo' essere legata al momento in
    cui il contesto NASCE: se e' cosi', impostarla dopo non produce niente, e il difetto
    passa muto attraverso il controllo perche' `SESSIONE.type` continua a rileggersi
    giusto lo stesso. Dichiararlo qui costa zero e toglie di mezzo l'ipotesi. Si torna
    subito ad `auto` per non nascere con la musica gia' abbassata. */
+/* LA VOCE PIU' FORTE, che e' l'altra meta' del problema «non si sente con la musica».
+   Finora si e' provato solo ad ABBASSARE la musica: e' una leva che non controlliamo
+   (la decide iOS) e di cui non possiamo nemmeno sapere l'esito. Questa invece e'
+   nostra e funziona ovunque.
+
+   MISURATO sulle sprite vere, non a occhio:
+     originale                                  -17,21 LUFS   picco  +0,43 dBTP
+     compressa e limitata come qui sotto        -11,12 LUFS   picco   0,00 dBTP
+   Cioe' +6,1 dB di sonorita' percepita CON I PICCHI PIU' BASSI di adesso. Sei dB in
+   auto sono la differenza fra sentire e indovinare.
+
+   Perche' non basta un guadagno: il picco vero e' gia' a +0,43 dBTP, cioe' il file
+   tocca gia' il fondo scala. Moltiplicare distorce e basta. Quello che c'e' da
+   prendere sta nel rapporto picco/sonorita', che qui e' 17,6 dB — molto alto per del
+   parlato: e' spazio che si recupera schiacciando i picchi, non alzando tutto.
+
+   Perche' a runtime e non rifacendo i file: ricodificare in AAC sposta l'inizio di
+   qualche decina di millisecondi (samples di priming), e l'indice delle clip e'
+   fatto di tempi assoluti — sposterebbe l'attacco di ogni parola, che e' un guasto
+   molto peggiore di quello che si vuole curare. Qui si cambia un numero e si sente
+   subito, senza far riscaricare niente a nessuno.
+
+   SERVE ANCHE UN LIMITATORE, e questo l'ho scoperto misurando dopo averlo negato.
+   Avevo scritto qui che con soglia -18 e rapporto 4 un picco a 0 dBFS esce a -13,5 dB
+   e il guadagno lo riporta a -8,4, quindi «non puo' clippare per costruzione». FALSO:
+   misurato sulle 12 clip piu' lunghe, la catena senza limitatore da' +5,93 dB ma
+   PICCHI A +2,41 dB, cioe' clippa. Il conto ignorava l'ATTACCO: 5 ms lasciano passare
+   il transitorio prima che il compressore stringa, e quello arriva al guadagno intero.
+   Un ginocchio morbido fa il resto.
+   Col limitatore in coda (soglia -3, rapporto 20, attacco 0,5 ms) il guadagno resta
+   +5,95 dB e il picco scende a +0,13 — piu' basso del file originale, che gia' da solo
+   sta a +0,43 dBTP. Misurato con `OfflineAudioContext` sulle clip vere, non stimato. */
+const VOCE_GUADAGNO = 1.8;
 function creaCtx(){
   if(!VOCE.ctx){
     try{ if('audioSession' in navigator) navigator.audioSession.type = TIPO_GIU }catch(e){}
     VOCE.ctx = new (window.AudioContext||window.webkitAudioContext)();
     try{ if('audioSession' in navigator) navigator.audioSession.type = 'auto' }catch(e){}
+    /* Se per qualche motivo la catena non si costruisce, `VOCE.testa` resta null e
+       `dilo` collega dritto all'uscita: si torna esattamente a com'era, voce piu'
+       piano ma viva. Un copilota muto sarebbe molto peggio di uno sottovoce. */
+    try{
+      const c = VOCE.ctx.createDynamicsCompressor();
+      c.threshold.value = -18; c.knee.value = 6; c.ratio.value = 4;
+      c.attack.value = 0.005; c.release.value = 0.2;
+      const g = VOCE.ctx.createGain();
+      g.gain.value = VOCE_GUADAGNO;
+      const L = VOCE.ctx.createDynamicsCompressor();
+      L.threshold.value = -3; L.knee.value = 0; L.ratio.value = 20;
+      L.attack.value = 0.0005; L.release.value = 0.05;
+      c.connect(g); g.connect(L); L.connect(VOCE.ctx.destination);
+      VOCE.comp = c; VOCE.gain = g; VOCE.lim = L; VOCE.testa = c;
+    }catch(e){
+      VOCE.testa = null;
+      nota('voce senza compressore: '+e.message+' — si sentira\' piu\' piano');
+    }
   }
   return VOCE.ctx;
 }
@@ -5548,7 +5781,15 @@ function musicaSu(secondi){
   if(!SESSIONE || !(secondi > 0)) return;
   /* Una nota che arriva mentre ne sta finendo un'altra deve SPOSTARE il ripristino
      in avanti, non lasciare che quello vecchio risalga la musica in mezzo. */
-  duckFino = Math.max(duckFino, performance.now() + secondi*1000 + 250);
+  /* Quanto si aspetta, a frase finita, prima di ridare l'audio all'altra app.
+     Con `transient` bastavano 250 ms: la musica risale in dissolvenza e non si nota.
+     Con `transient-solo` la musica RIPARTE, e a 250 ms in modalita' rally — dove le
+     note distano un paio di secondi — farebbe un secondo di musica e si rifermerebbe
+     subito: un singhiozzo peggiore del difetto che si sta curando. 1,8 s tiene ferma
+     la musica attraverso le note vicine e la ridà quando la strada si calma davvero.
+     Non si vede da nessun banco: si sente solo guidando. */
+  const CODA = TIPO_GIU === 'transient-solo' ? 1800 : 250;
+  duckFino = Math.max(duckFino, performance.now() + secondi*1000 + CODA);
   clearTimeout(duckTimer);
   duckTimer = setTimeout(() => {
     try{ SESSIONE.type = 'auto' }catch(e){}
@@ -5582,7 +5823,7 @@ function dilo(chiavi, urgente){
     const alt = c.v ? [c].concat(c.v) : null;
     const q = alt ? alt[(Math.random()*alt.length)|0] : c;
     const s=VOCE.ctx.createBufferSource();
-    s.buffer=buf; s.connect(VOCE.ctx.destination);
+    s.buffer=buf; s.connect(VOCE.testa || VOCE.ctx.destination);
     s.start(t, q.t, q.d); nodi.push(s);
     t += q.d + GAP;
   }
