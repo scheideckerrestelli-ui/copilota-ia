@@ -771,7 +771,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '193';
+const APPVER = '195';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4218,18 +4218,35 @@ function disegna3d(c0,c1,r0,r1){
    quello che tutti riconoscono al volo: chevron arrotondato, bordo chiaro che lo
    stacca dall'asfalto scuro, un'ombra sotto per staccarlo dalla strada, e il fascio
    della direzione quando il verso di marcia si conosce. La punta è la direzione:
-   niente cerchio, che non dice dove stai andando. */
+   niente cerchio, che non dice dove stai andando.
+
+   SI DISEGNA IN TUTTE E TRE LE MODALITÀ, anche mentre esplori la mappa. Prima
+   spariva appena spostavi la mappa con un dito — perché spostarla ti butta in
+   `free` — e sparire è la cosa peggiore che possa fare: guardi altrove per capire
+   dove sei, e proprio in quel momento perdi l'unico riferimento che avevi. Nessuna
+   mappa fa così. Quello che cambia fra le modalità è CHI COMANDA LA CAMERA, non se
+   sai dove sei.
+
+   Il colore però dice la verità sul dato: pieno se il fix è fresco, grigio spento
+   se sono passati più di `POS_VECCHIA` senza notizie dal GPS (permesso negato,
+   inseguimento caduto dopo un minuto di buco, demo finita). Un puntino acceso su
+   una posizione di dieci minuti fa non è un aiuto, è una bugia — ed è l'unico
+   motivo per cui nasconderlo poteva sembrare giusto. */
+const POS_VECCHIA = 12000;             // ms senza un fix oltre i quali il puntino si spegne
 function disegnaMe(){
-  if(!S.pos || S.mode==='free') return;
+  if(!S.pos) return;
   const p0=S.dp||S.pos, hh=(S.dhd!=null?S.dhd:S.hd);
   const p=w2s(p0[0],p0[1]); if(!p) return;
+  const fresco = (performance.now() - (S.fixT||0)) < POS_VECCHIA;
   // la direzione si prende da un punto 14 m più avanti e poi si proietta: in vista
   // inclinata l'angolo sullo schermo non è quello del mondo
   const q = hh!=null ? w2s(p0[0]+Math.cos(hh)*14, p0[1]+Math.sin(hh)*14) : null;
   const ang = q ? Math.atan2(q[1]-p[1], q[0]-p[0]) : -Math.PI/2;
   ctx.save();
   ctx.translate(p[0],p[1]); ctx.rotate(ang+Math.PI/2);
-  if(hh!=null){
+  // il fascio è un'affermazione sul verso di marcia ADESSO: su un fix vecchio non si
+  // disegna, che è come dire "eri qui" invece di "stai andando di là"
+  if(hh!=null && fresco){
     const g=ctx.createRadialGradient(0,0,7,0,0,58);
     g.addColorStop(0,('rgba('+TC.alone+',.26)')); g.addColorStop(1,('rgba('+TC.alone+',0)'));
     ctx.fillStyle=g;
@@ -4248,7 +4265,7 @@ function disegnaMe(){
   ctx.quadraticCurveTo(-1.7,-12.3, 0,-12.6);
   ctx.closePath();
   ctx.shadowColor=TC.ombra; ctx.shadowBlur=7; ctx.shadowOffsetY=1.5;
-  ctx.fillStyle=ACCENT; ctx.fill();
+  ctx.fillStyle = fresco ? ACCENT : TC.ink2; ctx.fill();
   ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
   ctx.lineWidth=2.1; ctx.lineJoin='round'; ctx.strokeStyle=TC.bordoPos;
   ctx.stroke();
@@ -5069,13 +5086,25 @@ function cameraTickAuto(now){
     if(S.pitch<0.002) S.pitch=0;
     S.need=true;
   }
-  if(S.mode==='free' || !S.pos) return false;
+  /* DA QUI IN GIÙ si calcola DOVE SEI, non dove guarda la camera, e le due cose sono
+     separate: `S.dp`/`S.dhd` — la posizione ammorbidita che disegna il segnaposto —
+     si aggiornano in tutte le modalità, `S.cx`/`S.cy`/`S.rot` solo se qualcuno sta
+     inseguendo. Prima si usciva qui in `free` e il segnaposto restava senza dati,
+     che è il motivo per cui spostando la mappa spariva: non era una scelta grafica,
+     era la posizione che smetteva di esistere.
+     Costa quanto costava: quando sei fermo lo smorzatore converge e il `return` in
+     fondo spegne il ridisegno da solo, come sempre. */
+  if(!S.pos) return false;
+  const guida = S.mode!=='free';
   /* Primo aggancio: ci si mette esattamente dove si e', con le velocita' a zero. Senza
      azzerarle, quelle rimaste da un inseguimento precedente farebbero partire la camera
      alla deriva da ferma — si vede riaprendo l'app dopo una pausa. */
   if(!S.dp){ S.dp=[S.pos[0],S.pos[1]]; S.dhd=S.hd; camT=now;
              S.dvx=0; S.dvy=0; S.dvh=0; S.dva=0;
-             S.cx=S.dp[0]; S.cy=S.dp[1]; return true }
+             // esplorando NON si sposta l'inquadratura: il primo fix mentre guardi
+             // un'altra valle non deve strapparti indietro
+             if(guida){ S.cx=S.dp[0]; S.cy=S.dp[1] }
+             return true }
   const dt = Math.min(2.5, (now-(S.fixT||now))/1000);   // se il GPS tace, non estrapolare all'infinito
   let tx = S.pos[0] + (S.vx||0)*dt, ty = S.pos[1] + (S.vy||0)*dt;
   /* AGGANCIO VISIVO ALLA CARREGGIATA. Prima il segnaposto stava sulla posizione
@@ -5140,15 +5169,19 @@ function cameraTickAuto(now){
      marcia, così il veicolo finisce nel terzo basso e lo schermo mostra la strada
      che deve ancora arrivare invece di quella già fatta. È quello che fanno tutti
      i navigatori, e con le note di curva conta il doppio. Da fermi si ricentra. */
-  const avantiTarget = (S.mode!=='free' && S.dhd!=null && S.v>2) ? (H*0.20)/S.scale : 0;
+  const avantiTarget = (guida && S.dhd!=null && S.v>2) ? (H*0.20)/S.scale : 0;
   /* Anche questo va attenuato: passando di colpo da 200 m a zero, la mappa
      sobbalzerebbe ogni volta che ci si ferma a un semaforo. E' il piu' lento dei tre
      perche' e' quello che si nota di meno e che, muovendosi, sposta l'inquadratura
      intera: se e' brusco sembra che la mappa scivoli via da sola. */
   S.avanti = smorza(S.avanti, avantiTarget, SM_AV, S.dva, dts); S.dva = _smv;
-  S.cx = S.dp[0] + (S.dhd!=null ? Math.cos(S.dhd)*S.avanti : 0);
-  S.cy = S.dp[1] + (S.dhd!=null ? Math.sin(S.dhd)*S.avanti : 0);
-  if(S.mode==='follow' && S.dhd!=null && S.v>1.2) S.rot=S.dhd-Math.PI/2;
+  /* L'UNICO punto in cui la posizione comanda l'inquadratura. Esplorando la mappa è
+     tua: il segnaposto continua a muoversi dove sei, ma non ti trascina dietro. */
+  if(guida){
+    S.cx = S.dp[0] + (S.dhd!=null ? Math.cos(S.dhd)*S.avanti : 0);
+    S.cy = S.dp[1] + (S.dhd!=null ? Math.sin(S.dhd)*S.avanti : 0);
+    if(S.mode==='follow' && S.dhd!=null && S.v>1.2) S.rot=S.dhd-Math.PI/2;
+  }
 
   /* Zoom e inclinazione automatici. Google e Waze li legano alla sola VELOCITÀ: vai
      forte, allarga. Per un copilota da rally è metà del ragionamento, e in curva è
@@ -5160,7 +5193,7 @@ function cameraTickAuto(now){
      Le due cose si muovono insieme perché rispondono alla stessa domanda: mi serve
      vedere LONTANO o mi serve vedere la FORMA di quello che arriva. */
   let cambiata=false;
-  if(S.d3){
+  if(S.d3 && guida){                                        // esplorando, zoom e inclinazione sono tuoi
     const vista=Math.max(180, S.v*9);                       // ~9 secondi di strada
     let scalaT=Math.max(0.30, Math.min(3.0, (H*0.55)/vista));
     let stretta=0;
@@ -5638,16 +5671,25 @@ nota(SESSIONE ? 'sessione audio disponibile: si puo\' CHIEDERE al sistema di abb
 let duckFino = 0, duckTimer = 0, duckDetto = false, duckChiesto = 0, duckKey = null;
 /* `transient` suona SOPRA l'altro audio e lo fa ABBASSARE; `transient-solo` lo mette
    in PAUSA e poi lo fa riprendere, che e' quello che fanno le indicazioni dei
-   navigatori. Si e' partiti da `transient` perche' Tiago aveva chiesto
-   l'abbassamento, e ci si e' rimasti attraverso due correzioni del TEMPO — il
-   preavviso da `updateNote`, la maturazione prima della frase. Alla terza
-   segnalazione («ancora adesso non si sente bene con la musica») il tempo era
-   escluso e restava la QUANTITA': iOS abbassa di pochi dB e in auto il rotolamento
-   se li mangia. Chiesto a Tiago in chiaro, con il costo dichiarato — in rally la
-   musica si spezzetta — e ha scelto la pausa INSIEME alla voce piu' alta.
-   Sono due leve INDIPENDENTI: se la pausa da' fastidio si torna a `transient`
-   cambiando questa parola, e il guadagno della voce resta dov'e'. */
-const TIPO_GIU = 'transient-solo';
+   navigatori.
+
+   IL 2026-08-22 SI E' TORNATI A `transient`, E NON SI RIPROVA LA PAUSA.
+   La pausa era stata scelta da Tiago in chiaro, sapendo il costo. Provata in auto ha
+   dato l'opposto di quello che serve: «o funziona lui con la voce oppure la musica,
+   non parla nemmeno piu' sotto, quindi e' inutile. Io volevo la sovrapposizione al
+   massimo e tutto funzionante, non che se entro mi tolga la musica a prescindere».
+   Non e' una questione di taratura: mettere in pausa l'altra app rende le due cose
+   ALTERNATIVE, e quello che serve in auto e' che stiano insieme. Una nota di curva che
+   arriva al prezzo di spegnere la musica non e' un miglioramento, e' uno scambio che
+   nessuno vuole fare duecento volte in un viaggio.
+
+   Quindi la leva sulla sessione torna a fare UNA cosa sola: dire al sistema che il
+   nostro audio si sovrappone. Che poi iOS abbassi la musica di sua iniziativa e'
+   gradito ma non e' il piano. Il piano e' `VOCE_GUADAGNO` piu' sotto — compressore,
+   guadagno e limitatore, misurati sulle clip vere — perche' quella e' l'unica leva
+   che controlliamo davvero e che funziona anche dove l'Audio Session API non esiste.
+   Se la voce non basta ancora, si alza LI'. Non qui. */
+const TIPO_GIU = 'transient';
 /* Il tipo di sessione si dichiara anche PRIMA di aprire il contesto, non solo quando
    c'e' qualcosa da dire. Su WebKit la categoria audio puo' essere legata al momento in
    cui il contesto NASCE: se e' cosi', impostarla dopo non produce niente, e il difetto
@@ -5689,7 +5731,19 @@ const TIPO_GIU = 'transient-solo';
 const VOCE_GUADAGNO = 1.8;
 function creaCtx(){
   if(!VOCE.ctx){
-    try{ if('audioSession' in navigator) navigator.audioSession.type = TIPO_GIU }catch(e){}
+    /* QUI VA UN LETTERALE, NON `TIPO_GIU`, e la ragione e' costata un viaggio a Tiago.
+       Questa riga dichiara la categoria un attimo prima che il contesto nasca, per
+       l'ipotesi che su WebKit le due cose siano legate. Con `transient` e' innocua:
+       dice «mi sovrappongo» e basta. Ma finche' leggeva `TIPO_GIU`, il giorno in cui
+       quella costante e' diventata `transient-solo` questa riga ha cominciato a
+       INTERROMPERE l'altra app al primo tocco — e su iOS un'interruzione non si annulla
+       tornando ad `auto` la riga dopo: la musica si ferma e non riparte. Dal punto di
+       vista di chi guida: «se entro mi toglie la musica a prescindere».
+       Due usi diversi non devono condividere una costante solo perche' oggi il valore
+       coincide: il primo e' «di che natura e' il mio audio», il secondo e' «cosa chiedo
+       mentre parlo». Se un domani si riprova la pausa, deve poter cambiare solo il
+       secondo. */
+    try{ if('audioSession' in navigator) navigator.audioSession.type = 'transient' }catch(e){}
     VOCE.ctx = new (window.AudioContext||window.webkitAudioContext)();
     try{ if('audioSession' in navigator) navigator.audioSession.type = 'auto' }catch(e){}
     /* Se per qualche motivo la catena non si costruisce, `VOCE.testa` resta null e
@@ -6676,7 +6730,15 @@ async function chiediPersistenza(){
 let gpsGuai=0, gpsUltimo=0, gpsPuliti=0;
 function startGps(){
   if(!('geolocation' in navigator)){toast(tr().gpsNone);return}
+  /* Da quando il `watch` sopravvive all'esplorazione, questo bottone ha due lavori
+     diversi a seconda di com'è messa: se il GPS è già acceso è il RICENTRA di Google
+     Maps — riaggancia la camera e basta, senza secondo abbonamento e senza «cerco il
+     segnale» per una posizione che si sa già. Sottoscriverne un altro sopra il primo
+     lascerebbe il vecchio a girare per sempre: `S.watchId` ne ricorda uno solo, e
+     l'altro non lo chiuderebbe più nessuno. */
+  const gia = S.watchId!=null;
   setMode('follow'); S.said.clear(); S.scale=Math.max(S.scale,1.5); S.zoomLibero=false; wakeOn();
+  if(gia) return;
   toast(tr().gpsSearch,2500);
   gpsGuai=0; gpsUltimo=Date.now(); gpsPuliti=0; S.gpsBuco=false;
   S.watchId=navigator.geolocation.watchPosition(p=>{
@@ -6699,8 +6761,12 @@ function startGps(){
        da un buco di segnale, che è normale e passa.
        Si esce dall'inseguimento solo dopo un MINUTO senza un fix buono, che a quel
        punto non è più una galleria: è il GPS che non c'è. */
+    /* `stopGps()` esplicito, qui e sotto: da quando uscire dall'inseguimento non
+       chiude più il `watch`, questi due sono gli unici posti in cui si smette davvero
+       di localizzare — e sono anche i due in cui il segnaposto va spento, perché la
+       posizione che resta a schermo invecchia (ci pensa `POS_VECCHIA`). */
     if(err.code===1){                                  // permesso negato: definitivo
-      setMode('free'); S.gpsBuco=false;
+      stopGps(); setMode('free'); S.gpsBuco=false;
       gpsWhy().then(m=>toast(m, 14000));
       return;
     }
@@ -6711,7 +6777,7 @@ function startGps(){
       nota('segnale perso per '+Math.round(fermo/1000)+' s (voce sospesa, mappa attiva)');
     }
     if(fermo>60000){                                   // non è più una galleria
-      setMode('free'); S.gpsBuco=false;
+      stopGps(); setMode('free'); S.gpsBuco=false;
       toast(tr().gpsErr+err.message, 8000);
       nota('inseguimento interrotto dopo '+Math.round(fermo/1000)+' s senza posizione');
     }
@@ -6785,7 +6851,17 @@ function setMode(m){
      mentre la mappa sta ancora scivolando per inerzia, i due si sommano e la mappa
      insegue l'auto scivolando di lato: è l'unico incastro non ovvio dell'inerzia. */
   S.glide=null; S.anim=null;
-  if(p==='follow'&&m!=='follow')stopGps();
+  /* USCIRE DALL'INSEGUIMENTO NON SPEGNE PIÙ IL GPS. Prima sì, e siccome basta un dito
+     sulla mappa per uscire, guardare dove sei ti toglieva la possibilità di saperlo:
+     il segnaposto restava inchiodato all'ultimo fix e poi spariva del tutto. È lo
+     stesso motivo per cui nessuna mappa spegne la localizzazione quando fai pan.
+     Si molla solo lo schermo-sempre-acceso, che serve a guidare e non a leggere.
+     Il `watch` lo chiude `stopGps()`, ora chiamato solo da chi vuole davvero smettere
+     di localizzare: permesso negato e inseguimento caduto dopo un minuto di buco.
+     Sul consumo: l'unica finestra in cui questo pesa è schermo acceso + mappa in
+     esplorazione, cioè mentre la stai guardando. Appena lo schermo si spegne la
+     pagina passa in background e il sistema sospende il watch da sé. */
+  if(p==='follow'&&m!=='follow' && S.wake){S.wake.release().catch(()=>{});S.wake=null}
   if(p==='demo'&&m!=='demo')S.demo=null;
   bGps.classList.toggle('on',m==='follow');
   /* Mentre insegue il GPS il bottone non serve a niente: sparisce, e la colonna
@@ -6799,9 +6875,15 @@ function setMode(m){
                                  : '<path d="M8 5.5v13l10.5-6.5z"></path>';
   }
   hud.classList.toggle('show',m!=='free');
-  // uscendo dall'inseguimento si dimentica la posizione ammorbidita, così al
-  // rientro la mappa si piazza subito invece di planarci sopra da lontano
-  if(m==='free'){ S.dp=null; S.dhd=null;
+  /* La posizione ammorbidita si dimentica SOLO se non la alimenta più nessuno: con il
+     GPS ancora vivo continua a inseguire i fix anche mentre esplori, ed è quella che
+     tiene il segnaposto dove sei davvero. Azzerarla qui — com'era prima — lo avrebbe
+     riportato al fix grezzo, cioè a saltare di un metro a ogni secondo.
+     Quando invece la sorgente è finita per davvero (permesso negato, demo chiusa) si
+     azzera come sempre: al rientro la mappa si piazza subito invece di planarci
+     sopra da lontano. */
+  if(m==='free'){
+    if(S.watchId==null && !S.demo){ S.dp=null; S.dhd=null }
     nEl.classList.remove('show'); if(S.wake){S.wake.release().catch(()=>{});S.wake=null} }
   S.need=true;
 }
