@@ -189,6 +189,18 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     font-family:var(--font-d);font-size:10px;letter-spacing:.09em;line-height:1;
     display:grid;place-items:center;padding:0}
   .c3d.on{background:var(--accent);border-color:var(--accent);color:var(--suaccento)}
+  /* ---- modalita' moto: bersagli da guanto ----
+     Con i guanti il polpastrello e' largo il doppio e il telefono vibra sul manubrio:
+     44 px e' il minimo da dito nudo, non da guanto. Si allargano SOLO i comandi che si
+     toccano in marcia (la colonna destra): pannelli e chip si usano da fermi.
+     L'attributo lo mette `applicaVeicolo()` quando il veicolo scelto e' una moto.
+     La striscia del navigatore arretra di conseguenza: 8 + 54 + 8. */
+  :root[data-veicolo="moto"] .rbtn,:root[data-veicolo="moto"] .compass{width:54px;height:54px}
+  :root[data-veicolo="moto"] .rbtn svg{width:25px;height:25px}
+  :root[data-veicolo="moto"] .compass svg{width:27px;height:27px}
+  :root[data-veicolo="moto"] .c3d{width:54px;height:24px;font-size:11px}
+  :root[data-veicolo="moto"] .rail{gap:9px}
+  :root[data-veicolo="moto"] .nav{right:70px}
   .scalebar{position:fixed;right:10px;bottom:max(10px,env(safe-area-inset-bottom));
     font-size:10.5px;color:var(--ink2);text-align:right;font-variant-numeric:tabular-nums;
     pointer-events:none}
@@ -434,7 +446,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"></circle><path d="M19.4 13.6a7.7 7.7 0 0 0 0-3.2l1.8-1.4-1.9-3.3-2.2.9a7.7 7.7 0 0 0-2.7-1.6L14 2.4h-4l-.4 2.6a7.7 7.7 0 0 0-2.7 1.6l-2.2-.9-1.9 3.3 1.8 1.4a7.7 7.7 0 0 0 0 3.2l-1.8 1.4 1.9 3.3 2.2-.9a7.7 7.7 0 0 0 2.7 1.6l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.7-1.6l2.2.9 1.9-3.3z"></path></svg></button>
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
     <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
-  <button class="rbtn" id="bCar" title="La mia auto" aria-label="La mia auto">
+  <button class="rbtn" id="bCar" title="Il mio veicolo" aria-label="Il mio veicolo">
     <svg viewBox="0 0 24 24"><path d="M3 14.5h18M4.6 14.5l1.6-5.2a2 2 0 0 1 1.9-1.4h7.8a2 2 0 0 1 1.9 1.4l1.6 5.2"></path><path d="M3 14.5v3h3v-3M18 14.5v3h3v-3"></path><circle cx="7.5" cy="14.5" r="1.4"></circle><circle cx="16.5" cy="14.5" r="1.4"></circle></svg></button>
   <!-- Ricentrare e' l'unico comando che in guida non puo' stare dietro un menu:
        se tocchi la mappa e perdi l'inseguimento devi tornare con UN dito. In fondo
@@ -522,8 +534,15 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 <!-- pannello auto -->
 <div class="sheet" id="sheetCar"><div class="inner">
   <div class="grip"></div>
-  <h2><span data-lang="it">La mia <i class="ac">auto</i></span><span data-lang="en">My <i class="ac">car</i></span><span data-lang="fr">Ma <i class="ac">voiture</i></span></h2>
+  <h2><span data-lang="it">Il mio <i class="ac">veicolo</i></span><span data-lang="en">My <i class="ac">vehicle</i></span><span data-lang="fr">Mon <i class="ac">véhicule</i></span></h2>
+  <h3><span data-lang="it">Auto</span><span data-lang="en">Cars</span><span data-lang="fr">Voitures</span></h3>
   <div class="row2" id="carChips"></div>
+  <!-- Le moto stanno in un gruppo loro: non e' un'altra riga di chip, e' un altro
+       modello fisico (piega invece di accelerazione laterale, regime di riferimento
+       4.000 invece di 2.000, bersagli da guanto). Scegliere una chip qui sotto
+       accende la modalita' moto; scegliere un'auto la spegne. -->
+  <h3><span data-lang="it">Moto</span><span data-lang="en">Motorcycles</span><span data-lang="fr">Motos</span></h3>
+  <div class="row2" id="motoChips"></div>
   <p style="margin-top:10px" id="carDesc"></p>
   <!-- Le auto in elenco hanno tutte i paddle, quindi il copilota la marcia la dice.
        Ma i paddle si usano quando si vuole: guidando la stessa auto in automatico,
@@ -543,7 +562,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <p id="calHint" style="margin-bottom:8px"></p>
     <div class="row2 gsel" id="calGears"></div>
     <div class="slider">
-      <input type="range" id="calSlider" min="25" max="85" step="0.5">
+      <input type="range" id="calSlider" min="15" max="85" step="0.5">
       <div class="val"><span id="calVal">72</span><small style="display:block;font-size:9px;
         color:var(--ink2);letter-spacing:.06em">KM/H</small></div>
     </div>
@@ -771,7 +790,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '198';
+const APPVER = '200';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1090,8 +1109,13 @@ let ACCENT=TC.accent, BG=TC.bg, INK2=TC.ink2;
    sulla radice, i colori del canvas queste tre righe. Non c'e' niente da ridisegnare
    a mano perche' i colori si applicano al momento del disegno, non nei Path2D in
    cache — quelli sono geometria. */
+/* «Auto» = chiaro di giorno, scuro di notte, per chi ha il telefono sul manubrio in
+   pieno sole e poi rientra col buio. Ore fisse 7-19:30 e non l'alba vera: l'app non
+   ha l'effemeride, e mezz'ora di scarto sul crepuscolo non cambia la leggibilita',
+   mentre un tema che salta a ogni fix GPS si'. Si ricontrolla una volta al minuto. */
+function temaDelGiorno(){ const d=new Date(), h=d.getHours()+d.getMinutes()/60; return (h>=7 && h<19.5) ? 'chiaro' : 'scuro' }
 function applicaTema(nome){
-  const k = (nome==='chiaro') ? 'chiaro' : 'scuro';
+  const k = nome==='auto' ? temaDelGiorno() : (nome==='chiaro') ? 'chiaro' : 'scuro';
   TC = TEMI[k]; ACCENT=TC.accent; BG=TC.bg; INK2=TC.ink2; CORPO=TC.corpo;
   document.documentElement.dataset.tema = k;
   const m=document.querySelector('meta[name="theme-color"]');
@@ -3049,6 +3073,124 @@ const CARS = {
        d_fr:"Profil générique pour une autre voiture à boîte manuelle : six rapports, couple "+
             "utile entre 3 000 et 6 500 tr/min. Règle le rapport de pont avec le curseur "+
             "ci-dessous."},
+  /* ============ MOTO ============
+     `tipo:'moto'` accende la modalita' moto: stile a PIEGA, regime di riferimento
+     4.000 giri, bersagli da guanto, piega a schermo accanto al raggio.
+     Tre differenze fisiche che contano, e che il modello auto non sa:
+       1. `kg` include CHI GUIDA (+80): su un'auto il pilota e' il 5% della massa,
+          su una moto e' un terzo. Senza, vTop esce 10-15 km/h troppo alto.
+       2. `leanMax` = piega oltre cui tocca qualcosa (pedane sulle custom: 30°).
+          E' un TETTO sullo stile: scegliere Race su una custom da' 30°, non 36°.
+       3. `grip` qui non e' solo gomma: e' baricentro, larghezza gomma, bagaglio,
+          ruote piccole. Lo scooter e la custom stanno sotto, la supersportiva sopra.
+     Le velocita' massime sono controprove di classe, non di targa (le moto sono
+     troppe): naked 196 vs ~210 tipici, supersportiva 249 vs ~260, adventure 209 vs
+     ~210, custom 168 vs ~170, scooter 300 121 vs ~130. Stesso metro delle auto.
+     `ref` e' km/h ogni 1000 giri in ultima, come sempre: le moto stanno fra 17
+     (supersportiva 600) e 38 (custom), per questo il cursore scende a 15.
+     I rapporti sono di moto vere e rappresentative di ciascuna classe, normalizzati
+     sull'ultima: MT-07, R6, R 1250 GS, Harley Milwaukee-Eight. */
+  mnak:{nm:'Moto naked', sub:'700-900 cm³ · 6 marce · es. MT-07/09, Z900, Street Triple',
+       tipo:'moto', auto:false, n:6, ref:23, grip:1.00, leanMax:50, boost:4000, rpmLim:10500,
+       cv:95, kg:270, cda:0.54, crr:0.016,
+       g:[0.339,0.454,0.591,0.742,0.884,1.0],
+       d_it:"Naked media: 70-120 CV, coppia piena dai 4.000 giri, sei marce. Il peso include chi "+
+            "guida (270 kg), perché su una moto sei un terzo della massa. La piega è la misura di "+
+            "tutto: a 20° passi tranquillo, a 30° stai spingendo — e i numeri escono più alti di "+
+            "un'auto in Race a parità di stile. Non perché sia più sicuro: perché una moto in piega "+
+            "tiene di più, e perde tutto senza preavviso. Per questo le note arrivano prima.",
+       d_en:"Mid-size naked: 70-120 hp, full torque from 4,000 rpm, six gears. Weight includes the "+
+            "rider (270 kg): on a bike you are a third of the mass. Lean angle is the measure of "+
+            "everything: 20° is relaxed, 30° is pushing — and the figures come out higher than a car "+
+            "in Race at the same style. Not because it is safer: because a leaning bike holds more, "+
+            "and loses it all without warning. That is why the calls come earlier.",
+       d_fr:"Roadster moyen : 70-120 ch, couple plein dès 4 000 tr/min, six rapports. Le poids "+
+            "inclut le pilote (270 kg) : à moto, tu es un tiers de la masse. L'angle est la mesure "+
+            "de tout : 20° c'est tranquille, 30° tu attaques — et les chiffres sortent plus hauts "+
+            "qu'une voiture en Race à style égal. Pas parce que c'est plus sûr : parce qu'une moto "+
+            "sur l'angle tient plus, et perd tout sans prévenir. C'est pour ça que les annonces "+
+            "arrivent plus tôt."},
+  mss: {nm:'Supersportiva', sub:'600-1000 cm³ · 6 marce · es. R6, CBR, ZX-6R, Panigale',
+       tipo:'moto', auto:false, n:6, ref:19, grip:1.05, leanMax:55, boost:7000, rpmLim:14000,
+       cv:150, kg:285, cda:0.42, crr:0.016,
+       g:[0.445,0.575,0.690,0.796,0.894,1.0],
+       d_it:"Supersportiva: la coppia sta in alto, dai 7.000 giri in su, e i rapporti sono "+
+            "ravvicinati — le marce consigliate escono basse e il regime alto, ed è giusto così. "+
+            "Tenuta di riferimento la più alta della lista: gomme larghe, ciclistica da pista. Ma la "+
+            "strada non è una pista: lo stile Race qui è un tetto, non un obiettivo, e sotto i 7.000 "+
+            "giri il motore non risponde come ti serve in uscita di curva.",
+       d_en:"Supersport: torque lives high, from 7,000 rpm up, and the ratios are close — the "+
+            "suggested gears come out low and the revs high, as they should. Highest reference grip "+
+            "in the list: wide tyres, track-bred chassis. But the road is not a track: Race here is "+
+            "a ceiling, not a target, and below 7,000 rpm the engine does not answer the way you "+
+            "need on corner exit.",
+       d_fr:"Supersportive : le couple est en haut, à partir de 7 000 tr/min, et les rapports sont "+
+            "serrés — les vitesses conseillées sortent basses et le régime haut, c'est normal. "+
+            "Adhérence de référence la plus élevée de la liste : pneus larges, partie-cycle de "+
+            "piste. Mais la route n'est pas une piste : le style Race est ici un plafond, pas un "+
+            "objectif, et sous 7 000 tr/min le moteur ne répond pas comme il faut en sortie de "+
+            "virage."},
+  madv:{nm:'Adventure / Touring', sub:'1000-1300 cm³ · 6 marce · es. R 1250 GS, Multistrada, Africa Twin',
+       tipo:'moto', auto:false, n:6, ref:30, grip:0.92, leanMax:45, boost:3500, rpmLim:9000,
+       cv:130, kg:340, cda:0.65, crr:0.017,
+       g:[0.348,0.495,0.654,0.796,0.903,1.0],
+       d_it:"Maxi-enduro o turistica: tanta coppia in basso, 340 kg con pilota, ruota anteriore "+
+            "grande che rende la moto stabile ma lenta a cambiare direzione. La tenuta di "+
+            "riferimento è sotto la naked: baricentro alto, spesso il bagaglio, gomme a volte "+
+            "tassellate. In salita la massa si sente: il tetto in pendenza scende più che sulle altre.",
+       d_en:"Adventure or touring bike: plenty of low-down torque, 340 kg with rider, a big front "+
+            "wheel that makes it stable but slow to change direction. Reference grip sits below the "+
+            "naked: high centre of gravity, often luggage, sometimes knobbly tyres. Uphill the mass "+
+            "shows: the gradient ceiling drops more than on the others.",
+       d_fr:"Maxi-trail ou routière : beaucoup de couple en bas, 340 kg avec le pilote, une grande "+
+            "roue avant qui rend la moto stable mais lente à changer de cap. Adhérence de référence "+
+            "sous le roadster : centre de gravité haut, souvent des bagages, parfois des pneus à "+
+            "crampons. En montée la masse se sent : le plafond en pente descend plus que sur les "+
+            "autres."},
+  mcru:{nm:'Custom / Cruiser', sub:'bicilindrica lunga · 6 marce · es. Harley, Indian, Bonneville',
+       tipo:'moto', auto:false, n:6, ref:36, grip:0.80, leanMax:30, boost:2500, rpmLim:6000,
+       cv:80, kg:380, cda:0.75, crr:0.017,
+       g:[0.300,0.432,0.582,0.719,0.844,1.0],
+       d_it:"Custom: la piega la decidono le pedane, non le gomme — a 30° toccano, e per questo "+
+            "qui ogni stile è tappato a 30° qualunque cosa scegli. Coppia subito, dai 2.500 giri, "+
+            "marce lunghe. Tenuta di riferimento la più bassa della lista, con 380 kg e gomme "+
+            "strette: nei tornanti stretti e in discesa la differenza con una naked è tutta.",
+       d_en:"Cruiser: lean is decided by the footpegs, not the tyres — they touch at 30°, so every "+
+            "style here is capped at 30° whatever you pick. Torque right away from 2,500 rpm, long "+
+            "gears. Lowest reference grip in the list, with 380 kg and narrow tyres: in tight "+
+            "hairpins and downhill the gap to a naked is the whole story.",
+       d_fr:"Custom : l'angle, ce sont les repose-pieds qui le décident, pas les pneus — ils "+
+            "touchent à 30°, donc chaque style est plafonné ici à 30° quoi que tu choisisses. Couple "+
+            "immédiat dès 2 500 tr/min, rapports longs. Adhérence de référence la plus basse de la "+
+            "liste, avec 380 kg et des pneus étroits : en épingles serrées et en descente, l'écart "+
+            "avec un roadster est total."},
+  msco:{nm:'Scooter', sub:'variatore · es. X-Max, Beverly, Forza, SH',
+       tipo:'moto', auto:true, n:1, g:[1.0], ref:30, grip:0.80, leanMax:40, boost:4000, rpmLim:9000,
+       cv:28, kg:230, cda:0.62, crr:0.018,
+       d_it:"Scooter: cambio a variatore, quindi nessuna marcia da suggerire — il riquadro "+
+            "sparisce. Ruote piccole e gomme strette: sul fondo sporco, sui tombini e sulla ghiaia "+
+            "perde prima di qualunque moto, e le note lo sanno. La piega massima è buona (40°), la "+
+            "tenuta di riferimento no.",
+       d_en:"Scooter: CVT, so there is no gear to suggest — the box disappears. Small wheels and "+
+            "narrow tyres: on dirty tarmac, manhole covers and gravel it lets go before any "+
+            "motorcycle, and the calls know it. Maximum lean is fine (40°), reference grip is not.",
+       d_fr:"Scooter : variateur, donc aucun rapport à conseiller — la case disparaît. Petites roues "+
+            "et pneus étroits : sur chaussée sale, plaques d'égout et gravier, il lâche avant "+
+            "n'importe quelle moto, et les annonces le savent. L'angle maxi est bon (40°), "+
+            "l'adhérence de référence non."},
+  mx:  {nm:'Altra moto', sub:'6 marce · profilo generico',
+       tipo:'moto', auto:false, n:6, ref:24, grip:0.95, leanMax:48, boost:4000, rpmLim:10000,
+       cv:90, kg:280, cda:0.60, crr:0.016,
+       g:[0.34,0.47,0.61,0.76,0.89,1.0],
+       d_it:"Profilo generico per un'altra moto: sei marce, coppia utile da 4.000 a 10.000 giri, "+
+            "280 kg con pilota. Tara il rapporto finale col cursore: il riferimento è a 4.000 giri, "+
+            "un regime che in moto si tiene davvero.",
+       d_en:"Generic profile for another motorcycle: six gears, useful torque from 4,000 to 10,000 "+
+            "rpm, 280 kg with rider. Set the final drive with the slider: the reference is 4,000 "+
+            "rpm, a regime you actually hold on a bike.",
+       d_fr:"Profil générique pour une autre moto : six rapports, couple utile de 4 000 à 10 000 "+
+            "tr/min, 280 kg avec le pilote. Règle le rapport final avec le curseur : la référence "+
+            "est à 4 000 tr/min, un régime qu'on tient vraiment à moto."},
 };
 const boostOf = () => CARS[S.car].boost || 3000;
 const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
@@ -3108,23 +3250,77 @@ function vTop(slope){
    I due sono legati allo stile e non alla modalita' pacenote: la lunghezza della
    frase entra gia' da sola nel conto, tramite `parlato`. */
 const STYLES = {
-  calmo:  {a:2.0, reaz:3.2, dec:2.2, nm_it:'Tranquillo', nm_en:'Calm', nm_fr:'Tranquille',
+  calmo:  {a:2.0, reaz:3.2, dec:2.2,
+           moto:{lean:20, reaz:3.6, dec:2.0,
+             d_it:"Bagnato, buio, strada che non conosci, o semplicemente niente fretta: 20° di piega, un'andatura da passeggio. La voce arriva molto prima: in moto in piega non si frena, quindi la nota deve lasciarti il tempo di rallentare da dritto.",
+             d_en:"Wet, dark, a road you do not know, or simply no hurry: 20° of lean, a strolling pace. The voice comes much earlier: on a bike you do not brake while leaned over, so the call must leave you time to slow down upright.",
+             d_fr:"Mouillé, nuit, route inconnue, ou simplement pas pressé : 20° d'angle, une allure de balade. La voix arrive bien plus tôt : à moto on ne freine pas sur l'angle, donc l'annonce doit te laisser le temps de ralentir droit."},
+           nm_it:'Tranquillo', nm_en:'Calm', nm_fr:'Tranquille',
            d_it:'Passeggeri a bordo, bagnato, buio, strada che non conosci. I numeri restano bassi apposta, e la voce avvisa prima.',
            d_en:'Passengers aboard, wet, dark, a road you do not know. The figures stay low on purpose, and the voice warns earlier.',
            d_fr:'Passagers à bord, mouillé, nuit, route inconnue. Les chiffres restent bas exprès, et la voix prévient plus tôt.'},
-  strada: {a:2.6, reaz:2.6, dec:3.0, nm_it:'Comfort', nm_en:'Comfort', nm_fr:'Confort',
+  strada: {a:2.6, reaz:2.6, dec:3.0,
+           moto:{lean:25, reaz:3.0, dec:2.6,
+             d_it:"Andatura fluida da strada aperta: 25° di piega, margine per ghiaia, traffico e curve cieche. È il modo di tutti i giorni — e i numeri sono già quelli di un'auto in Race. Non è un invito: è come funziona una moto.",
+             d_en:"Flowing open-road pace: 25° of lean, margin for gravel, traffic and blind corners. The everyday setting — and the figures already match a car in Race. Not an invitation: it is how a bike works.",
+             d_fr:"Allure fluide de route ouverte : 25° d'angle, marge pour le gravier, le trafic et les virages aveugles. Le réglage de tous les jours — et les chiffres sont déjà ceux d'une voiture en Race. Pas une invitation : c'est ainsi qu'une moto fonctionne."},
+           nm_it:'Comfort', nm_en:'Comfort', nm_fr:'Confort',
            d_it:'Andatura fluida su strada aperta: margine per traffico, fondo sporco e curve cieche. È il modo di tutti i giorni.',
            d_en:'Flowing pace on an open road: margin for traffic, dirty surface and blind corners. The everyday setting.',
            d_fr:'Allure fluide sur route ouverte : marge pour le trafic, la chaussée sale et les virages sans visibilité. Le réglage de tous les jours.'},
-  deciso: {a:3.2, reaz:2.0, dec:3.8, nm_it:'Sport', nm_en:'Sport', nm_fr:'Sport',
+  deciso: {a:3.2, reaz:2.0, dec:3.8,
+           moto:{lean:30, reaz:2.4, dec:3.3,
+             d_it:"Asfalto asciutto e strada che conosci: 30° di piega, pedane vicine a terra su una custom. Resta uso stradale. Sopra questa piega il margine sull'imprevisto — un tombino, una macchia d'olio — è quasi zero.",
+             d_en:"Dry tarmac on a road you know: 30° of lean, pegs close to the ground on a cruiser. Still road use. Above this lean the margin for the unexpected — a manhole cover, an oil patch — is close to zero.",
+             d_fr:"Bitume sec et route connue : 30° d'angle, repose-pieds près du sol sur une custom. Reste un usage routier. Au-delà de cet angle, la marge pour l'imprévu — une plaque, une tache d'huile — est quasi nulle."},
+           nm_it:'Sport', nm_en:'Sport', nm_fr:'Sport',
            d_it:'Asfalto asciutto e strada che conosci. Resta un uso stradale, non un tempo sul giro.',
            d_en:'Dry tarmac on a road you know. Still road use, not a lap time.',
            d_fr:'Bitume sec et route connue. Cela reste un usage routier, pas un temps au tour.'},
-  pista:  {a:4.6, reaz:1.4, dec:4.8, nm_it:'Race', nm_en:'Race', nm_fr:'Race',
+  pista:  {a:4.6, reaz:1.4, dec:4.8,
+           moto:{lean:36, reaz:1.8, dec:4.2,
+             d_it:"36° di piega: numeri da pista. Su strada aperta sono il tetto assoluto, mai un obiettivo, e la voce arriva tardi apposta. Le gomme stradali arrivano oltre, la strada no: nessuna via di fuga, nessuna ghiaia pulita.",
+             d_en:"36° of lean: track figures. On a public road they are the absolute ceiling, never a target, and the voice comes late on purpose. Road tyres go further, the road does not: no run-off, no clean gravel.",
+             d_fr:"36° d'angle : des chiffres de piste. Sur route ouverte c'est le plafond absolu, jamais un objectif, et la voix arrive tard exprès. Les pneus route vont plus loin, la route non : aucun dégagement, aucun gravier propre."},
+           nm_it:'Race', nm_en:'Race', nm_fr:'Race',
            d_it:'Numeri da strada chiusa. Su strada aperta sono il tetto assoluto, mai un obiettivo. La voce arriva tardi apposta.',
            d_en:'Closed-road figures. On a public road they are the absolute ceiling, never a target. The voice comes late on purpose.',
            d_fr:'Chiffres de route fermée. Sur route ouverte c\'est le plafond absolu, jamais un objectif. La voix arrive tard exprès.'},
 };
+/* ============ modalita' moto ============
+   Una moto non ha un'«accelerazione laterale di riferimento»: ha una PIEGA. Sono
+   la stessa cosa — a = g·tan(piega) — ma la piega e' quella che chi guida sente e
+   conosce, e l'unica su cui si possa tarare uno stile: 20° e' passeggio, 30° e' spinta,
+   36° e' pista. Per questo ogni stile porta un sotto-oggetto `moto` con la piega al
+   posto di `a`, e un reaz/dec suoi: in moto in piega NON si frena, si frena prima da
+   dritti, quindi la nota deve arrivare prima (reaz piu' alto, dec piu' basso).
+   Conseguenza che va detta e non nascosta: a parita' di stile la moto esce con numeri
+   PIU' ALTI dell'auto — Comfort moto (25°, 4,57 m/s²) ≈ Race auto (4,6). Non e' un
+   errore: un'auto in Race passa a 0,47 g, una moto a 25° di piega anche, ed e'
+   un'andatura normale per chi va in moto. La differenza e' che la moto perde tutto
+   senza preavviso, ed e' il motivo per cui la voce anticipa di piu'.
+   `leanMax` del veicolo e' un TETTO sulla piega dello stile (custom: pedane a 30°).
+   La piega si SCRIVE a schermo accanto al raggio, non si dice a voce: le clip sono
+   pre-generate e un numero nuovo sarebbe una parola muta. */
+const isMoto = () => CARS[S.car].tipo === 'moto';
+function stileAttivo(){
+  const st = STYLES[S.style];
+  if(!isMoto()) return st;
+  const c = CARS[S.car], lean = Math.min(st.moto.lean, c.leanMax || 60);
+  return {a: 9.81*Math.tan(lean*Math.PI/180), lean, reaz: st.moto.reaz, dec: st.moto.dec,
+          nm_it: st.nm_it, nm_en: st.nm_en, nm_fr: st.nm_fr,
+          d_it: st.moto.d_it, d_en: st.moto.d_en, d_fr: st.moto.d_fr};
+}
+/* Piega necessaria a una data velocita' su un dato raggio: atan(v²/(R·g)). Si calcola
+   dalla velocita' GIA' tappata da limite e pendenza, quindi su una curva larga dove
+   comanda il limite esce una piega bassa — ed e' un'informazione, non un difetto. */
+const piegaDeg = (vms, r) => Math.round(Math.atan(vms*vms/(Math.max(1,r)*9.81))*180/Math.PI);
+/* In moto il regime di riferimento per tarare il cambio e' 4.000 giri, non 2.000: a
+   2.000 in sesta una moto strappa, e nessuno ci sta per leggere il tachimetro. */
+const rpmRif = () => isMoto() ? 4000 : RPM_RIF;
+/* L'attributo sulla radice accende i bersagli da guanto (CSS) — e basta: tutto il
+   resto della modalita' moto passa da `isMoto()` al momento del calcolo. */
+function applicaVeicolo(){ document.documentElement.dataset.veicolo = isMoto() ? 'moto' : 'auto' }
 /* ---- lingue ---- */
 const T = {
   it: {
@@ -3135,7 +3331,7 @@ const T = {
     right:'DESTRA', left:'SINISTRA', hairpin:'· TORNANTE', straight:'RETTILINEO',
     cam:'AUTOVELOX', camVoice:'autovelox', lim:'limite', fixed:'postazione fissa',
     noCurve:'nessuna curva nel raggio utile', inC:'IN', inC2:'CURVA', m:'METRI', now:'ORA',
-    gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', flat:'· in pieno', rpm:'giri',
+    gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', lean:'piega', flat:'· in pieno', rpm:'giri',
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale',5:'Strada di paese'},
     roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo',
@@ -3171,7 +3367,7 @@ const T = {
     logSfratto:'le mappe scaricate NON sono protette: il telefono può cancellarle quando ha bisogno di spazio',
     tooMuch:mb=>'Molte mappe attive (~'+mb+' MB): l\'app può chiudersi mentre guidi. Tieni attive solo quelle dove vai — spegnerle non le cancella.',
     inUse:'in uso', at:'a', byLimit:'limite',
-    calRif:'Marcia di riferimento', calHint:g=>'A 2.000 giri in '+g+' il tachimetro segna:',
+    calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
     legalOn:'Non supera mai il limite della strada.',
     legalOff:'Ignora il limite: solo quello che la curva permette.',
     navGo:'VAI', navIn:'fra', navM:'metri', navNow:'ORA', navInto:'in', navMin:'MIN',
@@ -3203,7 +3399,7 @@ const T = {
     right:'RIGHT', left:'LEFT', hairpin:'· HAIRPIN', straight:'STRAIGHT',
     cam:'SPEED CAMERA', camVoice:'speed camera', lim:'limit', fixed:'fixed camera',
     noCurve:'no corner within range', inC:'IN', inC2:'CORNER', m:'METERS', now:'NOW',
-    gear:'GEAR', then:'then', radius:'radius', ref:'ref.', flat:'· flat out', rpm:'rpm',
+    gear:'GEAR', then:'then', radius:'radius', ref:'ref.', lean:'lean', flat:'· flat out', rpm:'rpm',
     off:'Off mapped roads', offSub:'get closer to a mapped road to resume pacenotes',
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road',5:'Residential street'},
     roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active',
@@ -3235,7 +3431,7 @@ const T = {
     logSfratto:'downloaded maps are NOT protected: the phone may delete them when it needs space',
     tooMuch:mb=>'Many active maps (~'+mb+' MB): the app may close while you drive. Keep only the ones you are heading to — switching off does not delete them.',
     inUse:'in use', at:'at', byLimit:'limit',
-    calRif:'Reference gear', calHint:g=>'At 2,000 rpm in '+g+' the speedo reads:',
+    calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
     legalOn:'Never exceeds the road limit.',
     legalOff:'Ignores the limit: only what the corner allows.',
     navGo:'GO', navIn:'in', navM:'meters', navNow:'NOW', navInto:'onto', navMin:'MIN',
@@ -3264,7 +3460,7 @@ const T = {
     right:'DROITE', left:'GAUCHE', hairpin:'· ÉPINGLE', straight:'LIGNE DROITE',
     cam:'RADAR', camVoice:'radar', lim:'limite', fixed:'radar fixe',
     noCurve:'aucun virage à distance utile', inC:'DANS', inC2:'VIRAGE', m:'MÈTRES', now:'MAINTENANT',
-    gear:'VITESSE', then:'puis', radius:'rayon', ref:'réf.', flat:'· à fond', rpm:'tr/min',
+    gear:'VITESSE', then:'puis', radius:'rayon', ref:'réf.', lean:'inclinaison', flat:'· à fond', rpm:'tr/min',
     off:'Hors des routes cartographiées', offSub:'rapproche-toi d\'une route pour reprendre les indications',
     roads:{0:'Route nationale',1:'Nationale / Provinciale',2:'Route provinciale',3:'Provinciale secondaire',4:'Route locale',5:'Rue de village'},
     roadOff:'hors des routes cartographiées', roadLocal:'route locale', voiceOn:'copilote actif',
@@ -3296,7 +3492,7 @@ const T = {
     logSfratto:'les cartes téléchargées ne sont PAS protégées : le téléphone peut les supprimer s\'il a besoin d\'espace',
     tooMuch:mb=>'Beaucoup de cartes actives (~'+mb+' MB) : l\'app peut se fermer pendant que tu conduis. Ne garde actives que celles où tu vas — les désactiver ne les supprime pas.',
     inUse:'en cours', at:'à', byLimit:'limite',
-    calRif:'Vitesse de référence', calHint:g=>'À 2 000 tr/min en '+g+', le compteur affiche :',
+    calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
     legalOn:'Ne dépasse jamais la limite de la route.',
     legalOff:'Ignore la limite : seulement ce que permet le virage.',
     navGo:'ALLER', navIn:'dans', navM:'mètres', navNow:'MAINTENANT', navInto:'sur', navMin:'MIN',
@@ -3345,7 +3541,7 @@ const S = {
 try{
   const st=JSON.parse(localStorage.getItem('copilota2')||'{}');
   if(st.car&&CARS[st.car])S.car=st.car;
-  if(st.tema==='chiaro'||st.tema==='scuro')S.tema=st.tema;
+  if(st.tema==='chiaro'||st.tema==='scuro'||st.tema==='auto')S.tema=st.tema;
   if(typeof st.antic==='number') S.antic=Math.max(-1,Math.min(3,st.antic));
   if(st.style&&STYLES[st.style])S.style=st.style;   // i vecchi 'd'/'n'/'a' cadono su 'strada'
   if(typeof st.cal==='number')S.cal=st.cal;
@@ -3378,10 +3574,10 @@ const gLab = g => L==='it' ? g+'ª' : L==='fr' ? (g===1?'1ère':g+'e') : g+(g===
 function marciaRif(){
   const c=CARS[S.car];
   if(S.calG>=1 && S.calG<=c.n) return S.calG;
-  for(let g=c.n; g>=1; g--) if(c.g[g-1]*S.cal*RPM_RIF/1000 <= 110) return g;
+  for(let g=c.n; g>=1; g--) if(c.g[g-1]*S.cal*rpmRif()/1000 <= 110) return g;
   return 1;
 }
-const kmhRif = g => Math.round(CARS[S.car].g[g-1]*S.cal*RPM_RIF/1000);
+const kmhRif = g => Math.round(CARS[S.car].g[g-1]*S.cal*rpmRif()/1000);
 /* Marcia da pilota, cambio manuale:
    - la più ALTA che all'apice resta in coppia piena: niente cambio in curva
    - se anche in ultima non ci arriva (curva velocissima) -> marcia più lunga
@@ -3397,13 +3593,21 @@ function bestGear(kmh){
   for(let g=n; g>=1; g--){
     if(rpmAt(kmh,g)>=lo){ pick=g; break; }
   }
-  if(pick==null) pick = n;
+  /* Nessuna marcia arriva alla fascia di coppia: si va TROPPO PIANO, non troppo
+     forte — a velocita' alta l'ultima ci arriva sempre, quindi `pick` resta nullo
+     solo quando anche la prima e' sotto la fascia. La marcia giusta allora e' la PIU'
+     CORTA, che da' i giri piu' alti, non la piu' lunga. Prima qui c'era `pick = n`:
+     la MiTo in un tornante a 18 km/h riceveva «5ª a 500 giri», la C43 «9ª a 265», la
+     supersportiva a 50 km/h «6ª». Sulle auto non si era mai visto perche' morde solo
+     nei tornanti in Tranquillo/Comfort; sulle moto, con la fascia che parte a 7.000
+     giri, mordeva ovunque. Trovato il 2026-08-22 provando i profili moto. */
+  if(pick==null) pick = 1;
   else if(rpmAt(kmh,pick)>hi && pick<n) pick+=1;
   if(pick===1 && rpmAt(kmh,2)>=boostOf()*0.81) pick=2;
   return pick;
 }
 /* Tenuta di riferimento = stile di guida × quanto regge l'auto. */
-const latA = ()=>STYLES[S.style].a * (CARS[S.car].grip||1);
+const latA = ()=>stileAttivo().a * (CARS[S.car].grip||1);
 const rawCurveKmh = r => Math.round(Math.sqrt(latA()*Math.min(r,900))*3.6);
 /* Su strada aperta la curva non è l'unico vincolo: c'è il limite. Con S.legal
    attivo la velocità di riferimento non lo supera mai — è quasi sempre lui a
@@ -5802,11 +6006,21 @@ function creaCtx(){
       c.attack.value = 0.005; c.release.value = 0.2;
       const g = VOCE.ctx.createGain();
       g.gain.value = VOCE_GUADAGNO;
-      /* Limitatore piu' stretto di prima (-5/40/0,3 ms invece di -3/20/0,5 ms): l'EQ
-         aggiunge picchi nella banda di presenza, e col vecchio il picco saliva a +0,85
-         dBFS con 664 campioni oltre il fondo scala. Con questo: +0,39 e 52 campioni. */
+      /* Limitatore piu' stretto di prima (-5 invece di -3, attacco 0,3 ms invece di
+         0,5): l'EQ aggiunge picchi nella banda di presenza, e col vecchio il picco
+         saliva a +0,85 dBFS con 664 campioni oltre il fondo scala. Con questo: +0,39
+         e 52 campioni su 1,1 milioni.
+
+         IL RAPPORTO E' 20 E NON PUO' ESSERE DI PIU'. Ci avevo scritto 40, e a runtime
+         il nodo legge 20: `DynamicsCompressorNode.ratio` ha per specifica un massimo
+         di 20 e taglia in silenzio, senza un errore. Le misure restano valide — anche
+         il banco girava su un `OfflineAudioContext`, quindi veniva tagliato uguale e
+         ha misurato la catena vera. Ma il numero scritto era una bugia, e un numero
+         scritto sbagliato e' un difetto che si propaga a chi lo legge: qui c'e' gia'
+         costato una vista deformata per un mese. Se un giorno serve limitare piu' di
+         cosi', il rapporto non e' la leva — lo sono la soglia e l'attacco. */
       const L = VOCE.ctx.createDynamicsCompressor();
-      L.threshold.value = -5; L.knee.value = 0; L.ratio.value = 40;
+      L.threshold.value = -5; L.knee.value = 0; L.ratio.value = 20;   // 20 = massimo di specifica
       L.attack.value = 0.0003; L.release.value = 0.04;
       hp.connect(mud); mud.connect(pres); pres.connect(c);
       c.connect(g); g.connect(L); L.connect(VOCE.ctx.destination);
@@ -6234,6 +6448,7 @@ function updateNote(){
   nCall.style.color=CLS[a.c.c].col;
   nCall.textContent=(isRight(a)?t0.right+' ':t0.left+' ')+(a.c.c===0?t0.hairpin:CLS[a.c.c].nm);
   let sub=t0.radius+' ~'+a.c.r+' m · '+t0.ref+' '+kmh+' km/h';
+  if(isMoto()) sub += ' · '+t0.lean+' '+piegaDeg(kmh/3.6, a.c.r)+'°';   // la piega si vede, non si dice
   if(cappedByLimit(a.c.r, a.e)) sub += ' ('+t0.byLimit+')';   // comanda il limite, non la curva
   // a schermo il restringimento si vede sempre, come a voce: non e' stile, e' sicurezza
   if((a.c.st|0) >= STRINGE_MIN) sub += ' · '+t0.tight;
@@ -6280,7 +6495,7 @@ function updateNote(){
          diceva, il che è incoerente — chi sceglie «Tranquillo» chiede margine,
          non solo meno g. Fra «Tranquillo» e «Race» la stessa curva viene ora
          annunciata a distanze che stanno in rapporto ~1,6 a 1. */
-  const st = STYLES[S.style];
+  const st = stileAttivo();
   const vRif = curveKmh(a.c.r, a.e, a.dir, a.c.d0)/3.6;
   /* La frenata si calcola con la decelerazione DELLO STILE, non con un 3,0 fisso.
      Piu' dolce freni, piu' lontano va detta la nota: e' lo stesso conto che fa un
@@ -7062,12 +7277,13 @@ function applyLang(){
 bLang.onclick=()=>{ L = L==='it'?'en':L==='en'?'fr':'it'; save(); applyLang(); renderLegend(); renderTema(); };
 const bTema=document.getElementById('bTema');
 function renderTema(){
-  bTema.textContent = S.tema==='chiaro' ? (L==='it'?'Chiaro':L==='fr'?'Clair':'Light') : (L==='it'?'Scuro':L==='fr'?'Sombre':'Dark');
+  bTema.textContent = S.tema==='auto' ? 'Auto' : S.tema==='chiaro' ? (L==='it'?'Chiaro':L==='fr'?'Clair':'Light') : (L==='it'?'Scuro':L==='fr'?'Sombre':'Dark');
 }
 bTema.onclick=()=>{
-  S.tema = S.tema==='chiaro' ? 'scuro' : 'chiaro';
+  S.tema = S.tema==='scuro' ? 'chiaro' : S.tema==='chiaro' ? 'auto' : 'scuro';   // scuro → chiaro → auto
   applicaTema(S.tema); renderTema(); save(); renderLegend();
 };
+setInterval(()=>{ if(S.tema==='auto' && document.documentElement.dataset.tema!==temaDelGiorno()) applicaTema('auto') }, 60000);
 bAudio.classList.toggle('on',S.audio);
 bGps.hidden = (S.mode==='follow');   // stato iniziale: al boot non si insegue nessuno
 /* La bussola rimette nord in alto E la mappa a piombo, in un tocco solo: è quello
@@ -7309,7 +7525,7 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{
   closeSheets(); });
 
 /* pannello auto */
-const carChips=document.getElementById('carChips'), styleChips=document.getElementById('styleChips'),
+const carChips=document.getElementById('carChips'), motoChips=document.getElementById('motoChips'), styleChips=document.getElementById('styleChips'),
       gearTable=document.getElementById('gearTable'), calSlider=document.getElementById('calSlider'),
       calVal=document.getElementById('calVal'), calHint=document.getElementById('calHint'),
       calGears=document.getElementById('calGears'),
@@ -7337,26 +7553,31 @@ function gearTableHtml(){
   return celle;
 }
 function renderCar(){
-  carChips.innerHTML='';
+  carChips.innerHTML=''; motoChips.innerHTML='';
   for(const k in CARS){
     const c=CARS[k], b=document.createElement('button');
     b.className='chip'+(k===S.car?' on':'');
     b.innerHTML='<b>'+c.nm+'</b>'+c.sub+(k===S.car?'<br>'+tr().inUse:'');
     // cambiando auto la marcia di riferimento si ricalcola: la 7ª di una 9 marce non
-    // vuol dire niente su una 5 marce, e tenerla ferma darebbe un numero assurdo
-    b.onclick=()=>{S.car=k; if(c.ref)S.cal=c.ref; S.calG=0; renderCar(); save(); updateNote(); S.need=true};
-    carChips.appendChild(b);
+    // vuol dire niente su una 5 marce, e tenerla ferma darebbe un numero assurdo.
+    // Si svuota anche il gia'-detto: le note annunciate portano marcia e velocita'
+    // del veicolo vecchio, e da auto a moto cambiano tutte e due.
+    b.onclick=()=>{S.car=k; if(c.ref)S.cal=c.ref; S.calG=0; S.said.clear(); applicaVeicolo();
+                   renderCar(); save(); updateNote(); S.need=true};
+    (c.tipo==='moto' ? motoChips : carChips).appendChild(b);
   }
   carDesc.textContent=CARS[S.car]['d_'+L];
   styleChips.innerHTML='';
+  const moto=isMoto(), tetto=CARS[S.car].leanMax||60;
   for(const k in STYLES){
     const s=STYLES[k], b=document.createElement('button');
     b.className='chip'+(k===S.style?' on':'');
-    b.innerHTML='<b>'+s['nm_'+L]+'</b>'+s.a.toFixed(1)+' m/s²';
+    // in moto la chip dice la PIEGA, gia' tappata dal veicolo (custom: 30° su tutte)
+    b.innerHTML='<b>'+s['nm_'+L]+'</b>'+(moto ? Math.min(s.moto.lean,tetto)+'° '+tr().lean : s.a.toFixed(1)+' m/s²');
     b.onclick=()=>{S.style=k;renderCar();save();updateNote();S.need=true};
     styleChips.appendChild(b);
   }
-  styleDesc.textContent=STYLES[S.style]['d_'+L];
+  styleDesc.textContent=stileAttivo()['d_'+L];
   renderAntic();
   // con l'automatico non c'è nessuna marcia da consigliare: via rapporti e tabella
   gearBox.hidden = isAuto();
@@ -7376,7 +7597,7 @@ function renderCar(){
    cambiare insieme: un solo posto che le riscrive tutte. */
 function renderCal(){
   const c=CARS[S.car], gr=marciaRif();
-  calHint.textContent=tr().calHint(gLab(gr));
+  calHint.textContent=tr().calHint(gLab(gr), String(rpmRif()).replace(/\B(?=(\d{3})+(?!\d))/g, L==='it'?'.':L==='fr'?'\u202f':','));
   calVal.textContent=kmhRif(gr);
   calGears.innerHTML='';
   for(let g=1; g<=c.n; g++){
@@ -7395,17 +7616,17 @@ function renderCal(){
 function renderAntic(){
   if(!anticSlider) return;
   anticSlider.value=S.antic;
-  const reaz=Math.max(0.6, STYLES[S.style].reaz + S.antic);
+  const reaz=Math.max(0.6, stileAttivo().reaz + S.antic);
   const seg = n => (L==='en' ? n.toFixed(1) : n.toFixed(1).replace('.',','));
   anticVal.textContent=(S.antic>0?'+':'')+seg(S.antic);
   anticDesc.textContent = L==='it'
     ? 'Ti restano '+seg(reaz)+' s liberi fra la fine della frase e il punto in cui iniziare a frenare. '
-      +'Lo stile '+STYLES[S.style].nm_it+' da solo ne darebbe '+seg(STYLES[S.style].reaz)+'.'
+      +'Lo stile '+STYLES[S.style].nm_it+' da solo ne darebbe '+seg(stileAttivo().reaz)+'.'
     : L==='fr'
     ? 'Il te reste '+seg(reaz)+' s libres entre la fin de la phrase et le point où il faut freiner. '
-      +'Le style '+STYLES[S.style].nm_fr+' seul en donnerait '+seg(STYLES[S.style].reaz)+'.'
+      +'Le style '+STYLES[S.style].nm_fr+' seul en donnerait '+seg(stileAttivo().reaz)+'.'
     : 'You get '+seg(reaz)+' s free between the end of the phrase and the point where braking must start. '
-      +'The '+STYLES[S.style].nm_en+' style alone would give '+seg(STYLES[S.style].reaz)+'.';
+      +'The '+STYLES[S.style].nm_en+' style alone would give '+seg(stileAttivo().reaz)+'.';
 }
 anticSlider.oninput=()=>{ S.antic=parseFloat(anticSlider.value)||0; renderAntic() };
 /* Il salvataggio e lo svuotamento del gia'-detto stanno su `change` e non su `input`:
@@ -8143,6 +8364,7 @@ const splash=document.getElementById('splash'), splashMsg=document.getElementByI
 async function boot(){
   const t0=performance.now();
   applicaTema(S.tema);                 // prima di qualsiasi disegno: se no il primo fotogramma lampeggia
+  applicaVeicolo();                    // bersagli da guanto se l'ultimo veicolo salvato e' una moto
   const mb = n => (n/1e6).toFixed(1).replace('.',',')+' MB';
   chiediPersistenza();                 // non si aspetta: nessuno deve restare fermo per questo
   try{
@@ -8305,17 +8527,17 @@ async function boot(){
     'Geometrie © collaboratori <b>OpenStreetMap</b> (ODbL), estratte il '+gen+'. Il raggio di ogni '+
     'curva è stimato dal cerchio circoscritto a triplette di punti ogni 10 m; la velocità di '+
     'riferimento da √(a·R) e la marcia dai rapporti e dalla fascia utile dell\'auto scelta nel '+
-    'pannello <b>La mia auto</b>, dove puoi anche tarare i km/h per 1000 giri.';
+    'pannello <b>Il mio veicolo</b>, dove puoi anche tarare i km/h per 1000 giri.';
   document.getElementById('infoDataEn').innerHTML =
     'Geometry © <b>OpenStreetMap</b> contributors (ODbL), extracted '+gen+'. Each corner radius '+
     'comes from the circumcircle of point triplets every 10 m; the reference speed from √(a·R) and '+
-    'the gear from the ratios and usable rev band of the car picked in the <b>My car</b> panel, '+
+    'the gear from the ratios and usable rev band of the car picked in the <b>My vehicle</b> panel, '+
     'where you can also calibrate km/h per 1000 rpm.';
   document.getElementById('infoDataFr').innerHTML =
     'Géométries © contributeurs <b>OpenStreetMap</b> (ODbL), extraites le '+gen+'. Le rayon de chaque '+
     'virage est estimé par le cercle circonscrit à des triplets de points tous les 10 m ; la vitesse de '+
     'référence par √(a·R) et la vitesse par les rapports et la plage utile de la voiture choisie dans le '+
-    'panneau <b>Ma voiture</b>, où tu peux aussi calibrer les km/h par 1000 tours.';
+    'panneau <b>Mon véhicule</b>, où tu peux aussi calibrer les km/h par 1000 tours.';
   applyLang(); renderLegend();
   /* Vista iniziale: il primo preferito della prima regione attiva.
      Lo zoom si ricava dal viewport, non è un numero fisso: `scale` è in pixel per
