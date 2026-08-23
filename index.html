@@ -802,7 +802,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '204';
+const APPVER = '208';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1171,6 +1171,40 @@ const SPESS = {
   bbRetto: 2.2, bbCurva: 3.0,        // vista d'insieme (backbone)
   corpo: 4.4,                        // quanto il CORPO STRADA sborda dal colore
 };
+/* PAVIMENTO IN METRI, solo per la vista inclinata (2026-08-23).
+   Gli spessori qui sopra sono in PIXEL, e a zoom largo e' giusto cosi': una strada
+   deve restare visibile anche quando un pixel vale dieci metri. Ma zoomando quel
+   numero non cresce, e allora descrive una carreggiata sempre piu' STRETTA nel mondo
+   vero. Misurato all'incrocio della N3 a Lovanio, zoom 50 m (2,48 px/m), sulla v204:
+     residenziale  3,6 px = 1,45 m di carreggiata  -> un filo
+     principale    6,0 px = 2,42 m
+     con il corpo 10,4 px = 4,19 m
+   Da li' i tre sintomi che Tiago vedeva SOLO in 3D: le laterali ridotte a fili, i
+   loro tratti colorati che sembrano galleggiare senza strada sotto, e l'alone del
+   tratto davanti che a quello zoom diventa un blocco appoggiato sopra la mappa.
+   Il pavimento e' un minimo in METRI: sotto una certa scala non morde affatto e la
+   taratura della vista larga resta identica AL PIXEL; sopra, la strada cresce col
+   mondo come fa qualunque carta.
+   ATTENZIONE, e la prima stesura di questa nota lo diceva sbagliato: NON e' vero che
+   morde solo da fermi. Lo zoom in guida e' `(H*0,55)/max(180, v*9)`, che su un telefono
+   da 812 px vale 2,48 a 15 km/h ma ancora 1,98 a 90 e 1,37 a 130 — la velocita' quasi
+   non lo allarga, perche' sotto i 20 m/s domina il pavimento dei 180 m. Quindi il
+   pavimento entra in gioco a QUALUNQUE andatura normale, e le strade si allargano
+   anche in marcia. E' voluto: se a 15 km/h una residenziale da 3,6 px descrive una
+   carreggiata di 1,45 m, a 90 km/h ne descrive una di 1,82 — sottile uguale. Il difetto
+   si notava da fermi solo perche' fermi si guarda lo schermo.
+   Misurato dopo (px, e in metri di carreggiata a quello zoom):
+     scala 0,80 e sotto   3,6 / 6,0 / 10,4   identico al pixel a prima
+     scala 1,98 (90 km/h) 5,9 / 8,9 / 12,9
+     scala 2,48 (15 km/h) 7,4 / 11,2 / 16,1
+   Va usata SOLO in `disegna3d`: in piano il problema non esiste, perche' senza
+   prospettiva le distanze fra le strade crescono con lo zoom insieme alle strade. */
+/* Tarati in basso rispetto alla prima prova (4,0/6,5/9,0): quelli davano una
+   carreggiata giusta a 15 km/h ma raddoppiavano le strade in marcia, dove nessuno
+   si era mai lamentato. Questi correggono il caso che si vedeva senza riscrivere
+   l'aspetto di una vista gia' tarata guidando. */
+const META = {grigia:3.0, anima:4.5, corpo:6.5};   // metri di carreggiata, minimo
+const larg3d = (px, m) => Math.max(px, m*S.scale);
 /* IL CORPO STRADA — la seconda versione del casing, quella che funziona.
    Il 2026-08-16 il casing "da manuale" (bordo PIÙ SCURO del fondo) è stato scritto,
    misurato e tolto: occupava lo 0,8-1,9% dello schermo con 8-10 livelli su 255 di
@@ -4455,7 +4489,8 @@ function disegna3d(c0,c1,r0,r1){
   }
   if(S.scale>0.35){
     ctx.strokeStyle=TC.grigia;
-    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.grigia*FASCE[f]; ctx.stroke(T.grey[f]) }
+    const wG=larg3d(SPESS.grigia, META.grigia);
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wG*FASCE[f]; ctx.stroke(T.grey[f]) }
   }
   /* Stessa dissolvenza dei ranghi minori della vista piana, e con la stessa funzione:
      due criteri separati tornerebbero a divergere, e il difetto si vedrebbe solo
@@ -4466,27 +4501,33 @@ function disegna3d(c0,c1,r0,r1){
      è quella in cui la strada deve sembrare una strada. Costa una passata di stroke
      in più su un frame che sta a 0,3 ms su 16,7. */
   ctx.strokeStyle=CORPO;
-  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=(SPESS.retto+SPESS.corpo)*FASCE[f];
+  const wCr=larg3d(SPESS.retto+SPESS.corpo, META.corpo);
+  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wCr*FASCE[f];
     ctx.stroke(T.paths[7][f]); if(aMin>0.004) ctx.stroke(T.pmin[7][f]) }
-  for(let k=6;k>=0;k--)
-    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=(SPESS.curva(k)+SPESS.corpo)*FASCE[f];
+  for(let k=6;k>=0;k--){
+    const wCk=larg3d(SPESS.curva(k)+SPESS.corpo, META.corpo);
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wCk*FASCE[f];
       ctx.stroke(T.paths[k][f]); if(aMin>0.004) ctx.stroke(T.pmin[k][f]) }
+  }
   ctx.strokeStyle=CLS[7].col;
+  const wAr=larg3d(SPESS.retto, META.anima);
   if(aMin>0.004){ ctx.globalAlpha=aMin;
-    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.pmin[7][f]) }
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wAr*FASCE[f]; ctx.stroke(T.pmin[7][f]) }
     ctx.globalAlpha=1 }
-  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.retto*FASCE[f]; ctx.stroke(T.paths[7][f]) }
+  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wAr*FASCE[f]; ctx.stroke(T.paths[7][f]) }
   for(let k=6;k>=0;k--){
     ctx.strokeStyle=CLS[k].col;
+    const wAk=larg3d(SPESS.curva(k), META.anima);
     if(aMin>0.004){ ctx.globalAlpha=aMin;
-      for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.pmin[k][f]) }
+      for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wAk*FASCE[f]; ctx.stroke(T.pmin[k][f]) }
       ctx.globalAlpha=1 }
-    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=SPESS.curva(k)*FASCE[f]; ctx.stroke(T.paths[k][f]) }
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wAk*FASCE[f]; ctx.stroke(T.paths[k][f]) }
   }
   if(S.snap && S.mode!=='free'){
     const P=new Path2D();
     for(const seg of S.aheadSegs||[]) traccia(P, seg.e.xy, seg.i0, seg.i1, quoteArco(seg.e));
-    ctx.strokeStyle=('rgba('+TC.alone+',.20)'); ctx.lineWidth=SPESS.curva(0)+SPESS.corpo; ctx.stroke(P);
+    ctx.strokeStyle=('rgba('+TC.alone+',.20)');
+    ctx.lineWidth=larg3d(SPESS.curva(0)+SPESS.corpo, META.corpo); ctx.stroke(P);
   }
   /* Il fondo dell'inquadratura sfuma nel colore di sfondo: senza, le strade lontane
      si schiacciano una sull'altra e diventano un tappeto. */
