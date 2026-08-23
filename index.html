@@ -802,7 +802,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '208';
+const APPVER = '210';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -2824,6 +2824,31 @@ function buildCams(map){
     const c={x,y,ms,e:g,d};
     CAMS.push(c);
     if(g>=0){ if(!E2CAM.has(g))E2CAM.set(g,[]); E2CAM.get(g).push(c); }
+  }
+}
+/* I DOSSI SULLA MAPPA (2026-08-23, chiesto da Tiago: «falli vedere come gli autovelox»).
+   NON si puo' riusare il percorso degli autovelox, ed e' la trappola di questo lavoro:
+     autovelox -> punti ASSOLUTI (lon,lat) -> toXY() -> CAMS[]
+     dossi     -> SCOSTAMENTI IN METRI lungo l'arco, in `e.dos`
+   La posizione va interpolata sulla polilinea, e per fortuna `posAt(e, metri)` esiste
+   gia' e restituisce anche il vertice, da cui si ricava il verso della strada.
+   Si tiene un SECONDO punto sei metri piu' avanti invece dell'angolo: l'angolo sullo
+   schermo non e' quello nel mondo appena la camera si inclina, quindi va ricavato dai
+   due punti PROIETTATI, non conservato.
+   Il tipo di dosso (`table`, `cushion`, `bump`) NON e' nel dato: il sidecar porta solo
+   gli scostamenti. Distinguere i rallentatori urbani da quelli veri non e' una scelta
+   di disegno, richiede di rigenerare le mappe. */
+const DOSSI = [];                       // {x,y, x2,y2} — il secondo punto da' il verso
+function buildDossi(){
+  DOSSI.length = 0;
+  for(const e of E){
+    const o = e.dos; if(!o || !o.length) continue;
+    for(let q=0;q<o.length;q++){
+      const d = o[q];
+      if(!(d >= 0) || d > e.len) continue;      // scostamento fuori dall'arco: si salta
+      const a = posAt(e, d), b = posAt(e, Math.min(e.len, d + 6));
+      DOSSI.push({x:a[0], y:a[1], x2:b[0], y2:b[1]});
+    }
   }
 }
 /* limite della strada: ms>0 = segnalato in OSM, ms<0 = inferito (catena wiki OSM:
@@ -5153,6 +5178,33 @@ function disegnaSopra(){
       }
     }
   }
+  /* I DOSSI: una barra bianca attraverso la carreggiata, che e' come si vedono
+     dall'alto — e' la segnaletica vera, dipinta sull'asfalto. Il bianco non e' usato
+     da nessuna classe di curva, quindi non si confonde con la severita'.
+     Solo da 0,9 in su: sono 38.308 sulle 17 regioni e tre quarti stanno negli abitati,
+     quindi a vista larga sarebbero un tappeto sopra la citta' senza dire niente.
+     Il verso si ricava dai due punti PROIETTATI e non da un angolo conservato: con la
+     camera inclinata l'angolo del mondo non e' quello dello schermo. */
+  if(S.scale>0.9 && DOSSI.length){
+    const wS = CAM.on ? larg3d(SPESS.retto+SPESS.corpo, META.corpo)
+                      : (SPESS.retto+SPESS.corpo);
+    const mezzo = Math.max(4, wS*0.5);
+    ctx.lineCap='butt';
+    for(const b of DOSSI){
+      const p=w2s(b.x,b.y); if(!p) continue;
+      const sx=p[0], sy=p[1];
+      if(sx<-20||sy<-20||sx>W+20||sy>H+20) continue;
+      const q=w2s(b.x2,b.y2); if(!q) continue;
+      const dx=q[0]-sx, dy=q[1]-sy, L=Math.hypot(dx,dy);
+      if(L<0.5) continue;                         // due punti sovrapposti: niente verso
+      const nx=-dy/L, ny=dx/L;                    // perpendicolare alla strada
+      ctx.strokeStyle=TC.ombra; ctx.lineWidth=4.5;
+      ctx.beginPath(); ctx.moveTo(sx-nx*mezzo, sy-ny*mezzo); ctx.lineTo(sx+nx*mezzo, sy+ny*mezzo); ctx.stroke();
+      ctx.strokeStyle='#f2f6fa'; ctx.lineWidth=2.4;
+      ctx.beginPath(); ctx.moveTo(sx-nx*mezzo, sy-ny*mezzo); ctx.lineTo(sx+nx*mezzo, sy+ny*mezzo); ctx.stroke();
+    }
+    ctx.lineCap='round';
+  }
 
   // bandierina della destinazione (spazio schermo: non deve rimpicciolire con lo zoom)
   if(S.nav){
@@ -6419,8 +6471,17 @@ function chiaviNota(el){
     /* Su strada e' sempre «poi», attaccate o no: il ramo `legato` qui non decide piu'
        niente, ma resta perche' e' il pacenote a usarlo — scritto come un solo ternario
        annidato tornerebbe illeggibile alla prossima modifica. */
-    const legame = !S.pace ? 'k.poi'
-                 : (legato ? 'k.in' : (clipDist(gap) || 'k.poi'));
+    /* «poi» anche in modalità rally, per curve legate (Tiago, 2026-08-23).
+
+       Era `k.in`, e non era una svista: «destra tre IN sinistra quattro» è la formula
+       dei copiloti veri, e dice una cosa che «poi» non dice — che l'assetto in uscita
+       dalla prima condiziona l'ingresso nella seconda, cioè che sono una manovra sola.
+       «poi» significa invece che fra le due c'è uno stacco. Scelta sua sul suo
+       copilota: si torna indietro cambiando questa riga e basta.
+
+       La distanza in metri sul ramo non-legato RESTA: quella non è «in», è il modo in
+       cui i pacenote veri separano due curve lontane, e non era in discussione. */
+    const legame = (!S.pace || legato) ? 'k.poi' : (clipDist(gap) || 'k.poi');
     ch = ch.concat([legame], chiaviCurva(el[n], false));
   }
   return ch;
@@ -8751,6 +8812,7 @@ async function boot(){
   }
 
   aggiornaVmax();                     // il tetto di velocità lo dicono i dati, non il codice
+  buildDossi();                       // dopo TUTTE le regioni: gli scostamenti stanno negli archi
   /* Se qualche mappa è stata servita da una copia vecchia, dirlo. Senza questo la
      rigenerazione dei dati non raggiunge chi ha già la mappa, e non c'è modo di
      accorgersene: nessun errore, nessun sintomo, solo strade che mancano. */
