@@ -802,7 +802,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '212';
+const APPVER = '214';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1220,6 +1220,18 @@ const larg3d = (px, m) => Math.max(px, m*S.scale);
    vicenda. E l'ordine per classe resta dentro la passata dei colori, quindi un
    tornante continua a stare sopra un rettilineo. */
 let CORPO=TC.corpo;   // lo scambia applicaTema()
+/* Il corpo strada in PROSPETTIVA e' piu' chiaro che in piano, e il motivo e' misurato:
+   contro il fondo `#101418` il `#39434d` del tema scuro da' un contrasto di 1,84, sotto
+   la soglia in cui una superficie si stacca dal fondo. Una strada SENZA curve annotate
+   e' corpo grigio piu' anima grigia (`CLS[7]`), quindi spariva del tutto; e dove la
+   stessa strada aveva una curva compariva un lampo di colore che sembrava galleggiare
+   nel vuoto. Sono i «monconi colorati staccati» del 2026-08-23: non erano staccati, era
+   il resto della strada a non vedersi. A 2,47 la carreggiata si legge e il colore della
+   curva smette di sembrare sospeso.
+   Vale solo in 3D: in piano le strade restano larghe e vicine fra loro, quindi la rete
+   si legge anche a contrasto basso — e li' il grigio scuro e' una scelta voluta, serve
+   a non far gridare le strade dritte. */
+const CORPO3D = {scuro:'#4a5663', chiaro:'#2b3540'};
 /* LOD: quanto sono tinte le strade di rango 3-4 in funzione di quante celle si
    inquadrano. Allontanandosi svaniscono con continuità e a 400 celle sono già a
    zero, cioè PRIMA che a 420 scatti il passaggio al `backbone()` (solo rango 0-2):
@@ -4505,7 +4517,17 @@ function sondaStradaMia(visti, c0, c1, r0, r1){
        : 'strada mia non disegnata: la sua cella e\' fuori dal riquadro inquadrato');
 }
 function disegna3d(c0,c1,r0,r1){
-  ctx.lineCap='round'; ctx.lineJoin='round';
+  /* ESTREMITA' SQUADRATE, non arrotondate — e non e' estetica, e' la rete che si legge.
+     In citta' gli archi sono corti: misurati all'incrocio della N3 a Lovanio, mediana
+     40 m per l'ossatura e 56 per il reticolo, contro una carreggiata larga 6,5 m.
+     Rapporto 6:1, che in prospettiva scende a 3:1 perche' lo scorcio accorcia. Con
+     `round` ogni tratto diventava una CAPSULA con due cupole ai capi, e l'incrocio si
+     leggeva come bastoncini appoggiati invece che come strade: e' il «in 3D le mappe
+     sono sconnesse» che Tiago ha ripetuto per giorni. Con `butt` i capi si incontrano
+     ai nodi e l'incrocio torna una massa continua.
+     `lineJoin` resta `round`: quello riguarda gli spigoli DENTRO un tratto, dove
+     arrotondare e' giusto. In piano non serve: senza scorcio 40 m restano 40. */
+  ctx.lineCap='butt'; ctx.lineJoin='round';
   sfondo3d(c0,c1,r0,r1);                    // per primo: sta sotto tutto
   disegnaCase3d();                          // poi le case, ancora sotto la rete
   const T=tracciati3d(c0,c1,r0,r1);
@@ -4541,7 +4563,7 @@ function disegna3d(c0,c1,r0,r1){
   /* Corpi anche qui, e su TUTTE le fasce: in guida è la vista che si usa davvero, ed
      è quella in cui la strada deve sembrare una strada. Costa una passata di stroke
      in più su un frame che sta a 0,3 ms su 16,7. */
-  ctx.strokeStyle=CORPO;
+  ctx.strokeStyle = (S.tema==='chiaro') ? CORPO3D.chiaro : CORPO3D.scuro;
   const wCr=larg3d(SPESS.retto+SPESS.corpo, META.corpo);
   for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wCr*FASCE[f];
     ctx.stroke(T.paths[7][f]); if(aMin>0.004) ctx.stroke(T.pmin[7][f]) }
