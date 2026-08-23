@@ -802,7 +802,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '210';
+const APPVER = '212';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3866,10 +3866,26 @@ function viewBounds(){
    Il prezzo sono 2,7 volte i Path2D e le chiamate di stroke in prospettiva. Si può
    pagare: il 3D a zoom di guida costa 0,1 ms su 16,7 disponibili, misurato sulla
    Valle d'Aosta — anche triplicato resta sotto il 2% del fotogramma. */
-const NFASCE=8;
+/* QUANTE fasce, ed e' il numero che decide se la strada sembra una strada.
+   Erano 8, con un salto di larghezza del 16,6% da una all'altra. In prospettiva quel
+   salto cade a una distanza fissa dallo schermo e si vede: la carreggiata cambia
+   spessore di colpo, e con le estremita' arrotondate ogni tratto diventa una capsula.
+   E' il «in 3D le mappe sono sconnesse» che Tiago ripeteva da giorni, e sopravviveva
+   a tutte le correzioni perche' nessuna toccava il NUMERO delle fasce: scegliere la
+   fascia punto per punto (v208) ha spostato lo scalino dai confini fra archi a quelli
+   di fascia, non l'ha tolto. Provato azzerando i moltiplicatori: con tutte le fasce
+   uguali le strade tornano linee continue, quindi il colpevole e' il salto, non la
+   geometria ne' le giunzioni.
+   Con 24 fasce lo stesso rimpicciolimento totale (da 1,00 a 0,26) e' spalmato su tre
+   volte i gradini: il salto scende dal 16,6% al 5,9%, sotto la soglia in cui l'occhio
+   lo legge come uno scalino. Gli esponenti sono gli stessi di prima divisi per tre,
+   quindi i confini in profondita' e la riduzione finale non cambiano: cambia solo la
+   grana. Costa 408 Path2D per fotogramma invece di 136 — misurati 0,035 ms per 136,
+   quindi circa un decimo di millisecondo, dentro il rumore di un frame da 16,7. */
+const NFASCE=24;
 const FASCE=new Float32Array(NFASCE);      // moltiplicatore di larghezza
 const FMUL=new Float32Array(NFASCE);       // confine della fascia, in unità di CAM.R*1.2
-for(let f=0;f<NFASCE;f++){ FASCE[f]=Math.pow(1.35,-0.6*f); FMUL[f]=Math.pow(1.35,f+0.5) }
+for(let f=0;f<NFASCE;f++){ FASCE[f]=Math.pow(1.35,-0.2*f); FMUL[f]=Math.pow(1.35,(f+1.5)/3) }
 function fasciaDi(d){
   const t=d/(CAM.R*1.2);
   for(let f=0;f<NFASCE-1;f++) if(t<FMUL[f]) return f;
