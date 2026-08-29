@@ -130,6 +130,7 @@
   #prosegui .passo2{background:var(--ok-bg); border-left:3px solid var(--ok); border-radius:2px; padding:14px 16px; font-size:15px}
   #prosegui .passo2 b{color:var(--ok)}
   #prosegui p{margin:8px 0 0; max-width:100%}
+  a.invia{display:inline-block; text-decoration:none; font-size:17px; padding:10px 16px; margin:2px 0}
   #anteprima pre{
     margin:0; background:var(--mono-bg); border:1px dashed var(--rule-strong); border-radius:2px;
     padding:14px 16px; white-space:pre-wrap; word-break:break-word;
@@ -234,9 +235,10 @@
     <p id="esito" role="status"></p>
     <div id="anteprima"><pre id="testo"></pre></div>
     <div id="prosegui"><div class="passo2">
-      <b>E adesso, due mosse:</b>
-      <p>1 · <strong>Incolla il messaggio nel DM a @co_driver_.</strong> È il tuo biglietto d'ingresso: senza, non posso seguirti né tarare il co-driver sulla tua auto.</p>
-      <p>2 · Intanto <strong>installa l'app</strong>: <a href="https://scheideckerrestelli-ui.github.io/copilota-ia/" target="_blank" rel="noopener">apri Co-Driver</a> e segui la guida «Come si installa» qui sopra. Nel DM ti dico io quale auto selezionare — poi si guida.</p>
+      <b>E adesso, tre mosse e sei dentro:</b>
+      <p>1 · <a id="inviaCand" class="invia" href="#" target="_blank" rel="noopener">Invia la candidatura →</a> <span class="small">si apre già compilata: tocca «Invia» lì, poi torna qui.</span></p>
+      <p>2 · <strong>Scrivimi in DM a @co_driver_</strong> — anche solo «fatto!», o incolla il messaggio copiato: ti rispondo io con quale auto selezionare nell'app.</p>
+      <p>3 · Intanto <strong>installa l'app</strong>: <a href="https://scheideckerrestelli-ui.github.io/copilota-ia/" target="_blank" rel="noopener">apri Co-Driver</a> e segui la guida «Come si installa» qui sopra. Poi si guida.</p>
     </div></div>
   </form>
 </section>
@@ -368,7 +370,18 @@
       localStorage.setItem('codriver:candidatura', JSON.stringify(dati));
     }catch(e){}
 
-    try{ navigator.sendBeacon('https://docs.google.com/forms/d/e/1FAIpQLSdZyuLRS-zCQkgkf--tNgPHe5uewbxmgeHQbvJApWszz-pLEw/formResponse', new URLSearchParams({'entry.134670555': v('email'), 'entry.1378221562': testo})); }catch(e){}
+    var FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSdZyuLRS-zCQkgkf--tNgPHe5uewbxmgeHQbvJApWszz-pLEw/';
+    /* su origine propria (GitHub) l'invio parte da solo; altrove si apre la
+       scheda gia' compilata e resta un solo tocco su "Invia" */
+    var inviato = false;
+    if(/github\.io$/.test(location.hostname)){
+      try{ inviato = navigator.sendBeacon(FORM + 'formResponse', new URLSearchParams({'entry.134670555': v('email'), 'entry.1378221562': testo})); }catch(e){}
+    }
+    try{
+      var pre = document.getElementById('inviaCand');
+      pre.href = FORM + 'viewform?usp=pp_url&entry.134670555=' + encodeURIComponent(v('email')) + '&entry.1378221562=' + encodeURIComponent(testo);
+      if(inviato){ pre.textContent='Candidatura inviata ✓'; pre.removeAttribute('href'); }
+    }catch(e){}
 
     testoPre.textContent = testo;
     ante.style.display='block';
