@@ -1,7 +1,7 @@
 {
- "name": "Copilota IA",
- "short_name": "Copilota",
- "description": "Copilota rally: curve, velocita' di riferimento e marcia, sulle strade d'Italia.",
+ "name": "Co-Driver",
+ "short_name": "Co-Driver",
+ "description": "Co-Driver: curve, velocita' di riferimento e marcia, sulle strade d'Italia.",
  "start_url": "./index.html",
  "scope": "./",
  "display": "standalone",
