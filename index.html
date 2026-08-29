@@ -203,6 +203,10 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* Moto spenta (vedi MOTO_ON): sparisce il titolo e la riga dei profili. Con il
      flag a true l'attributo non c'e' e questa regola non morde. */
   :root[data-moto="off"] #motoTit,:root[data-moto="off"] #motoChips{display:none}
+  /* Vista del tester (vedi VISTA_PIENA): via il pannello Informazioni, che porta
+     fotogrammi, memoria e registro delle sonde. Si NASCONDE, non si toglie: il
+     pannello resta nel documento e riaccenderlo e' cambiare una costante. */
+  :root[data-vista="tester"] #bInfo{display:none}
   :root[data-veicolo="moto"] .rbtn,:root[data-veicolo="moto"] .compass{width:54px;height:54px}
   :root[data-veicolo="moto"] .rbtn svg{width:25px;height:25px}
   :root[data-veicolo="moto"] .compass svg{width:27px;height:27px}
@@ -843,7 +847,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '223';
+const APPVER = '225';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3438,6 +3442,19 @@ const STYLES = {
    al comportamento auto, invece di richiedere un interruttore per ogni punto —
    che e' il modo in cui una funzione «spenta» resta accesa in un angolo. */
 const MOTO_ON = false;
+/* ============ VISTA PIENA / VISTA DEL TESTER ============
+   Tiago, 2026-08-29: «e' inutile che ogni tester veda tutte le auto degli altri e
+   tutto quello che vedo io; ognuno una home piu' pulita solo con quello che serve a
+   lui». Con `false` l'app mostra a un tester la SUA auto e nient'altro; con `true`
+   torna esattamente com'era, ed e' la vista di Tiago.
+   Stesso patto di `MOTO_ON`: UNA costante, tutto il resto derivato. Non si nasconde
+   niente cancellandolo — `#bInfo` sparisce dal menu, non viene rimosso — cosi'
+   riaccendere e' cambiare questa parola e nient'altro.
+   NON nasconde la Legenda: quella spiega i colori delle curve, cioe' come si legge la
+   mappa, e a un tester serve piu' che a Tiago. Nascosto c'e' il pannello Informazioni,
+   che porta fotogrammi al secondo, memoria e registro delle sonde: quello si' che e'
+   una vista da chi sviluppa. */
+const VISTA_PIENA = false;
 const isMoto = () => MOTO_ON && CARS[S.car].tipo === 'moto';
 function stileAttivo(){
   const st = STYLES[S.style];
@@ -3459,6 +3476,7 @@ const rpmRif = () => isMoto() ? 4000 : RPM_RIF;
 function applicaVeicolo(){
   document.documentElement.dataset.veicolo = isMoto() ? 'moto' : 'auto';
   document.documentElement.dataset.moto = MOTO_ON ? 'on' : 'off';
+  document.documentElement.dataset.vista = VISTA_PIENA ? 'piena' : 'tester';
 }
 /* ---- lingue ---- */
 const T = {
@@ -3506,6 +3524,7 @@ const T = {
     logSfratto:'le mappe scaricate NON sono protette: il telefono può cancellarle quando ha bisogno di spazio',
     tooMuch:mb=>'Molte mappe attive (~'+mb+' MB): l\'app può chiudersi mentre guidi. Tieni attive solo quelle dove vai — spegnerle non le cancella.',
     inUse:'in uso', at:'a', byLimit:'limite',
+    carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
     legalOn:'Non supera mai il limite della strada.',
     legalOff:'Ignora il limite: solo quello che la curva permette.',
@@ -3570,6 +3589,7 @@ const T = {
     logSfratto:'downloaded maps are NOT protected: the phone may delete them when it needs space',
     tooMuch:mb=>'Many active maps (~'+mb+' MB): the app may close while you drive. Keep only the ones you are heading to — switching off does not delete them.',
     inUse:'in use', at:'at', byLimit:'limit',
+    carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
     legalOn:'Never exceeds the road limit.',
     legalOff:'Ignores the limit: only what the corner allows.',
@@ -3631,6 +3651,7 @@ const T = {
     logSfratto:'les cartes téléchargées ne sont PAS protégées : le téléphone peut les supprimer s\'il a besoin d\'espace',
     tooMuch:mb=>'Beaucoup de cartes actives (~'+mb+' MB) : l\'app peut se fermer pendant que tu conduis. Ne garde actives que celles où tu vas — les désactiver ne les supprime pas.',
     inUse:'en cours', at:'à', byLimit:'limite',
+    carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
     legalOn:'Ne dépasse jamais la limite de la route.',
     legalOff:'Ignore la limite : seulement ce que permet le virage.',
@@ -3676,13 +3697,49 @@ const S = {
   local:false,        // agganciato a una via residenziale (solo posizione e limite)
   ahead:[], said:new Set(), lastSaid:0,
   demo:null, need:true,
+  /* Nel letterale e non attaccato dopo, come `zs` sugli archi e per la stessa ragione:
+     cambiare la forma di un oggetto vivo lo fa deottimizzare. Qui vale meno che nel
+     disegno, ma la regola del file e' quella e due modi diversi confondono. */
+  carScelto:false,
 };
+/* ============ L'AUTO ARRIVA DAL LINK D'INVITO ============
+   Il flusso della beta esiste gia' fuori di qui: il tester si candida dal modulo,
+   `smista-candidature.py` abbina la sua auto vera al profilo piu' vicino e scrive
+   `auto_app` in `dati/tester.json`. Mancava l'ultimo metro — portare quell'assegnazione
+   DENTRO l'app — ed e' quello che chiude il giro chiesto da Tiago: «quando vanno ad
+   accedere all'app abbiano direttamente la loro home funzionante con la loro macchina
+   inserita».
+   Si fa con un parametro nel link d'invito, `?a=<chiave>`, e non con un server: non
+   c'e' niente da autenticare, la chiave e' una parola di due-quattro lettere presa da
+   CARS e non e' un dato personale. Nel link NON va messo altro — niente nome, niente
+   email: un indirizzo finisce nella cronologia, nei log del sito e in qualunque
+   messaggio venga inoltrato.
+   Il parametro si CONSUMA: letto una volta, viene tolto dall'indirizzo con
+   `replaceState`. Se restasse li', un tester che si e' aggiunto l'app alla schermata
+   Home se lo ritroverebbe a ogni avvio, e ogni avvio gli rimetterebbe l'auto
+   assegnata cancellando quella che ha scelto lui. Un'assegnazione e' un punto di
+   partenza, non una gabbia. */
+const autoDalLink = (() => {
+  try{
+    const p = new URLSearchParams(location.search).get('a');
+    if(!p) return null;
+    if(!CARS[p] || (!MOTO_ON && CARS[p].tipo === 'moto')) return null;
+    return p;
+  }catch(e){ return null }
+})();
 try{
   const st=JSON.parse(localStorage.getItem('copilota2')||'{}');
   /* Con la moto spenta, un profilo moto salvato prima resterebbe attivo e invisibile:
      i suoi rapporti e la sua massa verrebbero usati con la semantica auto, e il
      pannello non mostrerebbe nulla di selezionato. Si torna al valore di partenza. */
   if(st.car && CARS[st.car] && (MOTO_ON || CARS[st.car].tipo!=='moto')) S.car=st.car;
+  /* Il link batte il salvato: se Tiago rimanda a un tester un invito con un'auto
+     diversa, e' perche' la prima assegnazione era sbagliata. Ma vale una volta sola,
+     perche' subito sotto il parametro sparisce dall'indirizzo. */
+  if(autoDalLink) S.car = autoDalLink;
+  /* «Ha gia' scelto» non si deduce da `S.car`: quello ha un valore di partenza, e senza
+     questa distinzione la prima schermata non comparirebbe mai a nessuno. */
+  S.carScelto = !!(st.car || autoDalLink);
   if(st.tema==='chiaro'||st.tema==='scuro'||st.tema==='auto')S.tema=st.tema;
   if(typeof st.antic==='number') S.antic=Math.max(-1,Math.min(3,st.antic));
   if(st.style&&STYLES[st.style])S.style=st.style;   // i vecchi 'd'/'n'/'a' cadono su 'strada'
@@ -3695,6 +3752,18 @@ try{
   if(st.d3)S.d3=true;
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
+/* Tolto dall'indirizzo appena letto: vedi il commento sopra. `replaceState` non
+   ricarica e non aggiunge una voce alla cronologia, quindi il tasto indietro del
+   telefono continua a fare quello che faceva. */
+if(autoDalLink){
+  try{ const u=new URL(location.href); u.searchParams.delete('a');
+       /* `window.history` e non `history` nudo: sono la stessa cosa per il browser, ma
+          il controllo `no-undef` di verifica-push non ha `history` nella lista bianca
+          dei globali e lo segnala come identificatore fantasma. La lista incompleta va
+          completata dove vive (verifica-push.py, non mio), e intanto la forma esplicita
+          e' comunque quella piu' chiara. */
+       window.history.replaceState(null, '', u.pathname + (u.search||'') + u.hash) }catch(e){}
+}
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
   {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 
@@ -7981,11 +8050,20 @@ function gearTableHtml(){
   }).join('');
   return celle;
 }
+/* Con la vista del tester l'elenco completo si apre solo la PRIMA volta, o quando lo
+   chiede lui con «Cambia veicolo». Dopo resta la sua auto e basta: e' la richiesta di
+   Tiago — «ognuno una home piu' pulita solo con quello che serve a lui».
+   NON e' un'assegnazione bloccata: chi ha ricevuto l'auto sbagliata deve potersi
+   correggere da solo senza scrivere a nessuno, se no la prima assegnazione errata
+   diventa un tester che guida per una settimana col profilo di un'altra macchina. */
+let carApertoTutto = false;
 function renderCar(){
   carChips.innerHTML=''; motoChips.innerHTML='';
+  const compatto = !VISTA_PIENA && S.carScelto && !carApertoTutto;
   for(const k in CARS){
     const c=CARS[k];
     if(!MOTO_ON && c.tipo==='moto') continue;      // profili moto nascosti, non tolti
+    if(compatto && k!==S.car) continue;
     const b=document.createElement('button');
     b.className='chip'+(k===S.car?' on':'');
     b.innerHTML='<b>'+c.nm+'</b>'+c.sub+(k===S.car?'<br>'+tr().inUse:'');
@@ -7993,9 +8071,17 @@ function renderCar(){
     // vuol dire niente su una 5 marce, e tenerla ferma darebbe un numero assurdo.
     // Si svuota anche il gia'-detto: le note annunciate portano marcia e velocita'
     // del veicolo vecchio, e da auto a moto cambiano tutte e due.
-    b.onclick=()=>{S.car=k; if(c.ref)S.cal=c.ref; S.calG=0; S.said.clear(); applicaVeicolo();
+    b.onclick=()=>{S.car=k; S.carScelto=true; carApertoTutto=false;
+                   if(c.ref)S.cal=c.ref; S.calG=0; S.said.clear(); applicaVeicolo();
                    renderCar(); save(); updateNote(); S.need=true};
     (c.tipo==='moto' ? motoChips : carChips).appendChild(b);
+  }
+  if(compatto){
+    const b=document.createElement('button');
+    b.className='chip';
+    b.innerHTML='<b>'+tr().carCambia+'</b>'+tr().carCambiaSub;
+    b.onclick=()=>{ carApertoTutto=true; renderCar() };
+    carChips.appendChild(b);
   }
   carDesc.textContent=CARS[S.car]['d_'+L];
   styleChips.innerHTML='';
@@ -9010,13 +9096,30 @@ function terminiAccettati(){
    dell'utente e non ha effetti che l'accettazione debba autorizzare. */
 function mostraTermini(){
   const el=document.getElementById('termini');
-  if(terminiAccettati()){ el.remove(); return }
+  /* Anche qui `primaScelta`, e non solo dopo il click: chi ha gia' accettato i termini
+     in un avvio precedente ma non ha mai scelto l'auto passerebbe da questo `return` e
+     non la vedrebbe piu'. Capita a chiunque chiuda l'app fra l'accettazione e la
+     scelta, che sono due schermate di fila. */
+  if(terminiAccettati()){ el.remove(); primaScelta(); return }
   el.hidden=false;
   document.getElementById('tOk').onclick=()=>{
     try{ localStorage.setItem(TERMINI_K, JSON.stringify({v:TERMINI_VER, t:new Date().toISOString()})) }
     catch(e){ nota('accettazione dei termini non salvata: '+e.message) }
     el.remove();
+    primaScelta();
   };
+}
+/* Chi arriva senza un'auto — nessun `?a=` nel link, niente di salvato — si trova
+   davanti la scelta del veicolo invece della mappa. E' l'unica cosa che l'app non puo'
+   indovinare e senza la quale ogni nota di curva sarebbe tarata sull'auto sbagliata:
+   marce, tenuta e fascia utile vengono tutte da li'.
+   Chi arriva dal link d'invito non la vede: la sua auto e' gia' quella giusta, ed e'
+   il giro che Tiago voleva chiudere — «quando vanno ad accedere all'app abbiano
+   direttamente la loro home funzionante con la loro macchina inserita».
+   Nella vista piena non si apre mai: Tiago la sua auto ce l'ha da sempre. */
+function primaScelta(){
+  if(VISTA_PIENA || S.carScelto) return;
+  try{ openSheet('car') }catch(e){}
 }
 mostraTermini();
 setTimeout(boot,30);

@@ -2,8 +2,8 @@
    Una cache per la shell (cambia a ogni build) e una per ogni regione scaricata
    (cambia solo col dataset), cosi' "elimina la mappa X" e' selettivo e un fix di
    codice non fa riscaricare niente. */
-/* sorgente: 1c84cec33e */
-const APP = 'copilota-app-v223';
+/* sorgente: ca7f08b131 */
+const APP = 'copilota-app-v225';
 const DATA_PREFIX = 'copilota-data-';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './regions.json',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
