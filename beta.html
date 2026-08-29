@@ -175,7 +175,7 @@
 
 <section id="modulo">
   <h2>Sali a bordo</h2>
-  <p class="muted">Due minuti e sei dentro. Compila, tocca <strong>«Prepara il messaggio»</strong> e il testo si prepara da solo: tu lo incolli nel DM a <strong>@co_driver_</strong> su Instagram e hai finito. Ti rispondo io, Tiago, col link dell'app e le istruzioni — e da lì restiamo in DM per i feedback.</p>
+  <p class="muted">Due minuti e sei dentro. Compila e tocca <strong>«Invia la candidatura»</strong>: la ricevo io, Tiago. Poi scrivimi in DM a <strong>@co_driver_</strong> su Instagram — ti dico io quale auto selezionare nell'app, e da lì restiamo in DM per i feedback.</p>
 
   <form id="candidatura" novalidate>
     <div class="gruppo">Chi sei</div>
@@ -231,12 +231,12 @@
     <label class="check"><input type="checkbox" id="acc-privacy"><span>Ho letto l'<a href="#privacy">informativa privacy</a>. *</span></label>
     <label class="check"><input type="checkbox" id="acc-news"><span>Voglio ricevere notizie sul lancio di Co-Driver anche dopo la beta. <em>(facoltativo)</em></span></label>
 
-    <button type="submit" class="invia">Prepara il messaggio</button>
+    <button type="submit" class="invia">Invia la candidatura 🏁</button>
     <p id="esito" role="status"></p>
     <div id="anteprima"><pre id="testo"></pre></div>
     <div id="prosegui"><div class="passo2">
-      <b>E adesso, tre mosse e sei dentro:</b>
-      <p>1 · <a id="inviaCand" class="invia" href="#" target="_blank" rel="noopener">Invia la candidatura →</a> <span class="small">si apre già compilata: tocca «Invia» lì, poi torna qui.</span></p>
+      <b>E adesso:</b>
+      <p id="mossa1">1 · <a id="inviaCand" class="invia" href="#" target="_blank" rel="noopener">Completa l'invio →</a> <span class="small">si apre già compilata: tocca «Invia» lì, poi torna qui.</span></p>
       <p>2 · <strong>Scrivimi in DM a @co_driver_</strong> — anche solo «fatto!», o incolla il messaggio copiato: ti rispondo io con quale auto selezionare nell'app.</p>
       <p>3 · Intanto <strong>installa l'app</strong>: <a href="https://scheideckerrestelli-ui.github.io/copilota-ia/" target="_blank" rel="noopener">apri Co-Driver</a> e segui la guida «Come si installa» qui sopra. Poi si guida.</p>
     </div></div>
@@ -380,7 +380,9 @@
     try{
       var pre = document.getElementById('inviaCand');
       pre.href = FORM + 'viewform?usp=pp_url&entry.134670555=' + encodeURIComponent(v('email')) + '&entry.1378221562=' + encodeURIComponent(testo);
-      if(inviato){ pre.textContent='Candidatura inviata ✓'; pre.removeAttribute('href'); }
+      if(inviato){
+        document.getElementById('mossa1').innerHTML = '✓ <strong>Candidatura inviata!</strong> <span class="small">Ricevuta nel registro della beta.</span>';
+      }
     }catch(e){}
 
     testoPre.textContent = testo;
@@ -389,11 +391,13 @@
 
     function ok(){
       esito.className='ok';
-      esito.textContent='Copiato ✓ — qui sotto trovi le due mosse per partire.';
+      esito.textContent = inviato
+        ? 'Candidatura inviata ✓ (e il riepilogo è copiato, se vuoi incollarlo in DM). Qui sotto le prossime mosse.'
+        : 'Riepilogo pronto e copiato ✓ — qui sotto le mosse per completare.';
     }
     function fallback(){
       esito.className='ok';
-      esito.textContent='Il messaggio è pronto qui sotto: tienilo premuto, Copia — e poi le due mosse per partire.';
+      esito.textContent = (inviato ? 'Candidatura inviata ✓. ' : '') + 'Il riepilogo è qui sotto: tienilo premuto e Copia, se vuoi incollarlo in DM.';
       try{
         var r=document.createRange(); r.selectNodeContents(testoPre);
         var s=getSelection(); s.removeAllRanges(); s.addRange(r);
