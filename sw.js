@@ -2,8 +2,8 @@
    Una cache per la shell (cambia a ogni build) e una per ogni regione scaricata
    (cambia solo col dataset), cosi' "elimina la mappa X" e' selettivo e un fix di
    codice non fa riscaricare niente. */
-/* sorgente: 201e1e40df */
-const APP = 'copilota-app-v218';
+/* sorgente: 1c84cec33e */
+const APP = 'copilota-app-v223';
 const DATA_PREFIX = 'copilota-data-';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './regions.json',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
@@ -33,6 +33,11 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
+  // la pagina beta NON passa dal service worker. E' un file statico che cambia
+  // spesso durante la beta: in cache-first chi l'ha aperta una volta si terrebbe
+  // la versione vecchia fino alla build successiva dell'app. Senza respondWith
+  // la prende dalla rete come una pagina qualunque.
+  if (new URL(req.url).pathname.endsWith('/beta.html')) return;
   const id = dataId(req.url);
   if (id) {
     // cache-first sull'URL completo (?v=<hash>): quando il dataset cambia, l'URL

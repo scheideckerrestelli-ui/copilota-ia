@@ -209,6 +209,27 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   :root[data-veicolo="moto"] .c3d{width:54px;height:24px;font-size:11px}
   :root[data-veicolo="moto"] .rail{gap:9px}
   :root[data-veicolo="moto"] .nav{right:70px}
+  /* Copre TUTTO, splash compreso: senza accettazione non si va avanti. */
+  .termini{position:fixed;inset:0;z-index:100;background:var(--bg);
+    display:flex;align-items:center;justify-content:center;
+    padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom))}
+  .termini[hidden]{display:none}
+  /* `height:100%` e non `max-height`: con l'altezza AUTO il riquadro cresce quanto il
+     testo, il bottone finisce sotto il bordo dello schermo e non c'e' modo di
+     accettare — l'app resta murata e il tester non puo' farci niente. Visto qui a
+     2.105 px su uno schermo da 812. Con l'altezza piena e' `.ttesto` a scorrere. */
+  .tbox{width:100%;max-width:560px;height:100%;display:flex;flex-direction:column;gap:12px}
+  /* Il testo scorre, il bottone no: deve restare raggiungibile senza cercarlo,
+     ed e' l'unico modo di uscire da questa schermata. */
+  .ttesto{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;font-size:13.5px;line-height:1.55}
+  .ttesto h1{font-family:var(--font-d);font-size:16px;letter-spacing:.03em;
+    text-transform:uppercase;margin-bottom:12px;line-height:1.3}
+  .ttesto ol{margin:0 0 12px 18px;display:flex;flex-direction:column;gap:11px}
+  .ttesto li{padding-left:2px}
+  .ttesto b{color:var(--ink)}
+  .ttesto p{color:var(--ink2);margin-top:10px}
   .scalebar{position:fixed;right:10px;bottom:max(10px,env(safe-area-inset-bottom));
     font-size:10.5px;color:var(--ink2);text-align:right;font-variant-numeric:tabular-nums;
     pointer-events:none}
@@ -799,6 +820,18 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
 </div></div>
 
+<!-- TERMINI DELLA BETA — primo avvio, prima di qualunque altra cosa.
+     Il TESTO non e' scritto qui: lo inserisce `mkpwa.py` al momento della build da
+     `co-driver-beta/termini-v1.md`, che resta la fonte unica. Duplicarlo qui dentro
+     vorrebbe dire avere due testi legali che divergono al primo ritocco, ed e'
+     esattamente il caso in cui divergere non e' un fastidio ma un problema. -->
+<div class="termini" id="termini" hidden>
+  <div class="tbox">
+    <div class="ttesto" id="tTesto"><h1>Termini e condizioni della beta di Co-Driver — v1, 29 agosto 2026</h1><ol><li><b>Che cos'è.</b> Co-Driver è un'applicazione web in versione <b>beta</b>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li><li><b>Ausilio informativo, non un dispositivo di sicurezza.</b> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <b>informazioni di supporto</b>, non istruzioni di guida né valutazioni della velocità sicura: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada.</li><li><b>Guidi tu: assunzione di rischio.</b> L'uso dell'app avviene <b>a tuo esclusivo rischio</b>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <b>prevalgono sempre</b> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata.</li><li><b>Obblighi di legge.</b> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <b>fissato a un supporto</b> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li><li><b>Dati non garantiti.</b> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li><li><b>Limitazione di responsabilità.</b> <b>Nella misura massima consentita dalla legge applicabile</b>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li><li><b>Dove si usa.</b> L'uso previsto è <b>in auto, in Italia e in Belgio</b>. Fuori da questi due paesi l'app non va usata: in particolare gli avvisi autovelox sono vietati in Germania, Francia e Svizzera.</li><li><b>I tuoi feedback.</b> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <b>solo con il tuo permesso esplicito</b>, caso per caso.</li><li><b>Gratis ora, a pagamento poi.</b> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li><li><b>Durata e modifiche.</b> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li></ol><p><b>Privacy in una riga</b> (informativa completa sulla pagina beta): i dati del modulo servono solo a gestire la beta e la posizione GPS resta sul telefono — l'app non la invia a nessun server.</p></div>
+    <button class="btn" id="tOk">Ho letto e accetto</button>
+  </div>
+</div>
+
 <div class="splash" id="splash"><div class="in">
   <h1>Co<span>-Driver</span></h1>
   <p id="splashMsg">preparazione mappa…</p>
@@ -810,7 +843,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '218';
+const APPVER = '223';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -8958,5 +8991,33 @@ async function boot(){
   if(!seen) openSheet('info');
   console.log('boot in',Math.round(performance.now()-t0),'ms ·',E.length,'archi');
 }
+/* ============ TERMINI DELLA BETA ============
+   UNA costante. Alzarla ripresenta il popup a TUTTI, ed e' il comportamento giusto:
+   chi aveva accettato ha accettato un testo diverso, quindi la sua accettazione non
+   vale piu' per quello nuovo. La data si salva insieme alla versione perche' «ha
+   accettato» senza «quando» non serve a niente il giorno in cui serve davvero.
+   La chiave resta `copilota-*` come tutte le altre: non si vede, e cambiarla
+   vorrebbe dire far riaccettare i termini a chi li ha gia' accettati. */
+const TERMINI_VER = 'v1';
+const TERMINI_K = 'copilota-termini';
+function terminiAccettati(){
+  try{ const d=JSON.parse(localStorage.getItem(TERMINI_K)||'null');
+       return !!(d && d.v === TERMINI_VER) }catch(e){ return false }
+}
+/* Il boot parte lo stesso, sotto il velo: quando si accetta la mappa e' gia' pronta
+   invece di far aspettare due volte. «Non prosegue» vale per l'INTERFACCIA — niente
+   e' toccabile finche' il velo c'e' — non per il caricamento, che non e' un'azione
+   dell'utente e non ha effetti che l'accettazione debba autorizzare. */
+function mostraTermini(){
+  const el=document.getElementById('termini');
+  if(terminiAccettati()){ el.remove(); return }
+  el.hidden=false;
+  document.getElementById('tOk').onclick=()=>{
+    try{ localStorage.setItem(TERMINI_K, JSON.stringify({v:TERMINI_VER, t:new Date().toISOString()})) }
+    catch(e){ nota('accettazione dei termini non salvata: '+e.message) }
+    el.remove();
+  };
+}
+mostraTermini();
 setTimeout(boot,30);
 </script>
