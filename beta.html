@@ -126,6 +126,10 @@
   #esito.ok{display:block; background:var(--ok-bg); color:var(--ink); border-left:3px solid var(--ok)}
   #esito.err{display:block; background:var(--warn-bg); color:var(--ink); border-left:3px solid var(--err)}
   #anteprima{display:none; margin-top:4px}
+  #prosegui{display:none; margin-top:6px}
+  #prosegui .passo2{background:var(--ok-bg); border-left:3px solid var(--ok); border-radius:2px; padding:14px 16px; font-size:15px}
+  #prosegui .passo2 b{color:var(--ok)}
+  #prosegui p{margin:8px 0 0; max-width:100%}
   #anteprima pre{
     margin:0; background:var(--mono-bg); border:1px dashed var(--rule-strong); border-radius:2px;
     padding:14px 16px; white-space:pre-wrap; word-break:break-word;
@@ -150,7 +154,7 @@
 <header class="masthead">
   <div class="eyebrow">Beta privata · posti limitati · solo auto</div>
   <h1>Co-Driver Beta</h1>
-  <p class="stand"><strong>Co-Driver è un copilota da rally, in un'app.</strong> Mentre guidi ti annuncia a voce le curve in arrivo — direzione, quanto stringono, e il «poi» tra curve concatenate — più dossi e autovelox. Tu tieni gli occhi sulla strada: parla lei.</p>
+  <p class="stand">Mentre guidi, il co-driver ti annuncia a voce le curve in arrivo, anche quelle concatenate, indicandoti la direzione e quanto stringono. In più, ti avverte della presenza di dossi e autovelox. <strong>Tieni gli occhi sulla strada: parla il co-driver.</strong></p>
 </header>
 
 <section id="come-funziona">
@@ -163,7 +167,7 @@
   <h3>Dove la provi</h3>
   <p>Sulle <strong>tue</strong> strade: copriamo <strong>tutta l'Italia e il Belgio</strong> — 2,3 milioni di curve mappate. Passi di montagna, statali, la strada che fai ogni giorno: dove c'è una curva, lei la chiama. Nel modulo ti chiediamo dove guidi di solito proprio per questo — controlliamo la copertura della tua zona prima di farti partire.</p>
   <h3>Cosa ti serve</h3>
-  <p>Un <strong>iPhone o un Android</strong>, un <strong>supporto</strong> per fissarlo in auto (ventosa, bocchetta o magnetico — obbligatorio, per legge e per buon senso) e la tua auto. E parliamoci chiaro: Co-Driver è nata e si è fatta le ossa su iPhone, quindi se arrivi con un Android sei tra i primissimi a provarla lì — e il tuo feedback vale doppio. La beta è gratuita: in cambio ci racconti com'è andata, e quello che segnali finisce dritto nello sviluppo.</p>
+  <p>Un <strong>telefono</strong> (iPhone o Android), un <strong>supporto</strong> per fissarlo in auto (ventosa, bocchetta o magnetico — obbligatorio, per legge e per buon senso) e la tua auto. E parliamoci chiaro: Co-Driver è nata e si è fatta le ossa su iPhone, quindi se arrivi con un Android sei tra i primissimi a provarla lì — e il tuo feedback vale doppio. La beta è gratuita: in cambio ci racconti com'è andata, e quello che segnali finisce dritto nello sviluppo.</p>
   <h3>E dopo ogni giro?</h3>
   <p>I feedback si mandano <strong>in DM a @co_driver_</strong>, senza formalità — anche un vocale a fine giro va benissimo. Risponde Tiago in persona. Curva chiamata male, voce in ritardo, telefono che scalda: ogni segnalazione viene letta da chi sviluppa, e spesso la ritrovi sistemata nella versione dopo.</p>
 </section>
@@ -229,6 +233,11 @@
     <button type="submit" class="invia">Prepara il messaggio</button>
     <p id="esito" role="status"></p>
     <div id="anteprima"><pre id="testo"></pre></div>
+    <div id="prosegui"><div class="passo2">
+      <b>E adesso, due mosse:</b>
+      <p>1 · <strong>Incolla il messaggio nel DM a @co_driver_.</strong> È il tuo biglietto d'ingresso: senza, non posso seguirti né tarare il co-driver sulla tua auto.</p>
+      <p>2 · Intanto <strong>installa l'app</strong>: <a href="https://scheideckerrestelli-ui.github.io/copilota-ia/" target="_blank" rel="noopener">apri Co-Driver</a> e segui la guida «Come si installa» qui sopra. Nel DM ti dico io quale auto selezionare — poi si guida.</p>
+    </div></div>
   </form>
 </section>
 
@@ -307,6 +316,13 @@
   function v(id){ return (document.getElementById(id).value || '').trim(); }
   function c(id){ return document.getElementById(id).checked; }
 
+  /* il modulo si ricorda di te su QUESTO dispositivo: niente account, niente server */
+  var CAMPI = ['nome','email','zona','marca','anno','motore','assetto','modifiche','iphone','montaggio','audio'];
+  try{
+    var salvati = JSON.parse(localStorage.getItem('codriver:candidatura')||'{}');
+    CAMPI.forEach(function(id){ var el=document.getElementById(id); if(el && salvati[id]) el.value = salvati[id]; });
+  }catch(e){}
+
   form.addEventListener('submit', function(ev){
     ev.preventDefault();
     var mancanti = [];
@@ -347,18 +363,24 @@
     ].filter(function(r){ return r !== null; });
     var testo = righe.join('\n');
 
+    try{
+      var dati = {}; CAMPI.forEach(function(id){ dati[id] = v(id); });
+      localStorage.setItem('codriver:candidatura', JSON.stringify(dati));
+    }catch(e){}
+
     try{ navigator.sendBeacon('https://docs.google.com/forms/d/e/1FAIpQLSdZyuLRS-zCQkgkf--tNgPHe5uewbxmgeHQbvJApWszz-pLEw/formResponse', new URLSearchParams({'entry.134670555': v('email'), 'entry.1378221562': testo})); }catch(e){}
 
     testoPre.textContent = testo;
     ante.style.display='block';
+    try{ document.getElementById('prosegui').style.display='block'; }catch(e){}
 
     function ok(){
       esito.className='ok';
-      esito.textContent='Copiato ✓ — ora apri Instagram e incollalo nel DM a @co_driver_. Ti rispondo io col link dell’app.';
+      esito.textContent='Copiato ✓ — qui sotto trovi le due mosse per partire.';
     }
     function fallback(){
       esito.className='ok';
-      esito.textContent='Il messaggio è pronto qui sotto: tienilo premuto, Copia, e incollalo nel DM a @co_driver_.';
+      esito.textContent='Il messaggio è pronto qui sotto: tienilo premuto, Copia — e poi le due mosse per partire.';
       try{
         var r=document.createRange(); r.selectNodeContents(testoPre);
         var s=getSelection(); s.removeAllRanges(); s.addRange(r);
