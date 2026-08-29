@@ -1,0 +1,374 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<title>Co-Driver Beta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root{
+    --ground:#F2F3F5; --surface:#FFFFFF; --surface-2:#EBEDF0;
+    --ink:#14181D; --ink-soft:#59636E; --ink-faint:#8A95A0;
+    --rule:#D6DADF; --rule-strong:#B9C0C7;
+    --accent:#D31C55; --accent-ink:#FFFFFF;
+    --warn:#8A5A00; --warn-bg:#F6ECD7;
+    --ok:#1E6B47; --ok-bg:#E0EEE6;
+    --err:#B3261E;
+    --mono-bg:#FAFAFB;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#101418; --surface:#171C22; --surface-2:#1D242B;
+      --ink:#E8EBEE; --ink-soft:#9AA5B0; --ink-faint:#6B7681;
+      --rule:#2A323B; --rule-strong:#3A444F;
+      --accent:#FF4E7E; --accent-ink:#14181D;
+      --warn:#E0A93F; --warn-bg:#2A2210;
+      --ok:#4EBD8C; --ok-bg:#12281F;
+      --err:#FF7A72;
+      --mono-bg:#12171C;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#101418; --surface:#171C22; --surface-2:#1D242B;
+    --ink:#E8EBEE; --ink-soft:#9AA5B0; --ink-faint:#6B7681;
+    --rule:#2A323B; --rule-strong:#3A444F;
+    --accent:#FF4E7E; --accent-ink:#14181D;
+    --warn:#E0A93F; --warn-bg:#2A2210;
+    --ok:#4EBD8C; --ok-bg:#12281F;
+    --err:#FF7A72;
+    --mono-bg:#12171C;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:"Barlow","Helvetica Neue",Arial,sans-serif;
+    font-size:16.5px; line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:680px; margin:0 auto; padding:44px 20px 96px}
+
+  header.masthead{border-bottom:3px solid var(--ink); padding-bottom:22px}
+  .eyebrow{
+    font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:14px;
+    letter-spacing:.22em; text-transform:uppercase; color:var(--accent);
+  }
+  h1{
+    font-family:"Barlow Condensed",sans-serif; font-weight:700;
+    font-size:clamp(42px,8vw,64px); line-height:.96; letter-spacing:.01em;
+    text-transform:uppercase; margin:6px 0 12px; text-wrap:balance;
+  }
+  .stand{margin:0; color:var(--ink-soft); max-width:56ch; font-size:18px}
+  .stand strong{color:var(--ink)}
+
+  section{margin-top:50px}
+  h2{
+    font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:28px;
+    letter-spacing:.02em; text-transform:uppercase; margin:0 0 16px; line-height:1.05;
+    border-bottom:1px solid var(--rule-strong); padding-bottom:8px;
+  }
+  h3{font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:19px; letter-spacing:.02em; margin:18px 0 6px}
+  p{margin:0 0 12px; max-width:62ch}
+  .muted{color:var(--ink-soft)}
+  .small{font-size:14px; color:var(--ink-faint)}
+  strong{font-weight:600}
+
+  ol.flow{list-style:none; counter-reset:passo; padding:0; margin:0; display:flex; flex-direction:column; gap:10px}
+  ol.flow > li{
+    counter-increment:passo; background:var(--surface); border:1px solid var(--rule);
+    padding:14px 16px 14px 56px; position:relative; border-radius:2px;
+  }
+  ol.flow > li::before{
+    content:counter(passo); position:absolute; left:16px; top:12px;
+    font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:22px;
+    color:var(--accent); font-variant-numeric:tabular-nums;
+  }
+  ol.flow p{margin:0}
+
+  .note{border-left:3px solid var(--warn); background:var(--warn-bg); padding:12px 16px; margin:16px 0 0; border-radius:2px}
+  .note p{margin:0; font-size:15px}
+  .note b{color:var(--warn)}
+
+  /* ------- modulo ------- */
+  form{background:var(--surface); border:1px solid var(--rule-strong); border-radius:2px; padding:22px 20px; display:flex; flex-direction:column; gap:16px}
+  .campo{display:flex; flex-direction:column; gap:5px}
+  .campo label{font-weight:600; font-size:15.5px}
+  .campo .hint{font-size:13.5px; color:var(--ink-faint); margin:0}
+  input[type=text], input[type=email], select{
+    font-family:"Barlow",sans-serif; font-size:16px; color:var(--ink);
+    background:var(--ground); border:1px solid var(--rule-strong); border-radius:2px;
+    padding:10px 12px; width:100%;
+  }
+  textarea{
+    font-family:"Barlow",sans-serif; font-size:16px; color:var(--ink);
+    background:var(--ground); border:1px solid var(--rule-strong); border-radius:2px;
+    padding:10px 12px; width:100%; min-height:92px; line-height:1.5; resize:vertical;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, .check input:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  .riga2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width:520px){ .riga2{grid-template-columns:1fr} }
+  fieldset{border:none; margin:0; padding:0}
+  .gruppo{
+    font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:17px;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--accent);
+    border-top:1px solid var(--rule); padding-top:14px; margin-top:2px;
+  }
+  .check{display:flex; gap:10px; align-items:flex-start; font-size:15px}
+  .check input{width:18px; height:18px; margin-top:3px; accent-color:var(--accent); flex:none}
+  .check a{color:var(--accent)}
+  .invia{
+    font-family:"Barlow Condensed",sans-serif; font-weight:700; font-size:20px;
+    letter-spacing:.06em; text-transform:uppercase;
+    background:var(--accent); color:var(--accent-ink); border:none; border-radius:2px;
+    padding:14px 20px; cursor:pointer; margin-top:4px;
+  }
+  .invia:focus-visible{outline:3px solid var(--ink); outline-offset:2px}
+  #esito{margin:0; font-size:15px; display:none; padding:12px 14px; border-radius:2px}
+  #esito.ok{display:block; background:var(--ok-bg); color:var(--ink); border-left:3px solid var(--ok)}
+  #esito.err{display:block; background:var(--warn-bg); color:var(--ink); border-left:3px solid var(--err)}
+  #anteprima{display:none; margin-top:4px}
+  #anteprima pre{
+    margin:0; background:var(--mono-bg); border:1px dashed var(--rule-strong); border-radius:2px;
+    padding:14px 16px; white-space:pre-wrap; word-break:break-word;
+    font-family:"JetBrains Mono",ui-monospace,monospace; font-size:12.5px; line-height:1.55;
+  }
+
+  /* ------- legale ------- */
+  .doc{background:var(--surface); border:1px solid var(--rule-strong); border-radius:2px; padding:20px 22px}
+  .doc .sotto{font-size:13.5px; color:var(--ink-faint); margin-bottom:14px}
+  .doc ol{padding-left:20px; margin:0; display:flex; flex-direction:column; gap:12px}
+  .doc ol li{padding-left:4px; font-size:15.5px}
+  .doc p{font-size:15.5px}
+
+  footer{margin-top:60px; border-top:1px solid var(--rule-strong); padding-top:16px; font-size:13.5px; color:var(--ink-faint); line-height:1.7}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">Beta privata · posti limitati · solo auto</div>
+  <h1>Co-Driver Beta</h1>
+  <p class="stand"><strong>Co-Driver è un copilota da rally, in un'app.</strong> Mentre guidi ti annuncia a voce le curve in arrivo — direzione, quanto stringono, e il «poi» tra curve concatenate — più dossi e autovelox. Tu tieni gli occhi sulla strada: parla lei.</p>
+</header>
+
+<section id="come-funziona">
+  <h2>Come funziona</h2>
+  <ol class="flow">
+    <li><p><strong>Si installa dal browser in 30 secondi</strong> — niente App Store, niente Play Store. Ti arriva un link, lo apri col telefono e metti Co-Driver in schermata Home: la guida passo-passo è qui sotto, sia per iPhone che per Android.</p></li>
+    <li><p><strong>Monti il telefono sul supporto e scegli la tua auto.</strong> Si imposta tutto da fermi: percorso in vista, volume su. Poi non si tocca più.</p></li>
+    <li><p><strong>Guidi, e la voce fa il resto.</strong> «Destra 3… poi tornante sinistro»: ogni curva annunciata prima che arrivi, con la severità. Dossi e autovelox segnati sulla mappa e annunciati.</p></li>
+  </ol>
+  <h3>Dove la provi</h3>
+  <p>Sulle <strong>tue</strong> strade: copriamo <strong>tutta l'Italia e il Belgio</strong> — 2,3 milioni di curve mappate. Passi di montagna, statali, la strada che fai ogni giorno: dove c'è una curva, lei la chiama. Nel modulo ti chiediamo dove guidi di solito proprio per questo — controlliamo la copertura della tua zona prima di farti partire.</p>
+  <h3>Cosa ti serve</h3>
+  <p>Un <strong>iPhone o un Android</strong>, un <strong>supporto</strong> per fissarlo in auto (ventosa, bocchetta o magnetico — obbligatorio, per legge e per buon senso) e la tua auto. E parliamoci chiaro: Co-Driver è nata e si è fatta le ossa su iPhone, quindi se arrivi con un Android sei tra i primissimi a provarla lì — e il tuo feedback vale doppio. La beta è gratuita: in cambio ci racconti com'è andata, e quello che segnali finisce dritto nello sviluppo.</p>
+  <h3>E dopo ogni giro?</h3>
+  <p>I feedback si mandano <strong>in DM a @co_driver_</strong>, senza formalità — anche un vocale a fine giro va benissimo. Risponde Tiago in persona. Curva chiamata male, voce in ritardo, telefono che scalda: ogni segnalazione viene letta da chi sviluppa, e spesso la ritrovi sistemata nella versione dopo.</p>
+</section>
+
+<section id="modulo">
+  <h2>Sali a bordo</h2>
+  <p class="muted">Due minuti e sei dentro. Compila, tocca <strong>«Prepara il messaggio»</strong> e il testo si prepara da solo: tu lo incolli nel DM a <strong>@co_driver_</strong> su Instagram e hai finito. Ti rispondo io, Tiago, col link dell'app e le istruzioni — e da lì restiamo in DM per i feedback.</p>
+
+  <form id="candidatura" novalidate>
+    <div class="gruppo">Chi sei</div>
+    <div class="campo"><label for="nome">Nome e cognome *</label><input type="text" id="nome" autocomplete="name"></div>
+    <div class="campo"><label for="email">Email *</label><input type="email" id="email" autocomplete="email"><p class="hint">È il contatto con cui ti seguiamo durante la beta.</p></div>
+    <div class="campo"><label for="zona">Dove guidi di solito *</label><input type="text" id="zona" placeholder="Provincia + la tua strada preferita (es. Como, Passo del Ghisallo)"><p class="hint">Così controlliamo che la tua zona sia già coperta, prima di farti partire.</p></div>
+
+    <div class="gruppo">La tua auto</div>
+    <div class="riga2">
+      <div class="campo"><label for="marca">Marca e modello *</label><input type="text" id="marca" placeholder="es. Alfa Romeo MiTo QV"></div>
+      <div class="campo"><label for="anno">Anno</label><input type="text" id="anno" inputmode="numeric" placeholder="es. 2014"></div>
+    </div>
+    <div class="riga2">
+      <div class="campo"><label for="motore">Versione / motore</label><input type="text" id="motore" placeholder="es. 1.4 TB 170 CV"></div>
+      <div class="campo"><label for="assetto">Com'è messa *</label>
+        <select id="assetto">
+          <option value="">Scegli…</option>
+          <option>Di serie</option>
+          <option>Gomme sportive</option>
+          <option>Assetto modificato</option>
+          <option>Assetto + gomme sportive</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint" style="margin-top:-6px">Non è curiosità da bar: su auto e assetto tariamo i suggerimenti di velocità in curva — sul tuo mezzo, non su uno qualsiasi.</p>
+    <div class="campo"><label for="modifiche">Modifiche alla tua auto</label><textarea id="modifiche" rows="3" placeholder="es. assetto a ghiera, scarico completo, rimappa +30 CV… (se è di serie lascia vuoto)"></textarea></div>
+
+    <div class="gruppo">Telefono e audio</div>
+    <div class="riga2">
+      <div class="campo"><label for="iphone">Che telefono hai? *</label><input type="text" id="iphone" placeholder="es. iPhone 12 · iOS 18, oppure Pixel 7 · Android 15"></div>
+      <div class="campo"><label for="montaggio">Come lo monti in auto *</label>
+        <select id="montaggio">
+          <option value="">Scegli…</option>
+          <option>Ventosa sul parabrezza</option>
+          <option>Supporto a bocchetta</option>
+          <option>Magnetico (MagSafe o simili)</option>
+          <option>Altro supporto</option>
+          <option>Non ho ancora un supporto</option>
+        </select>
+      </div>
+    </div>
+    <div class="campo"><label for="audio">Come senti l'audio *</label>
+      <select id="audio">
+        <option value="">Scegli…</option>
+        <option>Cassa del telefono</option>
+        <option>Bluetooth dell'auto</option>
+        <option>Cavo / AUX</option>
+      </select>
+    </div>
+
+    <div class="gruppo">Patti chiari</div>
+    <label class="check"><input type="checkbox" id="acc-termini"><span>Ho letto e accetto i <a href="#termini">Termini e condizioni della beta</a> (versione 1 del 29/08/2026). *</span></label>
+    <label class="check"><input type="checkbox" id="acc-privacy"><span>Ho letto l'<a href="#privacy">informativa privacy</a>. *</span></label>
+    <label class="check"><input type="checkbox" id="acc-news"><span>Voglio ricevere notizie sul lancio di Co-Driver anche dopo la beta. <em>(facoltativo)</em></span></label>
+
+    <button type="submit" class="invia">Prepara il messaggio</button>
+    <p id="esito" role="status"></p>
+    <div id="anteprima"><pre id="testo"></pre></div>
+  </form>
+</section>
+
+<section id="installazione">
+  <h2>Come si installa</h2>
+  <p class="muted">Trenta secondi, davvero. Su iPhone si passa da Safari, su Android da Chrome — il risultato è lo stesso: l'icona di Co-Driver sulla Home, come una app vera.</p>
+
+  <h3>Su iPhone (Safari)</h3>
+  <ol class="flow">
+    <li><p>Apri il link dell'app in <strong>Safari</strong> (se lo apri da Instagram: tocca «···» in alto → «Apri in Safari»).</p></li>
+    <li><p>Tocca il tasto <strong>Condividi</strong> — il quadrato con la freccia in su.</p></li>
+    <li><p>Scorri e tocca <strong>«Aggiungi alla schermata Home»</strong>, poi <strong>Aggiungi</strong>.</p></li>
+  </ol>
+
+  <h3>Su Android (Chrome)</h3>
+  <ol class="flow">
+    <li><p>Apri il link dell'app in <strong>Chrome</strong> (se lo apri da Instagram: menu in alto → «Apri in Chrome»).</p></li>
+    <li><p>Tocca il menu <strong>⋮</strong> in alto a destra.</p></li>
+    <li><p>Tocca <strong>«Aggiungi a schermata Home»</strong> — su alcuni telefoni si chiama <strong>«Installa app»</strong> — poi conferma.</p></li>
+  </ol>
+
+  <h3>E da lì in poi, per tutti</h3>
+  <ol class="flow">
+    <li><p>Apri Co-Driver <strong>sempre dall'icona</strong> sulla Home: schermo pieno e voce al meglio.</p></li>
+    <li><p>Prima di partire: telefono sul supporto, volume su, tutto impostato. <strong>In marcia non si tocca.</strong></p></li>
+  </ol>
+
+  <div class="note"><p><b>Regola non negoziabile:</b> mai il telefono in mano mentre guidi, e i video solo dal passeggero o col telefono fissato. L'app è fatta per essere <em>ascoltata</em>, non guardata.</p></div>
+</section>
+
+<section id="termini">
+  <h2>Termini e condizioni della beta</h2>
+  <div class="doc">
+    <p class="sotto">Versione 1 · 29 agosto 2026 · beta privata gratuita · si accettano con la spunta nel modulo (e a breve anche nell'app, al primo avvio)</p>
+    <ol>
+      <li><strong>Che cos'è.</strong> Co-Driver è un'applicazione web in versione <strong>beta</strong>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li>
+      <li><strong>Ausilio informativo, non un dispositivo di sicurezza.</strong> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <strong>informazioni di supporto</strong>, non istruzioni di guida né valutazioni della velocità sicura: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada.</li>
+      <li><strong>Guidi tu: assunzione di rischio.</strong> L'uso dell'app avviene <strong>a tuo esclusivo rischio</strong>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <strong>prevalgono sempre</strong> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata.</li>
+      <li><strong>Obblighi di legge.</strong> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <strong>fissato a un supporto</strong> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li>
+      <li><strong>Dati non garantiti.</strong> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li>
+      <li><strong>Limitazione di responsabilità.</strong> <strong>Nella misura massima consentita dalla legge applicabile</strong>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li>
+      <li><strong>Dove si usa.</strong> L'uso previsto è <strong>in auto, in Italia e in Belgio</strong>. Fuori da questi due paesi l'app non va usata: in particolare gli avvisi autovelox sono vietati in Germania, Francia e Svizzera.</li>
+      <li><strong>I tuoi feedback.</strong> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <strong>solo con il tuo permesso esplicito</strong>, caso per caso.</li>
+      <li><strong>Gratis ora, a pagamento poi.</strong> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li>
+      <li><strong>Durata e modifiche.</strong> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="privacy">
+  <h2>Privacy</h2>
+  <div class="doc">
+    <p class="sotto">Informativa ai sensi dell'art. 13 GDPR · versione 1 · 29 agosto 2026</p>
+    <p><strong>Quali dati e perché:</strong> quelli che invii con il modulo (nome, email, zona, auto ed eventuali modifiche, telefono) e le segnalazioni che condividi. Servono solo a gestire la beta: farti entrare, verificare la copertura, mandarti aggiornamenti e capire i problemi. Base giuridica: l'accordo di partecipazione che richiedi tu stesso (art. 6.1.b GDPR).</p>
+    <p><strong>La tua posizione resta sul telefono.</strong> Co-Driver non invia la posizione a nessun server: l'app scarica le mappe e parla, ma il GPS viene letto ed elaborato solo sul tuo dispositivo.</p>
+    <p><strong>A chi vanno:</strong> le risposte del modulo arrivano nell'archivio privato della beta, che si appoggia a un fornitore tecnico (un modulo e un foglio Google del titolare). Nessun altro le riceve: nessuna vendita, nessun marketing senza il consenso separato del modulo.</p>
+    <p><strong>Per quanto:</strong> fino alla fine della beta o alla tua uscita; poi vengono cancellati.</p>
+    <p><strong>I tuoi diritti:</strong> puoi chiedere accesso, correzione o cancellazione scrivendo in DM a <strong>@co_driver_</strong> (risposta entro 30 giorni); resta sempre possibile il reclamo al Garante per la protezione dei dati personali.</p>
+  </div>
+</section>
+
+<footer>
+  Co-Driver · beta privata 2026 · Il copilota che chiama la curva prima che tu la veda.<br>
+  Domande? Scrivi a @co_driver_ su Instagram.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  var form = document.getElementById('candidatura');
+  var esito = document.getElementById('esito');
+  var ante = document.getElementById('anteprima');
+  var testoPre = document.getElementById('testo');
+
+  function v(id){ return (document.getElementById(id).value || '').trim(); }
+  function c(id){ return document.getElementById(id).checked; }
+
+  form.addEventListener('submit', function(ev){
+    ev.preventDefault();
+    var mancanti = [];
+    if(!v('nome')) mancanti.push('il nome');
+    if(!v('email')) mancanti.push('l’email');
+    if(!v('zona')) mancanti.push('la zona dove guidi');
+    if(!v('marca')) mancanti.push('marca e modello dell’auto');
+    if(!v('assetto')) mancanti.push('l’assetto');
+    if(!v('iphone')) mancanti.push('il telefono');
+    if(!v('montaggio')) mancanti.push('il montaggio');
+    if(!v('audio')) mancanti.push('l’audio');
+    if(!c('acc-termini')) mancanti.push('la spunta sui termini');
+    if(!c('acc-privacy')) mancanti.push('la spunta sulla privacy');
+    if(mancanti.length){
+      esito.className='err';
+      esito.textContent='Un attimo — manca ancora: ' + mancanti.join(', ') + '.';
+      ante.style.display='none';
+      return;
+    }
+    var modifiche = v('modifiche').replace(/\s*\n+\s*/g, ' · ');
+    var righe = [
+      'Ciao Tiago! Sono ' + v('nome') + ' e voglio provare Co-Driver 🏁',
+      '',
+      'Nome: ' + v('nome'),
+      'Email: ' + v('email'),
+      'Zona: ' + v('zona'),
+      'Auto: ' + v('marca') + (v('anno') ? ' (' + v('anno') + ')' : '') + (v('motore') ? ' — ' + v('motore') : ''),
+      'Assetto: ' + v('assetto'),
+      modifiche ? 'Modifiche: ' + modifiche : null,
+      'Telefono: ' + v('iphone'),
+      'Montaggio: ' + v('montaggio'),
+      'Audio: ' + v('audio'),
+      'Accetto i Termini e condizioni beta v1 (29/08/2026): SÌ',
+      'Informativa privacy letta: SÌ',
+      'Aggiornamenti sul lancio: ' + (c('acc-news') ? 'SÌ' : 'NO'),
+      '',
+      'Non vedo l’ora di sentirla chiamare le curve sulle mie strade. A presto!'
+    ].filter(function(r){ return r !== null; });
+    var testo = righe.join('\n');
+
+    try{ navigator.sendBeacon('https://docs.google.com/forms/d/e/1FAIpQLSdZyuLRS-zCQkgkf--tNgPHe5uewbxmgeHQbvJApWszz-pLEw/formResponse', new URLSearchParams({'entry.134670555': v('email'), 'entry.1378221562': testo})); }catch(e){}
+
+    testoPre.textContent = testo;
+    ante.style.display='block';
+
+    function ok(){
+      esito.className='ok';
+      esito.textContent='Copiato ✓ — ora apri Instagram e incollalo nel DM a @co_driver_. Ti rispondo io col link dell’app.';
+    }
+    function fallback(){
+      esito.className='ok';
+      esito.textContent='Il messaggio è pronto qui sotto: tienilo premuto, Copia, e incollalo nel DM a @co_driver_.';
+      try{
+        var r=document.createRange(); r.selectNodeContents(testoPre);
+        var s=getSelection(); s.removeAllRanges(); s.addRange(r);
+      }catch(e){}
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(testo).then(ok).catch(fallback);
+    } else { fallback(); }
+  });
+})();
+</script>
+
+</body></html>
