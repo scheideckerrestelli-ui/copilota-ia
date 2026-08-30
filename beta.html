@@ -1,4 +1,5 @@
 <!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
 <title>Co-Driver Beta</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -88,6 +89,33 @@
   .note p{margin:0; font-size:15px}
   .note b{color:var(--warn)}
 
+  /* ------- selettore lingua ------- */
+  .lang-switch{display:flex; gap:6px; justify-content:flex-end; margin:0 0 26px}
+  .lang-switch button{
+    font-family:"Barlow Condensed",sans-serif; font-weight:600; font-size:13.5px;
+    letter-spacing:.14em; text-transform:uppercase;
+    background:var(--surface); color:var(--ink-soft);
+    border:1px solid var(--rule-strong); border-radius:2px;
+    padding:4px 10px; cursor:pointer;
+  }
+  .lang-switch button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+  html:not([data-lang]) .lang-switch button[data-l="it"],
+  html[data-lang="it"] .lang-switch button[data-l="it"],
+  html[data-lang="fr"] .lang-switch button[data-l="fr"],
+  html[data-lang="en"] .lang-switch button[data-l="en"]{
+    background:var(--ink); color:var(--ground); border-color:var(--ink);
+  }
+
+  /* ------- blocchi per lingua: senza data-lang si legge l'italiano ------- */
+  html:not([data-lang]) .l-fr{display:none}
+  html:not([data-lang]) .l-en{display:none}
+  html[data-lang="it"] .l-fr{display:none}
+  html[data-lang="it"] .l-en{display:none}
+  html[data-lang="fr"] .l-it{display:none}
+  html[data-lang="fr"] .l-en{display:none}
+  html[data-lang="en"] .l-it{display:none}
+  html[data-lang="en"] .l-fr{display:none}
+
   /* ------- modulo ------- */
   form{background:var(--surface); border:1px solid var(--rule-strong); border-radius:2px; padding:22px 20px; display:flex; flex-direction:column; gap:16px}
   .campo{display:flex; flex-direction:column; gap:5px}
@@ -154,158 +182,166 @@
 
 <div class="wrap">
 
+<nav class="lang-switch" aria-label="Lingua / Langue / Language">
+  <button type="button" data-l="it" aria-pressed="false" aria-label="Italiano">IT</button>
+  <button type="button" data-l="fr" aria-pressed="false" aria-label="Français">FR</button>
+  <button type="button" data-l="en" aria-pressed="false" aria-label="English">EN</button>
+</nav>
+
 <header class="masthead">
-  <div class="eyebrow">Beta privata · posti limitati · solo auto</div>
+  <div class="eyebrow"><span class="l-it">Beta privata · posti limitati · solo auto</span><span class="l-fr">Bêta privée · places limitées · voiture uniquement</span><span class="l-en">Private beta · limited spots · cars only</span></div>
   <h1>Co-Driver Beta</h1>
-  <p class="stand">Mentre guidi, il co-driver ti annuncia a voce le curve in arrivo, anche quelle concatenate, indicandoti la direzione e quanto stringono. In più, ti avverte della presenza di dossi e autovelox. <strong>Tieni gli occhi sulla strada: parla il co-driver.</strong></p>
+  <p class="stand"><span class="l-it">Mentre guidi, il co-driver ti annuncia a voce le curve in arrivo, anche quelle concatenate, indicandoti la direzione e quanto stringono. In più, ti avverte della presenza di dossi e autovelox. <strong>Tieni gli occhi sulla strada: parla il co-driver.</strong></span><span class="l-fr">Pendant que tu conduis, le copilote t’annonce à voix haute les virages à venir, y compris les enchaînements, en t’indiquant la direction et à quel point ils se resserrent. En plus, il te prévient des dos d’âne et des radars. <strong>Garde les yeux sur la route : c’est le copilote qui parle.</strong></span><span class="l-en">While you drive, the co-driver calls out the corners ahead, including linked sequences, telling you the direction and how tight they are. It also warns you about speed bumps and speed cameras. <strong>Keep your eyes on the road: the co-driver does the talking.</strong></span></p>
 </header>
 
 <section id="come-funziona">
-  <h2>Come funziona</h2>
+  <h2><span class="l-it">Come funziona</span><span class="l-fr">Comment ça marche</span><span class="l-en">How it works</span></h2>
   <ol class="flow">
-    <li><p><strong>Si installa dal browser in 30 secondi</strong> — niente App Store, niente Play Store. Ti arriva un link, lo apri col telefono e metti Co-Driver in schermata Home: la guida passo-passo è qui sotto, sia per iPhone che per Android.</p></li>
-    <li><p><strong>Monti il telefono sul supporto e scegli la tua auto.</strong> Si imposta tutto da fermi: percorso in vista, volume su. Poi non si tocca più.</p></li>
-    <li><p><strong>Guidi, e la voce fa il resto.</strong> «Destra 3… poi tornante sinistro»: ogni curva annunciata prima che arrivi, con la severità. Dossi e autovelox segnati sulla mappa e annunciati.</p></li>
+    <li><p><span class="l-it"><strong>Si installa dal browser in 30 secondi</strong> — niente App Store, niente Play Store. Ti arriva un link, lo apri col telefono e metti Co-Driver in schermata Home: la guida passo-passo è qui sotto, sia per iPhone che per Android.</span><span class="l-fr"><strong>Elle s’installe depuis le navigateur en 30 secondes</strong> — pas d’App Store, pas de Play Store. Tu reçois un lien, tu l’ouvres sur ton téléphone et tu mets Co-Driver sur l’écran d’accueil : le guide pas à pas est juste en dessous, pour iPhone comme pour Android.</span><span class="l-en"><strong>It installs from the browser in 30 seconds</strong> — no App Store, no Play Store. You get a link, open it on your phone and put Co-Driver on your Home Screen: the step-by-step guide is right below, for both iPhone and Android.</span></p></li>
+    <li><p><span class="l-it"><strong>Monti il telefono sul supporto e scegli la tua auto.</strong> Si imposta tutto da fermi: percorso in vista, volume su. Poi non si tocca più.</span><span class="l-fr"><strong>Tu montes le téléphone sur son support et tu choisis ta voiture.</strong> Tout se règle à l’arrêt : itinéraire à l’écran, volume monté. Ensuite, on n’y touche plus.</span><span class="l-en"><strong>Mount the phone on its holder and pick your car.</strong> Everything is set up while parked: route on screen, volume up. After that, hands off.</span></p></li>
+    <li><p><span class="l-it"><strong>Guidi, e la voce fa il resto.</strong> «Destra 3… poi tornante sinistro»: ogni curva annunciata prima che arrivi, con la severità. Dossi e autovelox segnati sulla mappa e annunciati.</span><span class="l-fr"><strong>Tu conduis, et la voix fait le reste.</strong> « Droite 3… puis épingle à gauche » : chaque virage annoncé avant d’y arriver, avec sa sévérité. Dos d’âne et radars marqués sur la carte et annoncés.</span><span class="l-en"><strong>You drive, and the voice does the rest.</strong> “Right 3… then hairpin left”: every corner called before you reach it, with its severity. Speed bumps and speed cameras marked on the map and announced.</span></p></li>
   </ol>
-  <h3>Dove la provi</h3>
-  <p>Sulle <strong>tue</strong> strade: copriamo <strong>tutta l'Italia e il Belgio</strong> — 2,3 milioni di curve mappate. Passi di montagna, statali, la strada che fai ogni giorno: dove c'è una curva, lei la chiama. Nel modulo ti chiediamo dove guidi di solito proprio per questo — controlliamo la copertura della tua zona prima di farti partire.</p>
-  <h3>Cosa ti serve</h3>
-  <p>Un <strong>telefono</strong> (iPhone o Android), un <strong>supporto</strong> per fissarlo in auto (ventosa, bocchetta o magnetico — obbligatorio, per legge e per buon senso) e la tua auto. E parliamoci chiaro: Co-Driver è nata e si è fatta le ossa su iPhone, quindi se arrivi con un Android sei tra i primissimi a provarla lì — e il tuo feedback vale doppio. La beta è gratuita: in cambio ci racconti com'è andata, e quello che segnali finisce dritto nello sviluppo.</p>
-  <h3>E dopo ogni giro?</h3>
-  <p>I feedback si mandano <strong>in DM a @co_driver_</strong>, senza formalità — anche un vocale a fine giro va benissimo. Risponde Tiago in persona. Curva chiamata male, voce in ritardo, telefono che scalda: ogni segnalazione viene letta da chi sviluppa, e spesso la ritrovi sistemata nella versione dopo.</p>
+  <h3><span class="l-it">Dove la provi</span><span class="l-fr">Où la tester</span><span class="l-en">Where you test it</span></h3>
+  <p><span class="l-it">Sulle <strong>tue</strong> strade: copriamo <strong>tutta l'Italia e il Belgio</strong> — 2,3 milioni di curve mappate. Passi di montagna, statali, la strada che fai ogni giorno: dove c'è una curva, lei la chiama. Nel modulo ti chiediamo dove guidi di solito proprio per questo — controlliamo la copertura della tua zona prima di farti partire.</span><span class="l-fr">Sur <strong>tes</strong> routes à toi : nous couvrons <strong>toute l’Italie et la Belgique</strong> — 2,3 millions de virages cartographiés. Cols de montagne, nationales, la route que tu prends tous les jours : là où il y a un virage, elle l’annonce. C’est exactement pour ça que le formulaire te demande où tu conduis d’habitude — nous vérifions la couverture de ta zone avant de te lancer.</span><span class="l-en">On <strong>your</strong> roads: we cover <strong>all of Italy and Belgium</strong> — 2.3 million corners mapped. Mountain passes, main roads, your everyday drive: wherever there is a corner, it calls it. That is exactly why the form asks where you usually drive — we check the coverage of your area before you set off.</span></p>
+  <h3><span class="l-it">Cosa ti serve</span><span class="l-fr">Ce qu'il te faut</span><span class="l-en">What you need</span></h3>
+  <p><span class="l-it">Un <strong>telefono</strong> (iPhone o Android), un <strong>supporto</strong> per fissarlo in auto (ventosa, bocchetta o magnetico — obbligatorio, per legge e per buon senso) e la tua auto. E parliamoci chiaro: Co-Driver è nata e si è fatta le ossa su iPhone, quindi se arrivi con un Android sei tra i primissimi a provarla lì — e il tuo feedback vale doppio. La beta è gratuita: in cambio ci racconti com'è andata, e quello che segnali finisce dritto nello sviluppo.</span><span class="l-fr">Un <strong>téléphone</strong> (iPhone ou Android), un <strong>support</strong> pour le fixer dans la voiture (ventouse, grille d’aération ou magnétique — obligatoire, par la loi et par bon sens) et ta voiture. Et soyons clairs : Co-Driver est née et a fait ses armes sur iPhone, donc si tu arrives avec un Android tu es parmi les tout premiers à l’essayer là-dessus — et ton retour compte double. La bêta est gratuite : en échange tu nous racontes comment ça s’est passé, et ce que tu signales part droit dans le développement.</span><span class="l-en">A <strong>phone</strong> (iPhone or Android), a <strong>holder</strong> to secure it in the car (suction cup, vent mount or magnetic — mandatory, by law and by common sense) and your car. And let’s be clear: Co-Driver was born and cut its teeth on iPhone, so if you show up with an Android you are among the very first to try it there — and your feedback counts double. The beta is free: in return you tell us how it went, and what you report goes straight into development.</span></p>
+  <h3><span class="l-it">E dopo ogni giro?</span><span class="l-fr">Et après chaque sortie ?</span><span class="l-en">And after every drive?</span></h3>
+  <p><span class="l-it">I feedback si mandano <strong>in DM a @co_driver_</strong>, senza formalità — anche un vocale a fine giro va benissimo. Risponde Tiago in persona. Curva chiamata male, voce in ritardo, telefono che scalda: ogni segnalazione viene letta da chi sviluppa, e spesso la ritrovi sistemata nella versione dopo.</span><span class="l-fr">Les retours s’envoient <strong>en DM à @co_driver_</strong>, sans formalités — même un vocal en fin de sortie fait très bien l’affaire. C’est Tiago en personne qui répond. Virage mal annoncé, voix en retard, téléphone qui chauffe : chaque signalement est lu par celui qui développe, et souvent tu le retrouves corrigé dans la version suivante.</span><span class="l-en">Feedback goes <strong>by DM to @co_driver_</strong>, no formalities — even a voice note at the end of a drive is perfectly fine. Tiago replies in person. A badly called corner, a late voice, a phone running hot: every report is read by the person who builds the app, and you will often find it fixed in the next version.</span></p>
 </section>
 
 <section id="modulo">
-  <h2>Sali a bordo</h2>
-  <p class="muted">Due minuti e sei dentro. Compila e tocca <strong>«Invia la candidatura»</strong>: la ricevo io, Tiago. Poi scrivimi in DM a <strong>@co_driver_</strong> su Instagram — ti dico io quale auto selezionare nell'app, e da lì restiamo in DM per i feedback.</p>
+  <h2><span class="l-it">Sali a bordo</span><span class="l-fr">Monte à bord</span><span class="l-en">Get on board</span></h2>
+  <p class="muted"><span class="l-it">Due minuti e sei dentro. Compila e tocca <strong>«Invia la candidatura»</strong>: la ricevo io, Tiago. Poi scrivimi in DM a <strong>@co_driver_</strong> su Instagram — ti dico io quale auto selezionare nell'app, e da lì restiamo in DM per i feedback.</span><span class="l-fr">Deux minutes et tu es dedans. Remplis et touche <strong>« Envoyer la candidature »</strong> : c’est moi, Tiago, qui la reçois. Puis écris-moi en DM à <strong>@co_driver_</strong> sur Instagram — je te dis quelle voiture sélectionner dans l’app, et à partir de là on reste en DM pour les retours.</span><span class="l-en">Two minutes and you are in. Fill it in and tap <strong>“Send your application”</strong>: I receive it myself — Tiago. Then DM me at <strong>@co_driver_</strong> on Instagram — I will tell you which car to select in the app, and from there we stay in DMs for feedback.</span></p>
 
   <form id="candidatura" novalidate>
-    <div class="gruppo">Chi sei</div>
-    <div class="campo"><label for="nome">Nome e cognome *</label><input type="text" id="nome" autocomplete="name"></div>
-    <div class="campo"><label for="email">Email *</label><input type="email" id="email" autocomplete="email"><p class="hint">È il contatto con cui ti seguiamo durante la beta.</p></div>
-    <div class="campo"><label for="zona">Dove guidi di solito *</label><input type="text" id="zona" placeholder="Provincia + la tua strada preferita (es. Como, Passo del Ghisallo)"><p class="hint">Così controlliamo che la tua zona sia già coperta, prima di farti partire.</p></div>
+    <div class="gruppo"><span class="l-it">Chi sei</span><span class="l-fr">Qui tu es</span><span class="l-en">Who you are</span></div>
+    <div class="campo"><label for="nome"><span class="l-it">Nome e cognome *</span><span class="l-fr">Prénom et nom *</span><span class="l-en">First and last name *</span></label><input type="text" id="nome" autocomplete="name"></div>
+    <div class="campo"><label for="email"><span class="l-it">Email *</span><span class="l-fr">E-mail *</span><span class="l-en">Email *</span></label><input type="email" id="email" autocomplete="email"><p class="hint"><span class="l-it">È il contatto con cui ti seguiamo durante la beta.</span><span class="l-fr">C’est le contact par lequel on te suit pendant la bêta.</span><span class="l-en">It is how we keep in touch with you during the beta.</span></p></div>
+    <div class="campo"><label for="zona"><span class="l-it">Dove guidi di solito *</span><span class="l-fr">Où tu conduis d'habitude *</span><span class="l-en">Where you usually drive *</span></label><input type="text" id="zona" placeholder="Provincia + la tua strada preferita (es. Como, Passo del Ghisallo)"><p class="hint"><span class="l-it">Così controlliamo che la tua zona sia già coperta, prima di farti partire.</span><span class="l-fr">Comme ça, on vérifie que ta zone est déjà couverte avant de te lancer.</span><span class="l-en">That way we check your area is already covered before you set off.</span></p></div>
 
-    <div class="gruppo">La tua auto</div>
+    <div class="gruppo"><span class="l-it">La tua auto</span><span class="l-fr">Ta voiture</span><span class="l-en">Your car</span></div>
     <div class="riga2">
-      <div class="campo"><label for="marca">Marca e modello *</label><input type="text" id="marca" placeholder="es. Alfa Romeo MiTo QV"></div>
-      <div class="campo"><label for="anno">Anno</label><input type="text" id="anno" inputmode="numeric" placeholder="es. 2014"></div>
+      <div class="campo"><label for="marca"><span class="l-it">Marca e modello *</span><span class="l-fr">Marque et modèle *</span><span class="l-en">Make and model *</span></label><input type="text" id="marca" placeholder="es. Alfa Romeo MiTo QV"></div>
+      <div class="campo"><label for="anno"><span class="l-it">Anno</span><span class="l-fr">Année</span><span class="l-en">Year</span></label><input type="text" id="anno" inputmode="numeric" placeholder="es. 2014"></div>
     </div>
     <div class="riga2">
-      <div class="campo"><label for="motore">Versione / motore</label><input type="text" id="motore" placeholder="es. 1.4 TB 170 CV"></div>
-      <div class="campo"><label for="assetto">Com'è messa *</label>
+      <div class="campo"><label for="motore"><span class="l-it">Versione / motore</span><span class="l-fr">Version / moteur</span><span class="l-en">Version / engine</span></label><input type="text" id="motore" placeholder="es. 1.4 TB 170 CV"></div>
+      <div class="campo"><label for="assetto"><span class="l-it">Com'è messa *</span><span class="l-fr">Comment elle est préparée *</span><span class="l-en">How it is set up *</span></label>
         <select id="assetto">
           <option value="">Scegli…</option>
-          <option>Di serie</option>
-          <option>Gomme sportive</option>
-          <option>Assetto modificato</option>
-          <option>Assetto + gomme sportive</option>
+          <option value="Di serie">Di serie</option>
+          <option value="Gomme sportive">Gomme sportive</option>
+          <option value="Assetto modificato">Assetto modificato</option>
+          <option value="Assetto + gomme sportive">Assetto + gomme sportive</option>
         </select>
       </div>
     </div>
-    <p class="hint" style="margin-top:-6px">Non è curiosità da bar: su auto e assetto tariamo i suggerimenti di velocità in curva — sul tuo mezzo, non su uno qualsiasi.</p>
-    <div class="campo"><label for="modifiche">Modifiche alla tua auto</label><textarea id="modifiche" rows="3" placeholder="es. assetto a ghiera, scarico completo, rimappa +30 CV… (se è di serie lascia vuoto)"></textarea></div>
+    <p class="hint" style="margin-top:-6px"><span class="l-it">Non è curiosità da bar: su auto e assetto tariamo i suggerimenti di velocità in curva — sul tuo mezzo, non su uno qualsiasi.</span><span class="l-fr">Ce n’est pas de la curiosité de comptoir : voiture et préparation servent à calibrer les vitesses conseillées en virage — sur ta voiture, pas sur n’importe laquelle.</span><span class="l-en">It is not idle curiosity: car and setup are what we use to calibrate the suggested cornering speeds — for your car, not just any car.</span></p>
+    <div class="campo"><label for="modifiche"><span class="l-it">Modifiche alla tua auto</span><span class="l-fr">Modifications de ta voiture</span><span class="l-en">Modifications to your car</span></label><textarea id="modifiche" rows="3" placeholder="es. assetto a ghiera, scarico completo, rimappa +30 CV… (se è di serie lascia vuoto)"></textarea></div>
 
-    <div class="gruppo">Telefono e audio</div>
+    <div class="gruppo"><span class="l-it">Telefono e audio</span><span class="l-fr">Téléphone et audio</span><span class="l-en">Phone and audio</span></div>
     <div class="riga2">
-      <div class="campo"><label for="iphone">Che telefono hai? *</label><input type="text" id="iphone" placeholder="es. iPhone 12 · iOS 18, oppure Pixel 7 · Android 15"></div>
-      <div class="campo"><label for="montaggio">Come lo monti in auto *</label>
+      <div class="campo"><label for="iphone"><span class="l-it">Che telefono hai? *</span><span class="l-fr">Quel téléphone as-tu ? *</span><span class="l-en">What phone do you have? *</span></label><input type="text" id="iphone" placeholder="es. iPhone 12 · iOS 18, oppure Pixel 7 · Android 15"></div>
+      <div class="campo"><label for="montaggio"><span class="l-it">Come lo monti in auto *</span><span class="l-fr">Comment tu le fixes dans la voiture *</span><span class="l-en">How you mount it in the car *</span></label>
         <select id="montaggio">
           <option value="">Scegli…</option>
-          <option>Ventosa sul parabrezza</option>
-          <option>Supporto a bocchetta</option>
-          <option>Magnetico (MagSafe o simili)</option>
-          <option>Altro supporto</option>
-          <option>Non ho ancora un supporto</option>
+          <option value="Ventosa sul parabrezza">Ventosa sul parabrezza</option>
+          <option value="Supporto a bocchetta">Supporto a bocchetta</option>
+          <option value="Magnetico (MagSafe o simili)">Magnetico (MagSafe o simili)</option>
+          <option value="Altro supporto">Altro supporto</option>
+          <option value="Non ho ancora un supporto">Non ho ancora un supporto</option>
         </select>
       </div>
     </div>
-    <div class="campo"><label for="audio">Come senti l'audio *</label>
+    <div class="campo"><label for="audio"><span class="l-it">Come senti l'audio *</span><span class="l-fr">Comment tu entends le son *</span><span class="l-en">How you hear the audio *</span></label>
       <select id="audio">
         <option value="">Scegli…</option>
-        <option>Cassa del telefono</option>
-        <option>Bluetooth dell'auto</option>
-        <option>Cavo / AUX</option>
+        <option value="Cassa del telefono">Cassa del telefono</option>
+        <option value="Bluetooth dell'auto">Bluetooth dell'auto</option>
+        <option value="Cavo / AUX">Cavo / AUX</option>
       </select>
     </div>
 
-    <div class="gruppo">Patti chiari</div>
-    <label class="check"><input type="checkbox" id="acc-termini"><span>Ho letto e accetto i <a href="#termini">Termini e condizioni della beta</a> (versione 1 del 29/08/2026). *</span></label>
-    <label class="check"><input type="checkbox" id="acc-privacy"><span>Ho letto l'<a href="#privacy">informativa privacy</a>. *</span></label>
-    <label class="check"><input type="checkbox" id="acc-news"><span>Voglio ricevere notizie sul lancio di Co-Driver anche dopo la beta. <em>(facoltativo)</em></span></label>
+    <div class="gruppo"><span class="l-it">Patti chiari</span><span class="l-fr">Noir sur blanc</span><span class="l-en">Clear terms</span></div>
+    <label class="check"><input type="checkbox" id="acc-termini"><span><span class="l-it">Ho letto e accetto i <a href="#termini">Termini e condizioni della beta</a> (versione 1 del 29/08/2026). *</span><span class="l-fr">J’ai lu et j’accepte les <a href="#termini">Termes et conditions de la bêta</a> (version 1 du 29/08/2026). *</span><span class="l-en">I have read and accept the <a href="#termini">Beta Terms and Conditions</a> (version 1, 29/08/2026). *</span></span></label>
+    <label class="check"><input type="checkbox" id="acc-privacy"><span><span class="l-it">Ho letto l'<a href="#privacy">informativa privacy</a>. *</span><span class="l-fr">J’ai lu la <a href="#privacy">notice de confidentialité</a>. *</span><span class="l-en">I have read the <a href="#privacy">privacy notice</a>. *</span></span></label>
+    <label class="check"><input type="checkbox" id="acc-news"><span><span class="l-it">Voglio ricevere notizie sul lancio di Co-Driver anche dopo la beta. <em>(facoltativo)</em></span><span class="l-fr">Je veux recevoir des nouvelles du lancement de Co-Driver même après la bêta. <em>(facultatif)</em></span><span class="l-en">I want to receive news about the Co-Driver launch after the beta too. <em>(optional)</em></span></span></label>
 
-    <button type="submit" class="invia">Invia la candidatura 🏁</button>
+    <button type="submit" class="invia"><span class="l-it">Invia la candidatura 🏁</span><span class="l-fr">Envoyer la candidature 🏁</span><span class="l-en">Send your application 🏁</span></button>
     <p id="esito" role="status"></p>
     <div id="anteprima"><pre id="testo"></pre></div>
     <div id="prosegui"><div class="passo2">
-      <b>E adesso:</b>
-      <p id="mossa1">1 · <a id="inviaCand" class="invia" href="#" target="_blank" rel="noopener">Completa l'invio →</a> <span class="small">si apre già compilata: tocca «Invia» lì, poi torna qui.</span></p>
-      <p>2 · <strong>Scrivimi in DM a @co_driver_</strong> — anche solo «fatto!», o incolla il messaggio copiato: ti rispondo io con quale auto selezionare nell'app.</p>
-      <p>3 · Intanto <strong>installa l'app</strong>: <a href="https://scheideckerrestelli-ui.github.io/copilota-ia/" target="_blank" rel="noopener">apri Co-Driver</a> e segui la guida «Come si installa» qui sopra. Poi si guida.</p>
+      <b><span class="l-it">E adesso:</span><span class="l-fr">Et maintenant :</span><span class="l-en">What happens now:</span></b>
+      <p id="mossa1">1 · <a id="inviaCand" class="invia" href="#" target="_blank" rel="noopener"><span class="l-it">Completa l'invio →</span><span class="l-fr">Termine l'envoi →</span><span class="l-en">Complete the submission →</span></a> <span class="small"><span class="l-it">si apre già compilata: tocca «Invia» lì, poi torna qui.</span><span class="l-fr">elle s’ouvre déjà remplie : touche « Envoyer » là-bas, puis reviens ici.</span><span class="l-en">it opens pre-filled: tap “Submit” there, then come back here.</span></span></p>
+      <p>2 · <span class="l-it"><strong>Scrivimi in DM a @co_driver_</strong> — anche solo «fatto!», o incolla il messaggio copiato: ti rispondo io con quale auto selezionare nell'app.</span><span class="l-fr"><strong>Écris-moi en DM à @co_driver_</strong> — même juste « fait ! », ou colle le message copié : je te réponds avec la voiture à sélectionner dans l’app.</span><span class="l-en"><strong>DM me at @co_driver_</strong> — even just “done!”, or paste the copied message: I will reply with which car to select in the app.</span></p>
+      <p>3 · <span class="l-it">Intanto <strong>installa l'app</strong>: <a href="https://scheideckerrestelli-ui.github.io/copilota-ia/" target="_blank" rel="noopener">apri Co-Driver</a> e segui la guida «Come si installa» qui sopra. Poi si guida.</span><span class="l-fr">En attendant, <strong>installe l’app</strong> : <a href="https://scheideckerrestelli-ui.github.io/copilota-ia/" target="_blank" rel="noopener">ouvre Co-Driver</a> et suis le guide « Comment l’installer » ci-dessus. Ensuite, en route.</span><span class="l-en">Meanwhile, <strong>install the app</strong>: <a href="https://scheideckerrestelli-ui.github.io/copilota-ia/" target="_blank" rel="noopener">open Co-Driver</a> and follow the “How to install” guide above. Then it is time to drive.</span></p>
     </div></div>
   </form>
 </section>
 
 <section id="installazione">
-  <h2>Come si installa</h2>
-  <p class="muted">Trenta secondi, davvero. Su iPhone si passa da Safari, su Android da Chrome — il risultato è lo stesso: l'icona di Co-Driver sulla Home, come una app vera.</p>
+  <h2><span class="l-it">Come si installa</span><span class="l-fr">Comment l'installer</span><span class="l-en">How to install</span></h2>
+  <p class="muted"><span class="l-it">Trenta secondi, davvero. Su iPhone si passa da Safari, su Android da Chrome — il risultato è lo stesso: l'icona di Co-Driver sulla Home, come una app vera.</span><span class="l-fr">Trente secondes, vraiment. Sur iPhone ça passe par Safari, sur Android par Chrome — le résultat est le même : l’icône de Co-Driver sur l’écran d’accueil, comme une vraie app.</span><span class="l-en">Thirty seconds, really. On iPhone it goes through Safari, on Android through Chrome — the result is the same: the Co-Driver icon on your Home Screen, like a real app.</span></p>
 
-  <h3>Su iPhone (Safari)</h3>
+  <h3><span class="l-it">Su iPhone (Safari)</span><span class="l-fr">Sur iPhone (Safari)</span><span class="l-en">On iPhone (Safari)</span></h3>
   <ol class="flow">
-    <li><p>Apri il link dell'app in <strong>Safari</strong> (se lo apri da Instagram: tocca «···» in alto → «Apri in Safari»).</p></li>
-    <li><p>Tocca il tasto <strong>Condividi</strong> — il quadrato con la freccia in su.</p></li>
-    <li><p>Scorri e tocca <strong>«Aggiungi alla schermata Home»</strong>, poi <strong>Aggiungi</strong>.</p></li>
+    <li><p><span class="l-it">Apri il link dell'app in <strong>Safari</strong> (se lo apri da Instagram: tocca «···» in alto → «Apri in Safari»).</span><span class="l-fr">Ouvre le lien de l’app dans <strong>Safari</strong> (si tu l’ouvres depuis Instagram : touche « ··· » en haut → « Ouvrir dans Safari »).</span><span class="l-en">Open the app link in <strong>Safari</strong> (if you open it from Instagram: tap “···” at the top → “Open in Safari”).</span></p></li>
+    <li><p><span class="l-it">Tocca il tasto <strong>Condividi</strong> — il quadrato con la freccia in su.</span><span class="l-fr">Touche le bouton <strong>Partager</strong> — le carré avec la flèche vers le haut.</span><span class="l-en">Tap the <strong>Share</strong> button — the square with the arrow pointing up.</span></p></li>
+    <li><p><span class="l-it">Scorri e tocca <strong>«Aggiungi alla schermata Home»</strong>, poi <strong>Aggiungi</strong>.</span><span class="l-fr">Fais défiler et touche <strong>« Sur l’écran d’accueil »</strong>, puis <strong>Ajouter</strong>.</span><span class="l-en">Scroll and tap <strong>“Add to Home Screen”</strong>, then <strong>Add</strong>.</span></p></li>
   </ol>
 
-  <h3>Su Android (Chrome)</h3>
+  <h3><span class="l-it">Su Android (Chrome)</span><span class="l-fr">Sur Android (Chrome)</span><span class="l-en">On Android (Chrome)</span></h3>
   <ol class="flow">
-    <li><p>Apri il link dell'app in <strong>Chrome</strong> (se lo apri da Instagram: menu in alto → «Apri in Chrome»).</p></li>
-    <li><p>Tocca il menu <strong>⋮</strong> in alto a destra.</p></li>
-    <li><p>Tocca <strong>«Aggiungi a schermata Home»</strong> — su alcuni telefoni si chiama <strong>«Installa app»</strong> — poi conferma.</p></li>
+    <li><p><span class="l-it">Apri il link dell'app in <strong>Chrome</strong> (se lo apri da Instagram: menu in alto → «Apri in Chrome»).</span><span class="l-fr">Ouvre le lien de l’app dans <strong>Chrome</strong> (si tu l’ouvres depuis Instagram : menu en haut → « Ouvrir dans Chrome »).</span><span class="l-en">Open the app link in <strong>Chrome</strong> (if you open it from Instagram: top menu → “Open in Chrome”).</span></p></li>
+    <li><p><span class="l-it">Tocca il menu <strong>⋮</strong> in alto a destra.</span><span class="l-fr">Touche le menu <strong>⋮</strong> en haut à droite.</span><span class="l-en">Tap the <strong>⋮</strong> menu at the top right.</span></p></li>
+    <li><p><span class="l-it">Tocca <strong>«Aggiungi a schermata Home»</strong> — su alcuni telefoni si chiama <strong>«Installa app»</strong> — poi conferma.</span><span class="l-fr">Touche <strong>« Ajouter à l’écran d’accueil »</strong> — sur certains téléphones ça s’appelle <strong>« Installer l’application »</strong> — puis confirme.</span><span class="l-en">Tap <strong>“Add to Home screen”</strong> — on some phones it is called <strong>“Install app”</strong> — then confirm.</span></p></li>
   </ol>
 
-  <h3>E da lì in poi, per tutti</h3>
+  <h3><span class="l-it">E da lì in poi, per tutti</span><span class="l-fr">Et ensuite, pour tout le monde</span><span class="l-en">And from then on, for everyone</span></h3>
   <ol class="flow">
-    <li><p>Apri Co-Driver <strong>sempre dall'icona</strong> sulla Home: schermo pieno e voce al meglio.</p></li>
-    <li><p>Prima di partire: telefono sul supporto, volume su, tutto impostato. <strong>In marcia non si tocca.</strong></p></li>
+    <li><p><span class="l-it">Apri Co-Driver <strong>sempre dall'icona</strong> sulla Home: schermo pieno e voce al meglio.</span><span class="l-fr">Ouvre Co-Driver <strong>toujours depuis l’icône</strong> de l’écran d’accueil : plein écran et voix au mieux.</span><span class="l-en">Always open Co-Driver <strong>from the Home Screen icon</strong>: full screen and the voice at its best.</span></p></li>
+    <li><p><span class="l-it">Prima di partire: telefono sul supporto, volume su, tutto impostato. <strong>In marcia non si tocca.</strong></span><span class="l-fr">Avant de partir : téléphone sur son support, volume monté, tout réglé. <strong>En roulant, on n’y touche pas.</strong></span><span class="l-en">Before setting off: phone on its holder, volume up, everything set. <strong>While driving, hands off.</strong></span></p></li>
   </ol>
 
-  <div class="note"><p><b>Regola non negoziabile:</b> mai il telefono in mano mentre guidi, e i video solo dal passeggero o col telefono fissato. L'app è fatta per essere <em>ascoltata</em>, non guardata.</p></div>
+  <div class="note"><p><span class="l-it"><b>Regola non negoziabile:</b> mai il telefono in mano mentre guidi, e i video solo dal passeggero o col telefono fissato. L'app è fatta per essere <em>ascoltata</em>, non guardata.</span><span class="l-fr"><b>Règle non négociable :</b> jamais le téléphone à la main en conduisant, et les vidéos uniquement depuis le siège passager ou avec le téléphone fixé. L’app est faite pour être <em>écoutée</em>, pas regardée.</span><span class="l-en"><b>Non-negotiable rule:</b> never hold the phone while driving, and videos only from the passenger seat or with the phone mounted. The app is made to be <em>listened to</em>, not watched.</span></p></div>
 </section>
 
 <section id="termini">
-  <h2>Termini e condizioni della beta</h2>
+  <h2><span class="l-it">Termini e condizioni della beta</span><span class="l-fr">Termes et conditions de la bêta</span><span class="l-en">Beta Terms and Conditions</span></h2>
   <div class="doc">
-    <p class="sotto">Versione 1 · 29 agosto 2026 · beta privata gratuita · si accettano con la spunta nel modulo (e a breve anche nell'app, al primo avvio)</p>
+    <p class="sotto"><span class="l-it">Versione 1 · 29 agosto 2026 · beta privata gratuita · si accettano con la spunta nel modulo (e a breve anche nell'app, al primo avvio)</span><span class="l-fr">Version 1 · 29 août 2026 · bêta privée gratuite · acceptés via la case à cocher du formulaire (et bientôt aussi dans l’app, au premier lancement)</span><span class="l-en">Version 1 · 29 August 2026 · free private beta · accepted via the checkbox in the form (and soon in the app too, at first launch)</span></p>
     <ol>
-      <li><strong>Che cos'è.</strong> Co-Driver è un'applicazione web in versione <strong>beta</strong>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li>
-      <li><strong>Ausilio informativo, non un dispositivo di sicurezza.</strong> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <strong>informazioni di supporto</strong>, non istruzioni di guida né valutazioni della velocità sicura: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada.</li>
-      <li><strong>Guidi tu: assunzione di rischio.</strong> L'uso dell'app avviene <strong>a tuo esclusivo rischio</strong>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <strong>prevalgono sempre</strong> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata.</li>
-      <li><strong>Obblighi di legge.</strong> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <strong>fissato a un supporto</strong> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li>
-      <li><strong>Dati non garantiti.</strong> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li>
-      <li><strong>Limitazione di responsabilità.</strong> <strong>Nella misura massima consentita dalla legge applicabile</strong>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li>
-      <li><strong>Dove si usa.</strong> L'uso previsto è <strong>in auto, in Italia e in Belgio</strong>. Fuori da questi due paesi l'app non va usata: in particolare gli avvisi autovelox sono vietati in Germania, Francia e Svizzera.</li>
-      <li><strong>I tuoi feedback.</strong> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <strong>solo con il tuo permesso esplicito</strong>, caso per caso.</li>
-      <li><strong>Gratis ora, a pagamento poi.</strong> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li>
-      <li><strong>Durata e modifiche.</strong> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li>
+      <li><span class="l-it"><strong>Che cos'è.</strong> Co-Driver è un'applicazione web in versione <strong>beta</strong>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</span><span class="l-fr"><strong>Ce que c’est.</strong> Co-Driver est une application web en version <strong>bêta</strong> : un logiciel d’essai, pas un produit fini. Elle peut contenir des erreurs, y compris graves, et est fournie « en l’état » et « selon disponibilité », sans aucune garantie expresse ou implicite de fonctionnement, d’exactitude ou d’adéquation à un usage donné. La participation est gratuite, personnelle et révocable à tout moment par chacune des parties.</span><span class="l-en"><strong>What it is.</strong> Co-Driver is a web application in <strong>beta</strong>: trial software, not a finished product. It may contain errors, including serious ones, and is provided “as is” and “as available”, without any express or implied warranty of operation, accuracy or fitness for a particular purpose. Participation is free of charge, personal and revocable at any time by either party.</span></li>
+      <li><span class="l-it"><strong>Ausilio informativo, non un dispositivo di sicurezza.</strong> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <strong>informazioni di supporto</strong>, non istruzioni di guida né valutazioni della velocità sicura: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada.</span><span class="l-fr"><strong>Une aide informative, pas un dispositif de sécurité.</strong> Les annonces vocales et les indications à l’écran (virages, sévérité, dos d’âne, radars, vitesses suggérées) sont des <strong>informations d’appui</strong>, et non des instructions de conduite ni des évaluations de la vitesse sûre : l’app ne connaît ni la météo, ni l’état de la chaussée, ni le trafic, ni l’état du véhicule, ni les capacités du conducteur. Aucune indication de Co-Driver n’autorise à dépasser les limitations ni à régler sa conduite sur ce que dit l’app plutôt que sur ce que dit la route.</span><span class="l-en"><strong>An informational aid, not a safety device.</strong> The voice announcements and on-screen indications (corners, severity, speed bumps, speed cameras, suggested speeds) are <strong>supporting information</strong>, not driving instructions nor assessments of a safe speed: the app knows nothing of the weather, road surface, traffic, vehicle condition or the driver's abilities. No indication from Co-Driver authorises you to exceed the limits or to adjust your driving to what the app says rather than to what the road says.</span></li>
+      <li><span class="l-it"><strong>Guidi tu: assunzione di rischio.</strong> L'uso dell'app avviene <strong>a tuo esclusivo rischio</strong>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <strong>prevalgono sempre</strong> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata.</span><span class="l-fr"><strong>C’est toi qui conduis : acceptation du risque.</strong> L’utilisation de l’app se fait <strong>aux risques et périls exclusifs du conducteur</strong>. Le conducteur reste à tout moment seul responsable de sa conduite, du choix de l’itinéraire et de toute décision prise au volant, avec ou sans l’app active. La signalisation, les feux, les agents de la circulation et les conditions réelles de la route <strong>prévalent toujours</strong> sur toute indication de Co-Driver : là où la réalité et l’app divergent, l’app doit être ignorée.</span><span class="l-en"><strong>You are the driver: assumption of risk.</strong> You use the app <strong>entirely at your own risk</strong>. The driver remains at all times solely responsible for their driving conduct, the choice of route and every decision taken at the wheel, with or without the app active. Road signs, traffic lights, traffic officers and actual road conditions <strong>always prevail</strong> over any indication from Co-Driver: where reality and the app differ, the app must be ignored.</span></li>
+      <li><span class="l-it"><strong>Obblighi di legge.</strong> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <strong>fissato a un supporto</strong> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</span><span class="l-fr"><strong>Obligations légales.</strong> Tu t’engages à respecter le code de la route du pays où tu conduis. En particulier, le téléphone doit être <strong>fixé sur un support</strong> et ne doit être ni tenu en main ni manipulé en roulant : c’est ce qu’imposent l’art. 173 du code de la route italien et l’art. 8.4 du code de la route belge. Tout réglage de l’app doit être effectué véhicule à l’arrêt.</span><span class="l-en"><strong>Legal obligations.</strong> You undertake to comply with the road traffic laws of the country in which you drive. In particular, the phone must be <strong>secured in a holder</strong> and must not be held in the hand or handled while driving: this is required by art. 173 of the Italian Highway Code and art. 8.4 of the Belgian road code. All app settings must be adjusted with the vehicle stationary.</span></li>
+      <li><span class="l-it"><strong>Dati non garantiti.</strong> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</span><span class="l-fr"><strong>Données non garanties.</strong> Cartes, virages, sévérités, limitations, dos d’âne et radars peuvent être erronés, incomplets ou pas à jour. Routes fermées, chantiers, arrêtés locaux, météo et état de la chaussée restent de ta responsabilité exclusive, comme avec n’importe quel GPS.</span><span class="l-en"><strong>Data not guaranteed.</strong> Maps, corners, severities, limits, speed bumps and speed cameras may be wrong, incomplete or out of date. Road closures, roadworks, local ordinances, weather and surface conditions remain your sole responsibility, as with any navigation app.</span></li>
+      <li><span class="l-it"><strong>Limitazione di responsabilità.</strong> <strong>Nella misura massima consentita dalla legge applicabile</strong>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</span><span class="l-fr"><strong>Limitation de responsabilité.</strong> <strong>Dans toute la mesure permise par la loi applicable</strong>, le fournisseur de Co-Driver ne répond pas des dommages directs ou indirects — y compris les dommages aux véhicules, aux biens ou aux personnes, les sanctions, la perte de données ou le manque à gagner — découlant de l’utilisation ou de l’impossibilité d’utiliser l’app, de ses indications ou de ses erreurs, et en particulier d’accidents survenus pendant la conduite : les décisions au volant appartiennent entièrement au conducteur (points 2 et 3). Demeure seule la responsabilité que la loi ne permet pas d’exclure. S’agissant d’une bêta gratuite, aucune garantie de conformité ni aucune indemnité contractuelle n’est due.</span><span class="l-en"><strong>Limitation of liability.</strong> <strong>To the maximum extent permitted by applicable law</strong>, the provider of Co-Driver is not liable for direct or indirect damages — including damage to vehicles, property or persons, fines, loss of data or loss of earnings — arising from the use or inability to use the app, from its indications or its errors, and in particular from accidents occurring while driving: decisions at the wheel rest entirely with the driver (points 2 and 3). Only such liability as the law does not allow to be excluded remains. As this is a free beta, no warranty of conformity and no contractual compensation is owed.</span></li>
+      <li><span class="l-it"><strong>Dove si usa.</strong> L'uso previsto è <strong>in auto, in Italia e in Belgio</strong>. Fuori da questi due paesi l'app non va usata: in particolare gli avvisi autovelox sono vietati in Germania, Francia e Svizzera.</span><span class="l-fr"><strong>Où l’utiliser.</strong> L’usage prévu est <strong>en voiture, en Italie et en Belgique</strong>. En dehors de ces deux pays, l’app ne doit pas être utilisée : en particulier, les alertes radars sont interdites en Allemagne, en France et en Suisse.</span><span class="l-en"><strong>Where to use it.</strong> The intended use is <strong>in a car, in Italy and Belgium</strong>. Outside these two countries the app must not be used: in particular, speed-camera alerts are prohibited in Germany, France and Switzerland.</span></li>
+      <li><span class="l-it"><strong>I tuoi feedback.</strong> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <strong>solo con il tuo permesso esplicito</strong>, caso per caso.</span><span class="l-fr"><strong>Tes retours.</strong> Les signalements, idées et suggestions envoyés pendant la bêta peuvent être librement utilisés pour améliorer le produit, sans rémunération. Les citations publiques, photos et vidéos ne sont publiées <strong>qu’avec ton autorisation explicite</strong>, au cas par cas.</span><span class="l-en"><strong>Your feedback.</strong> Reports, ideas and suggestions sent during the beta may be used freely to improve the product, without compensation. Public quotes, photos and videos are published <strong>only with your explicit permission</strong>, case by case.</span></li>
+      <li><span class="l-it"><strong>Gratis ora, a pagamento poi.</strong> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</span><span class="l-fr"><strong>Gratuit maintenant, payant ensuite.</strong> Co-Driver est gratuite pendant toute la bêta. Au lancement, elle deviendra freemium (carte gratuite, voix payante). La participation à la bêta ne donne droit à aucune condition économique future : elle donne un accès en avance et une voix directe sur le développement.</span><span class="l-en"><strong>Free now, paid later.</strong> Co-Driver is free for the whole beta. At launch it will become freemium (free map, paid voice). Taking part in the beta gives no right to future pricing terms: it gives early access and a direct say in development.</span></li>
+      <li><span class="l-it"><strong>Durata e modifiche.</strong> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</span><span class="l-fr"><strong>Durée et modifications.</strong> La bêta peut être suspendue, modifiée ou fermée à tout moment. Ces termes peuvent être mis à jour : la version que tu acceptes est celle indiquée en tête, et toute modification substantielle te sera communiquée.</span><span class="l-en"><strong>Duration and changes.</strong> The beta may be suspended, modified or closed at any time. These terms may be updated: the version you accept is the one stated at the top, and any substantial change will be communicated to you.</span></li>
     </ol>
   </div>
 </section>
 
 <section id="privacy">
-  <h2>Privacy</h2>
+  <h2><span class="l-it">Privacy</span><span class="l-fr">Confidentialité</span><span class="l-en">Privacy</span></h2>
   <div class="doc">
-    <p class="sotto">Informativa ai sensi dell'art. 13 GDPR · versione 1 · 29 agosto 2026</p>
-    <p><strong>Quali dati e perché:</strong> quelli che invii con il modulo (nome, email, zona, auto ed eventuali modifiche, telefono) e le segnalazioni che condividi. Servono solo a gestire la beta: farti entrare, verificare la copertura, mandarti aggiornamenti e capire i problemi. Base giuridica: l'accordo di partecipazione che richiedi tu stesso (art. 6.1.b GDPR).</p>
-    <p><strong>La tua posizione resta sul telefono.</strong> Co-Driver non invia la posizione a nessun server: l'app scarica le mappe e parla, ma il GPS viene letto ed elaborato solo sul tuo dispositivo.</p>
-    <p><strong>A chi vanno:</strong> le risposte del modulo arrivano nell'archivio privato della beta, che si appoggia a Google come responsabile del trattamento (un modulo e un foglio privati del titolare). Nessun altro le riceve: nessuna vendita, nessun marketing senza il consenso separato del modulo.</p>
-    <p><strong>Per quanto:</strong> fino alla fine della beta o alla tua uscita; poi vengono cancellati.</p>
-    <p><strong>I tuoi diritti:</strong> puoi chiedere accesso, correzione o cancellazione scrivendo in DM a <strong>@co_driver_</strong> (risposta entro 30 giorni); resta sempre possibile il reclamo al Garante per la protezione dei dati personali.</p>
+    <p class="sotto"><span class="l-it">Informativa ai sensi dell'art. 13 GDPR · versione 1 · 29 agosto 2026</span><span class="l-fr">Notice au sens de l'art. 13 du RGPD · version 1 · 29 août 2026</span><span class="l-en">Notice under art. 13 GDPR · version 1 · 29 August 2026</span></p>
+    <p><span class="l-it"><strong>Quali dati e perché:</strong> quelli che invii con il modulo (nome, email, zona, auto ed eventuali modifiche, telefono) e le segnalazioni che condividi. Servono solo a gestire la beta: farti entrare, verificare la copertura, mandarti aggiornamenti e capire i problemi. Base giuridica: l'accordo di partecipazione che richiedi tu stesso (art. 6.1.b GDPR).</span><span class="l-fr"><strong>Quelles données et pourquoi :</strong> celles que tu envoies via le formulaire (nom, e-mail, zone, voiture et modifications éventuelles, téléphone) et les signalements que tu partages. Elles servent uniquement à gérer la bêta : te faire entrer, vérifier la couverture, t’envoyer des mises à jour et comprendre les problèmes. Base juridique : l’accord de participation que tu demandes toi-même (art. 6.1.b du RGPD).</span><span class="l-en"><strong>What data and why:</strong> what you send via the form (name, email, area, car and any modifications, phone) and the reports you share. They are used only to run the beta: getting you in, checking coverage, sending you updates and understanding problems. Legal basis: the participation agreement you yourself request (art. 6.1.b GDPR).</span></p>
+    <p><span class="l-it"><strong>La tua posizione resta sul telefono.</strong> Co-Driver non invia la posizione a nessun server: l'app scarica le mappe e parla, ma il GPS viene letto ed elaborato solo sul tuo dispositivo.</span><span class="l-fr"><strong>Ta position reste sur ton téléphone.</strong> Co-Driver n’envoie ta position à aucun serveur : l’app télécharge les cartes et parle, mais le GPS est lu et traité uniquement sur ton appareil.</span><span class="l-en"><strong>Your location stays on your phone.</strong> Co-Driver sends your location to no server: the app downloads the maps and speaks, but the GPS is read and processed only on your device.</span></p>
+    <p><span class="l-it"><strong>A chi vanno:</strong> le risposte del modulo arrivano nell'archivio privato della beta, che si appoggia a Google come responsabile del trattamento (un modulo e un foglio privati del titolare). Nessun altro le riceve: nessuna vendita, nessun marketing senza il consenso separato del modulo.</span><span class="l-fr"><strong>À qui elles vont :</strong> les réponses du formulaire arrivent dans l’archive privée de la bêta, qui s’appuie sur Google comme sous-traitant (un formulaire et une feuille privés du responsable du traitement). Personne d’autre ne les reçoit : aucune vente, aucun marketing sans le consentement séparé du formulaire.</span><span class="l-en"><strong>Who receives them:</strong> the form responses go into the beta's private archive, which relies on Google as data processor (a private form and sheet belonging to the data controller). No one else receives them: no selling, no marketing without the form's separate consent.</span></p>
+    <p><span class="l-it"><strong>Per quanto:</strong> fino alla fine della beta o alla tua uscita; poi vengono cancellati.</span><span class="l-fr"><strong>Pour combien de temps :</strong> jusqu’à la fin de la bêta ou jusqu’à ton départ ; ensuite elles sont supprimées.</span><span class="l-en"><strong>For how long:</strong> until the end of the beta or until you leave; then they are deleted.</span></p>
+    <p><span class="l-it"><strong>I tuoi diritti:</strong> puoi chiedere accesso, correzione o cancellazione scrivendo in DM a <strong>@co_driver_</strong> (risposta entro 30 giorni); resta sempre possibile il reclamo al Garante per la protezione dei dati personali.</span><span class="l-fr"><strong>Tes droits :</strong> tu peux demander l’accès, la rectification ou l’effacement en écrivant en DM à <strong>@co_driver_</strong> (réponse sous 30 jours) ; il reste toujours possible d’introduire une réclamation auprès de l’autorité de protection des données (en Italie, le Garante per la protezione dei dati personali).</span><span class="l-en"><strong>Your rights:</strong> you can request access, correction or erasure by DM to <strong>@co_driver_</strong> (reply within 30 days); you can always lodge a complaint with the data protection authority (in Italy, the Garante per la protezione dei dati personali).</span></p>
   </div>
 </section>
 
 <footer>
-  Co-Driver · beta privata 2026 · Il copilota che chiama la curva prima che tu la veda.<br>
-  Domande? Scrivi a @co_driver_ su Instagram.
+  <span class="l-it">Co-Driver · beta privata 2026 · Il copilota che chiama la curva prima che tu la veda.<br>
+  Domande? Scrivi a @co_driver_ su Instagram.</span><span class="l-fr">Co-Driver · bêta privée 2026 · Le copilote qui annonce le virage avant que tu le voies.<br>
+  Des questions ? Écris à @co_driver_ sur Instagram.</span><span class="l-en">Co-Driver · private beta 2026 · The co-driver that calls the corner before you see it.<br>
+  Questions? DM @co_driver_ on Instagram.</span>
 </footer>
 
 </div>
@@ -320,6 +356,121 @@
   function v(id){ return (document.getElementById(id).value || '').trim(); }
   function c(id){ return document.getElementById(id).checked; }
 
+  /* ------- lingua: dizionario per le stringhe dinamiche ------- */
+  var L = {
+    it: {
+      manca: 'Un attimo — manca ancora: ',
+      campi: { nome:'il nome', email:'l’email', zona:'la zona dove guidi', marca:'marca e modello dell’auto', assetto:'l’assetto', iphone:'il telefono', montaggio:'il montaggio', audio:'l’audio', termini:'la spunta sui termini', privacy:'la spunta sulla privacy' },
+      saluto: 'Ciao Tiago! Sono {nome} e voglio provare Co-Driver 🏁',
+      chiusa: 'Non vedo l’ora di sentirla chiamare le curve sulle mie strade. A presto!',
+      okInviato: 'Candidatura inviata ✓ (e il riepilogo è copiato, se vuoi incollarlo in DM). Qui sotto le prossime mosse.',
+      okCopiato: 'Riepilogo pronto e copiato ✓ — qui sotto le mosse per completare.',
+      fbInviato: 'Candidatura inviata ✓. ',
+      fbCopia: 'Il riepilogo è qui sotto: tienilo premuto e Copia, se vuoi incollarlo in DM.',
+      fatta: '<strong>Candidatura inviata!</strong> <span class="small">Ricevuta nel registro della beta.</span>',
+      ph: {
+        zona: 'Provincia + la tua strada preferita (es. Como, Passo del Ghisallo)',
+        marca: 'es. Alfa Romeo MiTo QV',
+        anno: 'es. 2014',
+        motore: 'es. 1.4 TB 170 CV',
+        modifiche: 'es. assetto a ghiera, scarico completo, rimappa +30 CV… (se è di serie lascia vuoto)',
+        iphone: 'es. iPhone 12 · iOS 18, oppure Pixel 7 · Android 15'
+      },
+      opts: {
+        assetto: { "": "Scegli…", "Di serie": "Di serie", "Gomme sportive": "Gomme sportive", "Assetto modificato": "Assetto modificato", "Assetto + gomme sportive": "Assetto + gomme sportive" },
+        montaggio: { "": "Scegli…", "Ventosa sul parabrezza": "Ventosa sul parabrezza", "Supporto a bocchetta": "Supporto a bocchetta", "Magnetico (MagSafe o simili)": "Magnetico (MagSafe o simili)", "Altro supporto": "Altro supporto", "Non ho ancora un supporto": "Non ho ancora un supporto" },
+        audio: { "": "Scegli…", "Cassa del telefono": "Cassa del telefono", "Bluetooth dell'auto": "Bluetooth dell'auto", "Cavo / AUX": "Cavo / AUX" }
+      }
+    },
+    fr: {
+      manca: 'Un instant — il manque encore : ',
+      campi: { nome:'le nom', email:'l’e-mail', zona:'la zone où tu conduis', marca:'la marque et le modèle de la voiture', assetto:'la préparation', iphone:'le téléphone', montaggio:'la fixation', audio:'l’audio', termini:'la case des termes', privacy:'la case de la confidentialité' },
+      saluto: 'Salut Tiago ! Je suis {nome} et je veux essayer Co-Driver 🏁',
+      chiusa: 'J’ai hâte de l’entendre annoncer les virages sur mes routes. À bientôt !',
+      okInviato: 'Candidature envoyée ✓ (et le récapitulatif est copié, si tu veux le coller en DM). Les prochaines étapes juste en dessous.',
+      okCopiato: 'Récapitulatif prêt et copié ✓ — juste en dessous, les étapes pour terminer.',
+      fbInviato: 'Candidature envoyée ✓. ',
+      fbCopia: 'Le récapitulatif est juste en dessous : reste appuyé dessus et Copie, si tu veux le coller en DM.',
+      fatta: '<strong>Candidature envoyée !</strong> <span class="small">Reçue dans le registre de la bêta.</span>',
+      ph: {
+        zona: 'Province + ta route préférée (ex. Côme, Passo del Ghisallo)',
+        marca: 'ex. Alfa Romeo MiTo QV',
+        anno: 'ex. 2014',
+        motore: 'ex. 1.4 TB 170 ch',
+        modifiche: 'ex. combinés filetés, ligne complète, reprog +30 ch… (si elle est d’origine, laisse vide)',
+        iphone: 'ex. iPhone 12 · iOS 18, ou Pixel 7 · Android 15'
+      },
+      opts: {
+        assetto: { "": "Choisis…", "Di serie": "D'origine", "Gomme sportive": "Pneus sport", "Assetto modificato": "Suspensions modifiées", "Assetto + gomme sportive": "Suspensions + pneus sport" },
+        montaggio: { "": "Choisis…", "Ventosa sul parabrezza": "Ventouse sur le pare-brise", "Supporto a bocchetta": "Support sur grille d'aération", "Magnetico (MagSafe o simili)": "Magnétique (MagSafe ou similaire)", "Altro supporto": "Autre support", "Non ho ancora un supporto": "Je n'ai pas encore de support" },
+        audio: { "": "Choisis…", "Cassa del telefono": "Haut-parleur du téléphone", "Bluetooth dell'auto": "Bluetooth de la voiture", "Cavo / AUX": "Câble / AUX" }
+      }
+    },
+    en: {
+      manca: 'One moment — still missing: ',
+      campi: { nome:'your name', email:'your email', zona:'the area where you drive', marca:'your car’s make and model', assetto:'the setup', iphone:'your phone', montaggio:'the mounting', audio:'the audio', termini:'the terms checkbox', privacy:'the privacy checkbox' },
+      saluto: 'Hi Tiago! I’m {nome} and I want to try Co-Driver 🏁',
+      chiusa: 'Can’t wait to hear it call the corners on my roads. See you soon!',
+      okInviato: 'Application sent ✓ (and the summary is copied, if you want to paste it in a DM). Next steps below.',
+      okCopiato: 'Summary ready and copied ✓ — the steps to finish are below.',
+      fbInviato: 'Application sent ✓. ',
+      fbCopia: 'The summary is below: press and hold it, then Copy, if you want to paste it in a DM.',
+      fatta: '<strong>Application sent!</strong> <span class="small">Received in the beta register.</span>',
+      ph: {
+        zona: 'Province + your favourite road (e.g. Como, Passo del Ghisallo)',
+        marca: 'e.g. Alfa Romeo MiTo QV',
+        anno: 'e.g. 2014',
+        motore: 'e.g. 1.4 TB 170 hp',
+        modifiche: 'e.g. coilovers, full exhaust, remap +30 hp… (leave empty if stock)',
+        iphone: 'e.g. iPhone 12 · iOS 18, or Pixel 7 · Android 15'
+      },
+      opts: {
+        assetto: { "": "Choose…", "Di serie": "Stock", "Gomme sportive": "Sport tyres", "Assetto modificato": "Modified suspension", "Assetto + gomme sportive": "Suspension + sport tyres" },
+        montaggio: { "": "Choose…", "Ventosa sul parabrezza": "Suction cup on the windscreen", "Supporto a bocchetta": "Vent mount", "Magnetico (MagSafe o simili)": "Magnetic (MagSafe or similar)", "Altro supporto": "Other holder", "Non ho ancora un supporto": "I don't have a holder yet" },
+        audio: { "": "Choose…", "Cassa del telefono": "Phone speaker", "Bluetooth dell'auto": "Car Bluetooth", "Cavo / AUX": "Cable / AUX" }
+      }
+    }
+  };
+
+  function cur(){ var l = document.documentElement.getAttribute('data-lang'); return (l === 'fr' || l === 'en') ? l : 'it'; }
+  /* i messaggi dinamici si scrivono nelle tre lingue insieme: la visibilita' la decide il CSS */
+  function tri(fn){
+    return ['it','fr','en'].map(function(l){ return '<span class="l-' + l + '">' + fn(L[l]) + '</span>'; }).join('');
+  }
+
+  var chips = document.querySelectorAll('.lang-switch button');
+  function applyLang(l){
+    if(!L[l]) l = 'it';
+    document.documentElement.setAttribute('data-lang', l);
+    document.documentElement.setAttribute('lang', l);
+    var d = L[l];
+    Object.keys(d.ph).forEach(function(id){ var el = document.getElementById(id); if(el) el.placeholder = d.ph[id]; });
+    Object.keys(d.opts).forEach(function(id){
+      var sel = document.getElementById(id); if(!sel) return;
+      for(var i = 0; i < sel.options.length; i++){
+        var o = sel.options[i], t = d.opts[id][o.value];
+        if(t !== undefined) o.textContent = t;
+      }
+    });
+    for(var i = 0; i < chips.length; i++){
+      chips[i].setAttribute('aria-pressed', chips[i].getAttribute('data-l') === l ? 'true' : 'false');
+    }
+  }
+  for(var i = 0; i < chips.length; i++){
+    chips[i].addEventListener('click', function(){
+      var l = this.getAttribute('data-l');
+      applyLang(l);
+      try{ localStorage.setItem('codriver:lang', l); }catch(e){}
+    });
+  }
+  var lang0 = null;
+  try{ lang0 = localStorage.getItem('codriver:lang'); }catch(e){}
+  if(lang0 !== 'it' && lang0 !== 'fr' && lang0 !== 'en'){
+    var nav = ((navigator.language || '') + '').toLowerCase();
+    lang0 = nav.indexOf('fr') === 0 ? 'fr' : nav.indexOf('it') === 0 ? 'it' : 'en';
+  }
+  applyLang(lang0);
+
   /* il modulo si ricorda di te su QUESTO dispositivo: niente account, niente server */
   var CAMPI = ['nome','email','zona','marca','anno','motore','assetto','modifiche','iphone','montaggio','audio'];
   try{
@@ -330,25 +481,31 @@
   form.addEventListener('submit', function(ev){
     ev.preventDefault();
     var mancanti = [];
-    if(!v('nome')) mancanti.push('il nome');
-    if(!v('email')) mancanti.push('l’email');
-    if(!v('zona')) mancanti.push('la zona dove guidi');
-    if(!v('marca')) mancanti.push('marca e modello dell’auto');
-    if(!v('assetto')) mancanti.push('l’assetto');
-    if(!v('iphone')) mancanti.push('il telefono');
-    if(!v('montaggio')) mancanti.push('il montaggio');
-    if(!v('audio')) mancanti.push('l’audio');
-    if(!c('acc-termini')) mancanti.push('la spunta sui termini');
-    if(!c('acc-privacy')) mancanti.push('la spunta sulla privacy');
+    if(!v('nome')) mancanti.push('nome');
+    if(!v('email')) mancanti.push('email');
+    if(!v('zona')) mancanti.push('zona');
+    if(!v('marca')) mancanti.push('marca');
+    if(!v('assetto')) mancanti.push('assetto');
+    if(!v('iphone')) mancanti.push('iphone');
+    if(!v('montaggio')) mancanti.push('montaggio');
+    if(!v('audio')) mancanti.push('audio');
+    if(!c('acc-termini')) mancanti.push('termini');
+    if(!c('acc-privacy')) mancanti.push('privacy');
     if(mancanti.length){
       esito.className='err';
-      esito.textContent='Un attimo — manca ancora: ' + mancanti.join(', ') + '.';
+      esito.innerHTML = tri(function(d){
+        return d.manca + mancanti.map(function(k){ return d.campi[k]; }).join(', ') + '.';
+      });
       ante.style.display='none';
       return;
     }
+    /* CONTRATTO DI PARSING: le righe dati e le righe di accettazione restano in
+       italiano IDENTICHE in tutte le lingue — le legge una macchina (e Tiago).
+       Si localizzano solo il saluto d'apertura e la riga di chiusura. */
+    var dl = L[cur()];
     var modifiche = v('modifiche').replace(/\s*\n+\s*/g, ' · ');
     var righe = [
-      'Ciao Tiago! Sono ' + v('nome') + ' e voglio provare Co-Driver 🏁',
+      dl.saluto.replace('{nome}', v('nome')),
       '',
       'Nome: ' + v('nome'),
       'Email: ' + v('email'),
@@ -363,7 +520,7 @@
       'Informativa privacy letta: SÌ',
       'Aggiornamenti sul lancio: ' + (c('acc-news') ? 'SÌ' : 'NO'),
       '',
-      'Non vedo l’ora di sentirla chiamare le curve sulle mie strade. A presto!'
+      dl.chiusa
     ].filter(function(r){ return r !== null; });
     var testo = righe.join('\n');
 
@@ -383,7 +540,7 @@
       var pre = document.getElementById('inviaCand');
       pre.href = FORM + 'viewform?usp=pp_url&entry.134670555=' + encodeURIComponent(v('email')) + '&entry.1378221562=' + encodeURIComponent(testo);
       if(inviato){
-        document.getElementById('mossa1').innerHTML = '✓ <strong>Candidatura inviata!</strong> <span class="small">Ricevuta nel registro della beta.</span>';
+        document.getElementById('mossa1').innerHTML = '✓ ' + tri(function(d){ return d.fatta; });
       }
     }catch(e){}
 
@@ -393,13 +550,11 @@
 
     function ok(){
       esito.className='ok';
-      esito.textContent = inviato
-        ? 'Candidatura inviata ✓ (e il riepilogo è copiato, se vuoi incollarlo in DM). Qui sotto le prossime mosse.'
-        : 'Riepilogo pronto e copiato ✓ — qui sotto le mosse per completare.';
+      esito.innerHTML = tri(function(d){ return inviato ? d.okInviato : d.okCopiato; });
     }
     function fallback(){
       esito.className='ok';
-      esito.textContent = (inviato ? 'Candidatura inviata ✓. ' : '') + 'Il riepilogo è qui sotto: tienilo premuto e Copia, se vuoi incollarlo in DM.';
+      esito.innerHTML = tri(function(d){ return (inviato ? d.fbInviato : '') + d.fbCopia; });
       try{
         var r=document.createRange(); r.selectNodeContents(testoPre);
         var s=getSelection(); s.removeAllRanges(); s.addRange(r);
