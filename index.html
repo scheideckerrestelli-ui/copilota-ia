@@ -849,7 +849,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '234';
+const APPVER = '235';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -6195,7 +6195,12 @@ for(const ev of ['pointerdown','touchend','keydown'])
 /* Durata di una frase PRIMA di pronunciarla: serve al gestore annunci per sapere
    quando iniziare, invece di partire a un anticipo fisso e finire dentro la curva.
    A ritmo da copilota una nota concatenata dura ~4 s, che a 110 all'ora sono 134 m. */
-const GAP = 0.03;
+/* Zero aria fra le clip: scelta di Tiago (30/08) sulla prova d'ascolto a sei
+   versioni — «procedi con la A». Il piccolo silenzio residuo in coda a ogni
+   registrazione fa da respiro naturale; aggiungerne altro spezzava la frase
+   («duecento ... metri»). Vale sia per suonare (dilo) sia per stimare la
+   durata (durataFrase): e' la stessa costante apposta. */
+const GAP = 0;
 function durataFrase(chiavi){
   const ix = VOCE.idx[L]; if(!ix) return 0;
   let t=0;
