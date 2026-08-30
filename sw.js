@@ -2,10 +2,12 @@
    Una cache per la shell (cambia a ogni build) e una per ogni regione scaricata
    (cambia solo col dataset), cosi' "elimina la mappa X" e' selettivo e un fix di
    codice non fa riscaricare niente. */
-/* sorgente: 124a24c518 */
-const APP = 'copilota-app-v230';
+/* sorgente: 124a24c518 +NON-COMMITTATO */
+const APP = 'copilota-app-v231';
 const DATA_PREFIX = 'copilota-data-';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './regions.json',
+// niente './index.html' nella SHELL: su Cloudflare Pages risponde 308 (pretty URL)
+// e cache.addAll rifiuta le risposte redirette — l'install del SW fallirebbe intera.
+const SHELL = ['./', './manifest.webmanifest', './regions.json',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const dataId = url => {
   const m = new URL(url).pathname.match(/\/data-([a-z_]+)\.json$/);
@@ -66,6 +68,6 @@ self.addEventListener('fetch', e => {
       caches.open(APP).then(c => c.put(req, copy)).catch(()=>{});
     }
     return res;
-  }).catch(() => req.mode === 'navigate' ? caches.match('./index.html')
+  }).catch(() => req.mode === 'navigate' ? caches.match('./')
                                           : Promise.reject(new Error('offline')))));
 });

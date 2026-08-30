@@ -2,7 +2,7 @@
  "name": "Co-Driver",
  "short_name": "Co-Driver",
  "description": "Co-Driver: curve, velocita' di riferimento e marcia, sulle strade d'Italia.",
- "start_url": "./index.html",
+ "start_url": "./",
  "scope": "./",
  "display": "standalone",
  "orientation": "any",

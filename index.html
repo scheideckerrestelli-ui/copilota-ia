@@ -8,7 +8,12 @@
      e il nostro contenuto comincia sotto, nitido. -->
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <!-- Il nome sotto l'icona su iOS lo decide QUESTO tag, non il manifest: senza,
-     Safari ripiega sul <link rel="manifest" href="manifest.webmanifest">
+     Safari ripiega sul tag del titolo o sul manifest a seconda della versione. Scritto
+     esplicito perche' e' la prima parola che un beta tester legge, e perche' e'
+     l'unico punto che possiamo controllare al momento dell'aggiunta alla Home. -->
+<meta name="apple-mobile-web-app-title" content="Co-Driver">
+<meta name="theme-color" content="#101418">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -30,11 +35,6 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   });
 });
 </script>
-<title> o sul manifest a seconda della versione. Scritto
-     esplicito perche' e' la prima parola che un beta tester legge, e perche' e'
-     l'unico punto che possiamo controllare al momento dell'aggiunta alla Home. -->
-<meta name="apple-mobile-web-app-title" content="Co-Driver">
-<meta name="theme-color" content="#101418">
 <title>Co-Driver</title>
 <style>
   @font-face { font-family:'Oswald'; font-style:normal; font-weight:600; font-display:swap;
@@ -849,7 +849,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '230';
+const APPVER = '231';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3505,7 +3505,7 @@ const T = {
     tight:'si stringe',
     sideW:['destra','sinistra'], hairW:'tornante a ',
     gpsSearch:'Cerco il GPS…',
-    gpsFrame:'Questa è la demo dentro claude.ai: la posizione è bloccata dall\'iframe, non da te. Apri l\'app vera su scheideckerrestelli-ui.github.io/copilota-ia/ (o usa la Demo qui).',
+    gpsFrame:'Questa è la demo dentro claude.ai: la posizione è bloccata dall\'iframe, non da te. Apri l\'app vera su codriver.pages.dev (o usa la Demo qui).',
     gpsInsecure:'Pagina non su HTTPS: nessun browser dà la posizione. Apri l\'indirizzo https.',
     gpsBlocked:'Posizione bloccata per questo sito. iPhone: Impostazioni → Privacy → Localizzazione → Safari = "Durante l\'uso" + Posizione esatta; poi in Safari aA → Impostazioni sito → Posizione → Consenti. Mac: Impostazioni di Sistema → Privacy → Localizzazione.',
     gpsDenied:'Permesso GPS negato. Se il browser non lo chiede nemmeno, controlla la localizzazione nelle impostazioni di sistema.',
@@ -3570,7 +3570,7 @@ const T = {
     tight:'tightens',
     sideW:['right','left'], hairW:'hairpin ',
     gpsSearch:'Looking for GPS…',
-    gpsFrame:'This is the demo embedded in claude.ai: location is blocked by the iframe, not by you. Open the real app at scheideckerrestelli-ui.github.io/copilota-ia/ (or use the Demo here).',
+    gpsFrame:'This is the demo embedded in claude.ai: location is blocked by the iframe, not by you. Open the real app at codriver.pages.dev (or use the Demo here).',
     gpsInsecure:'Page is not on HTTPS: no browser will hand out location. Open the https address.',
     gpsBlocked:'Location is blocked for this site. iPhone: Settings → Privacy → Location Services → Safari = "While Using" + Precise Location; then in Safari aA → Website Settings → Location → Allow. Mac: System Settings → Privacy → Location Services.',
     gpsDenied:'GPS permission denied. If the browser never asks, check location in your system settings.',
@@ -3632,7 +3632,7 @@ const T = {
     tight:'se ferme',
     sideW:['droite','gauche'], hairW:'épingle à ',
     gpsSearch:'Recherche du GPS…',
-    gpsFrame:'Ceci est la démo intégrée dans claude.ai : la position est bloquée par l\'iframe, pas par toi. Ouvre l\'application réelle sur scheideckerrestelli-ui.github.io/copilota-ia/ (ou utilise la Démo ici).',
+    gpsFrame:'Ceci est la démo intégrée dans claude.ai : la position est bloquée par l\'iframe, pas par toi. Ouvre l\'application réelle sur codriver.pages.dev (ou utilise la Démo ici).',
     gpsInsecure:'Page non HTTPS : aucun navigateur ne donne la position. Ouvre l\'adresse en https.',
     gpsBlocked:'Position bloquée pour ce site. iPhone : Réglages → Confidentialité → Position → Safari = "Lors de l\'utilisation" + Position précise ; puis dans Safari aA → Réglages du site → Position → Autoriser. Mac : Réglages Système → Confidentialité → Position.',
     gpsDenied:'Permission GPS refusée. Si le navigateur ne la demande même pas, vérifie la position dans les réglages système.',
