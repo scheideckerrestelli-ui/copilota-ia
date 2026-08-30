@@ -849,7 +849,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '232';
+const APPVER = '234';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3697,7 +3697,7 @@ const S = {
   nav:null,           // percorso attivo: {archi, c0, tot, man, mi, k, idx, dest, jA, path}
   navRipreso:false,   // il percorso salvato è già stato ripreso dopo una ricarica
   local:false,        // agganciato a una via residenziale (solo posizione e limite)
-  ahead:[], said:new Set(), lastSaid:0,
+  ahead:[], aheadRot:null, said:new Set(), lastSaid:0,
   demo:null, need:true,
   /* Nel letterale e non attaccato dopo, come `zs` sugli archi e per la stessa ragione:
      cambiare la forma di un oggetto vivo lo fa deottimizzare. Qui vale meno che nel
@@ -5987,7 +5987,7 @@ function avanzaSuStrada(e, dir, i, t, metri){
 
 /* ============ lookahead ============ */
 function buildAhead(){
-  S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[];
+  S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[]; S.aheadRot=null;
   const sn=S.snap; if(!sn){ S.pend=0; S.quota=null; return }
   const HORIZON = Math.max(420, Math.min(1100, S.v*11 + 260));
   let e=sn.e, dir=sn.dir, d0=distAlong(e,sn.i,sn.t), acc=0, hops=0;
@@ -6002,6 +6002,12 @@ function buildAhead(){
      combacia) si torna al comportamento normale. */
   let kk = (S.nav && S.nav.archi[S.nav.k] && S.nav.archi[S.nav.k].e.id===e.id) ? S.nav.k : -1;
   while(acc<HORIZON && hops<9){
+    /* Prima rotatoria davanti: all'inizio dell'iterazione `acc` e' la distanza
+       all'IMBOCCO dell'arco corrente (per hops>0), quindi e' gia' la distanza
+       giusta da annunciare. `hops>0` esclude l'arco sotto le ruote: se sei GIA'
+       sull'anello non c'e' niente da preavvisare. */
+    if(hops>0 && !S.aheadRot && ROTONDA.has(e.id))
+      S.aheadRot = {dist:acc, key:'rot:'+e.id};
     const camList=E2CAM.get(e.id);
     if(camList) for(const c of camList){
       const ahead = dir>0 ? c.d-d0 : d0-c.d;
@@ -6680,7 +6686,19 @@ function chiaviCurva(a, conMarcia){
    Lettura difensiva: sui dataset vecchi vale 0 e il comportamento non cambia.
    Sulle RAMPE invece la voce serve eccome — in Vallonia le rampe (6.367) sono più
    numerose degli archi di autostrada (4.122), e a Bruxelles il rapporto è 4 a 1. */
-const mutoQui = a => (a.e && a.e.cls|0) === 2;
+/* Tre motivi per tacere una nota di curva, tutti e tre «di luogo» (30/08, Tiago):
+   - autostrada vera (cls 2), da sempre;
+   - l'ANELLO di una rotatoria: le sue pieghe non sono curve da chiamare, sono la
+     rotatoria stessa — la voce dice «rotonda» all'arrivo (canale suo, piu' sotto)
+     e poi lascia guidare. Le curve PRIMA dell'anello restano annunciate: qui si
+     guarda l'arco della singola curva, non la strada intera;
+   - limite a 30 o meno (zone 30 dei centri abitati): annunciare curve a passo
+     d'uomo e' rumore. SOLO le curve: dossi e autovelox hanno canali separati e
+     continuano — a 30 la multa fa male uguale. `ms` 0 vuol dire «non so», e nel
+     dubbio si parla: tace solo chi ha un 30 scritto nei dati. */
+const mutoQui = a => !!a.e && ((a.e.cls|0) === 2
+                               || ROTONDA.has(a.e.id)
+                               || (a.e.ms > 0 && a.e.ms <= 30));
 
 /* Una curva che si passa senza togliere gas non si chiama: nei pacenote veri quella
    nota non esiste. Il filtro usa `curveKmh`, cioè la STESSA velocità di riferimento
@@ -6825,6 +6843,29 @@ function updateNote(){
       const lim=cam0.cam.ms;
       if(lim && VOCE.idx[L] && VOCE.idx[L]['a.lim.'+lim]) ch.push('a.limite','a.lim.'+lim);
       dilo(ch, true);
+    }
+  }
+  /* ---- rotatoria in arrivo (guida libera) ----
+     Canale indipendente, come l'autovelox ma NON urgente: si accoda. Le curve
+     dell'anello sono mute (vedi `mutoQui`), e senza questa riga il silenzio
+     improvviso sembrerebbe un difetto: una parola sola spiega tutto, e la
+     rotatoria comunque chiede una frenata. Scelta di Tiago (30/08): «rotonda»
+     all'avvicinamento, poi silenzio fino all'uscita.
+     Col percorso attivo NON parla: li' c'e' gia' «alla rotatoria, la N uscita»
+     del navigatore, e due voci sulla stessa rotatoria sono una di troppo.
+     Il gia'-detto si segna SOLO se la voce ha parlato davvero (`dilo` rifiuta
+     se occupata): stesso schema delle note di curva, per non perdere l'annuncio.
+     ~6,5 s all'imbocco: meno dei 15 dell'autovelox (li' c'e' una frenata da
+     pianificare col cartello, qui basta arrivare pronti), piu' del lead di una
+     curva secca perche' la parola e' una e corta.
+     La clip `n.rot` dice «alla rotatoria» (nacque come prefisso del navigatore):
+     da sola e' un filo ellittica ma si capisce, in tutte e tre le lingue. Alla
+     prossima rigenerazione degli sprite conviene una clip secca «rotonda» /
+     «roundabout» / «rond-point» dedicata a questo canale. */
+  if(S.aheadRot && !S.nav && !S.gpsBuco && !S.said.has(S.aheadRot.key)){
+    const leadRot=Math.max(180, S.v*6.5);
+    if(S.aheadRot.dist<=leadRot && VOCE.idx[L] && VOCE.idx[L]['n.rot']){
+      if(dilo(['n.rot'], false) > 0) S.said.add(S.aheadRot.key);
     }
   }
   /* ---- dossi artificiali ----
