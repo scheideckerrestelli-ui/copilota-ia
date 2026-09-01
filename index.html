@@ -849,7 +849,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '235';
+const APPVER = '236';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -885,6 +885,12 @@ function nota(msg){
   if(g){ g.n++; g.t=Date.now(); return }
   REGISTRO.push({msg, n:1, t:Date.now()});
   if(REGISTRO.length>40) REGISTRO.shift();
+  /* Scatola nera: si conta solo sui messaggi NUOVI. `anomalia()` scrive su disco a
+     ogni chiamata, e un guasto dentro un ciclo per fotogramma scriverebbe sessanta
+     volte al secondo; i ripetuti sono gia' usciti dal ramo di sopra e qui non
+     arrivano. `window.SN` e non `SN` perche' `nota()` gira anche prima che la
+     scatola nera sia stata costruita, mentre l'app legge le impostazioni. */
+  if(window.SN){ const a = anomaliaDi(msg); if(a) window.SN.anomalia(a) }
 }
 const RKEY = 'copilota-regioni';       // {inst:[id...], att:[id...]}
 let REG = [];
@@ -1245,7 +1251,13 @@ const SPESS = {
      scala 1,98 (90 km/h) 5,9 / 8,9 / 12,9
      scala 2,48 (15 km/h) 7,4 / 11,2 / 16,1
    Va usata SOLO in `disegna3d`: in piano il problema non esiste, perche' senza
-   prospettiva le distanze fra le strade crescono con lo zoom insieme alle strade. */
+   prospettiva le distanze fra le strade crescono con lo zoom insieme alle strade.
+   DAL 2026-08-31 quei numeri valgono alla profondita' dell'ANCORA (dove sta l'auto),
+   non su tutto lo schermo: da li' in avanti la carreggiata si restringe con la
+   prospettiva vera, fino a posarsi sul minimo in pixel. Vedi la nota sulle FASCE.
+   Per questo il massimo fra pixel e metri non si fa piu' qui dentro per i tratti di
+   rete — si fa fascia per fascia — e `larg3d` resta solo dove si disegna una passata
+   sola senza profondita': l'alone dei tratti davanti e il segnaposto. */
 /* Tarati in basso rispetto alla prima prova (4,0/6,5/9,0): quelli davano una
    carreggiata giusta a 15 km/h ma raddoppiavano le strade in marcia, dove nessuno
    si era mai lamentato. Questi correggono il caso che si vedeva senza riscrivere
@@ -3729,6 +3741,19 @@ const autoDalLink = (() => {
     return p;
   }catch(e){ return null }
 })();
+/* L'id del tester viaggia sullo STESSO link d'invito, `&t=<id>`, e si consuma
+   uguale: letto una volta, salvato, tolto dall'indirizzo. Serve alla scatola nera
+   per dire di CHI e' un rapporto — senza, i giri di tre tester diventano un mucchio
+   indistinto e i difetti non si legano a un telefono ne' a una strada.
+   La forma ammessa e' stretta apposta (minuscole, cifre, trattino): il valore
+   finisce dentro una POST, e cio' che arriva da un indirizzo non si rispedisce
+   com'e'. Non autentica niente e non prova niente — e' un'etichetta, come `?a=`. */
+const testerDalLink = (() => {
+  try{
+    const p = new URLSearchParams(location.search).get('t');
+    return (p && /^[a-z0-9-]{1,40}$/.test(p)) ? p : null;
+  }catch(e){ return null }
+})();
 try{
   const st=JSON.parse(localStorage.getItem('copilota2')||'{}');
   /* Con la moto spenta, un profilo moto salvato prima resterebbe attivo e invisibile:
@@ -3757,8 +3782,8 @@ try{
 /* Tolto dall'indirizzo appena letto: vedi il commento sopra. `replaceState` non
    ricarica e non aggiunge una voce alla cronologia, quindi il tasto indietro del
    telefono continua a fare quello che faceva. */
-if(autoDalLink){
-  try{ const u=new URL(location.href); u.searchParams.delete('a');
+if(autoDalLink || testerDalLink){
+  try{ const u=new URL(location.href); u.searchParams.delete('a'); u.searchParams.delete('t');
        /* `window.history` e non `history` nudo: sono la stessa cosa per il browser, ma
           il controllo `no-undef` di verifica-push non ha `history` nella lista bianca
           dei globali e lo segnala come identificatore fantasma. La lista incompleta va
@@ -3768,6 +3793,600 @@ if(autoDalLink){
 }
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
   {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+
+
+/* ============ SCATOLA NERA DELLA BETA ============
+   Perche' esiste: durante la beta nessuno e' seduto accanto al tester. Senza
+   contatori, «ho fatto un giro, bello» e «ho fatto un giro, la voce e' saltata tre
+   volte» arrivano come la stessa frase. Contratto del punto di raccolta e schema
+   del rapporto: co-driver-beta/punto-di-raccolta.md.
+
+   LA REGOLA CHE TIENE IN PIEDI TUTTO: le coordinate entrano in `SN.passo()` e non
+   escono. Il rapporto porta somme — km, minuti, annunci, codici di anomalia — e
+   MAI una posizione, una traccia o un nome di strada. E' la promessa scritta nei
+   termini che i tester hanno accettato: se un giorno qualcuno ci aggiunge un campo
+   con un luogo, quella frase diventa falsa e non se ne accorge nessuno.
+
+   Il codice qui sotto e' una copia INLINATA di co-driver-beta/scatola-nera.js —
+   l'app e' un file solo, e un <script src> sarebbe un file in piu' da precachare.
+   La sorgente resta quella, con il suo banco di prova in Deno; le due copie si
+   riallineano e si controllano con `python3 sincronizza-scatola-nera.py`.
+   NON modificare fra i due marcatori: la modifica si perde al primo riallineamento.
+   ---8<--- scatola-nera.js ---8<--- */
+/* Scatola nera della beta — modulo autonomo, nessuna dipendenza.
+   Bozza del 2026-08-29. Spec: scatola-nera-spec.md.
+
+   NON conosce l'app: espone sette funzioni e non chiama niente di suo.
+   Innestato in app2.html il 2026-08-31, dove si chiama `SN` (`BB` la' e' il
+   riquadro della mappa). La copia inlinata si riallinea con sincronizza-scatola-nera.py.
+
+   LA REGOLA CHE TIENE IN PIEDI TUTTO: le coordinate entrano in `passo()` e non
+   escono. La fix precedente vive in `ultima`, una variabile di modulo, e non
+   viene MAI scritta su disco ne' messa nel rapporto. I termini v1 accettati dai
+   tester dicono «la posizione GPS resta sul telefono»: se qualcuno un giorno
+   persiste `ultima`, quella frase diventa falsa e nessuno se ne accorge.
+   Chi tocca questo file legga la riga sopra prima di aggiungere un campo. */
+(function (globale) {
+  'use strict';
+
+  var CHIAVE = 'codriver-bb-v1';
+  /* Tetto in BYTE, non in numero di voci: e' la dimensione che iOS misura quando
+     decide di azzerare l'archivio, e una voce con molte anomalie pesa il doppio
+     di una pulita. 64 KB sono ~500 giri: piu' di quanto duri una beta, e una
+     frazione dei ~5 MB dell'origine, che l'app condivide con le sue cose. */
+  var TETTO_BYTE = 64 * 1024;
+  /* Una fix che salta piu' di questo fra due letture non e' un movimento, e'
+     un errore di posizionamento (canyon urbano, uscita da galleria, riaggancio).
+     A 250 km/h sono 69 m/s: 400 m in un colpo solo vuol dire fix sporca. */
+  var SALTO_MAX_M = 400;
+  var PRECISIONE_MAX_M = 50;     // oltre questa la fix non contribuisce ai km
+  var TIPI_ANOMALIA = ['voce-interrotta', 'dati-ko', 'gps-perso',
+                       'sidecar-scartato', 'ripresa-a-freddo'];
+  var CODA = 'codriver-bb-coda-v1';
+  /* Il trasporto e' INIETTATO: il modulo non sa se dietro c'e' un Google Form, un
+     Worker o altro. Cosi' la scelta resta di Tiago e qui non si riscrive niente.
+     Firma attesa: spedisci(tester, jsonString) -> Promise<boolean>,
+     i due campi del form (entry tester + entry rapporto). */
+  var trasporto = null;
+  var testerId = '?';
+  /* Guardia di rientro. `avvia()` lancia uno svuotamento senza attenderlo, e l'app
+     puo' chiamarne un altro da ferma: due drenaggi concorrenti leggono la STESSA
+     coda e spediscono lo stesso rapporto due volte. Misurato il 2026-08-29 dal
+     banco di prova: sequenze 1,1,2 invece di 1,2. Con un punto di raccolta a
+     risposta opaca quei doppioni nessuno li toglie. */
+  var svuotando = null;
+
+  /* ---- stato in memoria: interi, niente allocazioni nel percorso caldo ---- */
+  var giro = null;       // giro in corso, oppure null
+  var ultima = null;     // {lat, lon} dell'ultima fix — NON VA PERSISTITA MAI
+  var voceDa = 0;        // istante in cui la voce si e' accesa, 0 = spenta
+
+  /* ---- archivio ---- */
+
+  function leggi() {
+    try {
+      var g = localStorage.getItem(CHIAVE);
+      var o = g ? JSON.parse(g) : null;
+      if (!o || o.v !== 1) return { v: 1, giri: [], aperto: null };
+      return o;
+    } catch (e) {
+      /* Archivio illeggibile (azzerato da iOS, quota piena, JSON corrotto):
+         si riparte puliti. La scatola nera non e' la copia buona di niente,
+         quindi perdere lo storico e' un fastidio, non un guasto. */
+      return { v: 1, giri: [], aperto: null };
+    }
+  }
+
+  function scrivi(o) {
+    try {
+      var s = JSON.stringify(o);
+      /* Buffer circolare: si buttano i giri PIU' VECCHI finche' non si sta sotto
+         il tetto. Almeno un giro resta sempre, altrimenti un giro anomalo e
+         grosso si cancellerebbe da solo e sparirebbe proprio il caso interessante. */
+      while (s.length > TETTO_BYTE && o.giri.length > 1) {
+        o.giri.shift();
+        s = JSON.stringify(o);
+      }
+      localStorage.setItem(CHIAVE, s);
+      return true;
+    } catch (e) {
+      return false;      // quota piena o storage negato: si tira dritto
+    }
+  }
+
+  function oggi() { return new Date().toISOString().slice(0, 10); }
+
+  function leggiCoda() {
+    try { var o = JSON.parse(localStorage.getItem(CODA) || '{}'); return o.q ? o : { q: [], seq: 0 }; }
+    catch (e) { return { q: [], seq: 0 }; }
+  }
+
+  function scriviCoda(c) {
+    try {
+      var s = JSON.stringify(c);
+      while (s.length > TETTO_BYTE && c.q.length > 1) { c.q.shift(); s = JSON.stringify(c); }
+      localStorage.setItem(CODA, s);
+    } catch (e) {}
+  }
+
+  /* Firma del dispositivo, NON il modello: iOS Safari non espone il modello, lo
+     user agent e' identico da un 12 mini a un 16 Pro Max. Versione di iOS +
+     schermo logico + rapporto pixel distinguono le famiglie, e il campo si
+     chiama `dispositivo` apposta per non spacciarlo per altro. */
+  function firmaDispositivo() {
+    var ios = 'nd';
+    try {
+      var m = /(?:iPhone|CPU) OS (\d+)[._](\d+)/.exec(navigator.userAgent);
+      if (m) ios = 'ios' + m[1] + '.' + m[2];
+      else if (/Android (\d+)/.test(navigator.userAgent))
+        ios = 'android' + /Android (\d+)/.exec(navigator.userAgent)[1];
+    } catch (e) {}
+    var w = 0, h = 0, r = 1;
+    try {
+      w = Math.min(window.screen.width, window.screen.height);
+      h = Math.max(window.screen.width, window.screen.height);
+      r = Math.round(window.devicePixelRatio || 1);
+    } catch (e) {}
+    /* DUE campi separati, non una stringa da rispezzare. Il primo abbozzo tornava
+       "ios17.0/390x844@3" e il rapporto la spezzava sulla barra: funzionava su
+       iPhone e produceva spazzatura su tutto il resto, perche' il marcatore di
+       "non rilevato" era `n/d` — che la barra ce l'ha dentro. Il banco di prova
+       mostrava `ios: n` e `dispositivo: d` e il controllo passava lo stesso,
+       perche' guardava i tipi e non i valori. */
+    return { ios: ios, schermo: w + 'x' + h + '@' + r };
+  }
+
+  function distanzaM(a, b) {
+    var R = 6371000, p = Math.PI / 180;
+    var dLa = (b.lat - a.lat) * p, dLo = (b.lon - a.lon) * p;
+    var la = a.lat * p;
+    var x = dLo * Math.cos(la), y = dLa;          // equirettangolare: sotto il km
+    return Math.sqrt(x * x + y * y) * R;          // l'errore e' sotto il metro
+  }
+
+  function nuovoGiro(build, paese) {
+    return {
+      g: oggi(), build: build || '?', paese: paese || '?',
+      t0: Date.now(), t1: 0, m: 0, voceMs: 0, ann: 0,
+      an: {}, fd: firmaDispositivo()
+    };
+  }
+
+  /* ---- API ---- */
+
+  var BB = {
+
+    /* Inietta il trasporto e l'id del tester. Senza `spedisci` il modulo accoda
+       e basta: e' lo stato in cui deve restare finche' l'informativa non esiste. */
+    configura: function (o) {
+      o = o || {};
+      trasporto = typeof o.spedisci === 'function' ? o.spedisci : null;
+      testerId = o.tester || '?';
+    },
+
+    /* Prova a svuotare la coda. NON viene chiamata da `chiudi()`, e il motivo e'
+       che `chiudi()` gira anche su `pagehide`: li' una richiesta asincrona non ha
+       nessuna garanzia di partire, e crederla partita e' peggio che non tentarla.
+       Quindi: `chiudi()` ACCODA (scrittura sincrona, sempre riuscita) e lo
+       svuotamento avviene al giro dopo, o quando l'app lo chiede da ferma.
+       Si ferma al primo fallimento: l'ordine si mantiene e non si martella la rete. */
+    svuota: function () {
+      if (!trasporto) return Promise.resolve(0);
+      if (svuotando) return svuotando;      // gia' in corso: si aspetta quello
+      var totale = 0;
+
+      /* PERCHE' SI RILEGGE LA CODA A OGNI PASSO, invece di lavorare su una copia.
+         Misurato il 2026-08-29 dal banco di prova, ed era perdita di dati, non un
+         ritardo: `avvia()` lancia lo svuotamento senza attenderlo, poi `chiudi()`
+         accoda il rapporto nuovo, e quando la risposta del trasporto arrivava lo
+         svuotamento riscriveva la coda da una FOTOGRAFIA scattata prima — buttando
+         via il rapporto appena accodato. Il test vedeva partire 1 rapporto invece
+         di 2 e la sequenza saltava.
+         Rileggendo prima di ogni invio e togliendo la voce PER ID dopo, la coda
+         resta la fonte di verita' e nessuna scrittura ne sovrascrive una piu'
+         recente. Come effetto, un giro raccoglie anche cio' che si accoda mentre
+         gira, e non serve nessun ciclo esterno. */
+      function passo() {
+        var c = leggiCoda();
+        if (!c.q.length) return Promise.resolve(true);
+        var voce = c.q[0];
+        return Promise.resolve(trasporto(voce.tester, voce.json)).then(function (ok) {
+          if (!ok) return false;             // si ferma: l'ordine si mantiene
+          var c2 = leggiCoda();
+          c2.q = c2.q.filter(function (x) { return x.id !== voce.id; });
+          scriviCoda(c2);
+          totale++;
+          return passo();
+        }).catch(function () { return false; });
+      }
+
+      svuotando = Promise.resolve(passo()).then(function () { svuotando = null; return totale; },
+                                               function () { svuotando = null; return totale; });
+      return svuotando;
+    },
+
+    /* Apre un giro. Va chiamata quando la guida comincia, non all'avvio dell'app:
+       aprire un giro per ogni apertura del pannello gonfierebbe il conteggio. */
+    avvia: function (opt) {
+      opt = opt || {};
+      var a = leggi();
+
+      /* COME SI SCOPRE DI ESSERE STATI UCCISI DA iOS. Non esiste un'API di
+         pressione memoria su Safari. Ma se all'avvio troviamo un giro ancora
+         marcato `aperto`, quel giro non e' mai stato chiuso: l'app e' stata
+         terminata mentre girava. Lo si chiude con i dati che aveva e si conta
+         l'anomalia. E' l'unico modo di vedere il crash da memoria su iPhone. */
+      if (a.aperto) {
+        var orf = a.aperto;
+        orf.t1 = orf.t1 || orf.t0;
+        orf.an = orf.an || {};
+        orf.an['ripresa-a-freddo'] = (orf.an['ripresa-a-freddo'] || 0) + 1;
+        a.giri.push(orf);
+        a.aperto = null;
+      }
+
+      giro = nuovoGiro(opt.build, opt.paese);
+      ultima = null; voceDa = 0;
+      a.aperto = giro;
+      scrivi(a);                       // una scrittura all'apertura, poi silenzio
+      /* Il tentativo di invio sta QUI, non a fine giro: l'app e' viva, in primo
+         piano e ferma. Se fallisce, i rapporti restano in coda per il giro dopo. */
+      try { BB.svuota(); } catch (e) {}
+      return true;
+    },
+
+    /* Una fix GPS. LE COORDINATE NON ESCONO DA QUI: si calcola la distanza dalla
+       precedente e si somma un numero. `ultima` non viene mai persistita. */
+    passo: function (lat, lon, precisioneM) {
+      if (!giro || typeof lat !== 'number' || typeof lon !== 'number') return;
+      if (precisioneM != null && precisioneM > PRECISIONE_MAX_M) { ultima = null; return; }
+      var ora = { lat: lat, lon: lon };
+      if (ultima) {
+        var d = distanzaM(ultima, ora);
+        if (d <= SALTO_MAX_M) giro.m += d;     // oltre il salto: fix sporca, si scarta
+      }
+      ultima = ora;
+      /* Nessuna scrittura: si sta nel percorso caldo del GPS. Il totale finisce
+         su disco alla chiusura del giro. */
+    },
+
+    /* Voce accesa/spenta. Si sommano gli INTERVALLI, non il tempo in cui la voce
+       era disponibile: la domanda della beta e' quanto la usano davvero. */
+    voce: function (accesa) {
+      if (!giro) return;
+      var t = Date.now();
+      if (accesa) { if (!voceDa) voceDa = t; }
+      else if (voceDa) { giro.voceMs += t - voceDa; voceDa = 0; }
+    },
+
+    annuncio: function () { if (giro) giro.ann++; },
+
+    /* Anomalia. Scrive subito, perche' se e' il preludio a una morte per memoria
+       la chiusura ordinata potrebbe non arrivare mai. E' rara per definizione:
+       una scrittura qui non e' un costo. */
+    anomalia: function (tipo) {
+      if (!giro || TIPI_ANOMALIA.indexOf(tipo) < 0) return;
+      giro.an[tipo] = (giro.an[tipo] || 0) + 1;
+      var a = leggi(); a.aperto = giro; scrivi(a);
+    },
+
+    /* Chiude il giro. Va chiamata a fine guida E su pagehide/visibilitychange,
+       perche' su iOS la scheda puo' sparire senza altro preavviso. Idempotente. */
+    chiudi: function () {
+      if (!giro) return;
+      if (voceDa) { giro.voceMs += Date.now() - voceDa; voceDa = 0; }
+      giro.t1 = Date.now();
+      var a = leggi();
+      var chiuso = giro;
+      /* UN GIRO VUOTO NON SI CONTA E NON SI SPEDISCE. iOS congela la scheda a ogni
+         passaggio a un'altra app: `pagehide` chiude il giro, il ritorno ne riapre uno,
+         e senza questo filtro ogni sguardo al telefono diventerebbe una riga nel foglio
+         con 0 km e 0 annunci. Non e' solo rumore: quelle righe fanno da DENOMINATORE
+         alle medie, e con la coda a 20 spingono fuori i rapporti veri.
+         Misurato in banco il 2026-08-31, guidando una traccia sintetica in Valle
+         d'Aosta: un giro fantasma di 0 km prima di quello buono da 6,6 km.
+         Le condizioni valgono INSIEME, e le anomalie salvano il giro comunque: fermi
+         in coda venti minuti con la voce accesa e' un dato; un giro corto in cui il
+         GPS e' sparito e' proprio il caso che si vuole vedere. */
+      var conAnomalie = false;
+      for (var ka in chiuso.an) { conAnomalie = true; break; }
+      var vuoto = !conAnomalie && chiuso.m < 50 && !chiuso.ann &&
+                  (chiuso.t1 - chiuso.t0) < 120000;
+      if (!vuoto) a.giri.push(giro);
+      a.aperto = null;
+      scrivi(a);
+      giro = null; ultima = null;
+      if (vuoto) return;
+
+      /* Accoda il rapporto. `id` casuale e `seq` progressivo per tester: servono al
+         punto di raccolta per DEDUPLICARE (lo stesso rapporto puo' arrivare due
+         volte se una risposta si perde) e per VEDERE I BUCHI. Il secondo conta piu'
+         del primo con un trasporto a risposta opaca tipo Google Form, dove
+         "consegnato" puo' solo voler dire "uscito dal telefono". */
+      var c = leggiCoda();
+      c.seq = (c.seq || 0) + 1;
+      var r = BB.rapportoGiro(chiuso);
+      if (r) {
+        r.seq = c.seq;                 // progressivo: i buchi nel foglio si vedono
+        /* Tetto della coda: il contratto dice ~20 rapporti. Si buttano i piu'
+           vecchi, perche' un rapporto di ieri vale meno di quello di stamattina. */
+        c.q.push({ id: Math.random().toString(36).slice(2, 10), seq: c.seq,
+                   tester: testerId, json: JSON.stringify(r) });
+        while (c.q.length > 20) c.q.shift();
+        scriviCoda(c);
+      }
+    },
+
+    /* Rapporto di UN giro, schema v1 di punto-di-raccolta.md.
+       Per sessione, non aggregato: il foglio vuole una riga per giro, e un
+       aggregato spedito a ogni chiusura conterebbe piu' volte le stesse cose.
+
+       NON contiene: coordinate, tracce, nomi di strada. Solo contatori. */
+    rapportoGiro: function (g) {
+      if (!g) return null;
+      var an = [];
+      /* Il contratto vuole «un elenco di codici brevi». Qui il codice porta anche
+         il CONTEATTORE (`voce_interrotta:2`), perche' due interruzioni e venti sono
+         due difetti diversi e l'elenco nudo non lo distingue. Chi legge senza
+         aspettarselo vede comunque il codice: si degrada bene. */
+      for (var k in g.an) an.push(k.replace(/-/g, '_') + ':' + g.an[k]);
+      return {
+        v: 1,
+        tester: testerId,
+        build: g.build || '?',
+        /* `inizio` con l'ora e' l'unico campo che dice qualcosa delle abitudini
+           di chi guida (a che ora esce, quanto spesso). Lo schema del punto di
+           raccolta lo chiede e qui ci si conforma, ma se un giorno si potesse
+           tenere la sola data, il resto del rapporto non perderebbe niente. */
+        inizio: new Date(g.t0).toISOString().slice(0, 16),
+        durata_min: Math.round(Math.max(0, (g.t1 || g.t0) - g.t0) / 60000),
+        voce_min: Math.round((g.voceMs || 0) / 60000),
+        km: Math.round((g.m || 0) / 100) / 10,
+        annunci: g.ann || 0,
+        anomalie: an,
+        /* Lo schema chiama questo campo `dispositivo` e l'esempio ci mette
+           «iPhone Air». NON E' OTTENIBILE: iOS Safari non espone il modello, lo
+           user agent e' identico da un 12 mini a un 16 Pro Max. Qui va la firma
+           dello schermo, che distingue le famiglie. Il modello vero e' gia' in
+           dati/tester.json, dichiarato dal tester: e' li' che va letto. */
+        dispositivo: (g.fd && g.fd.schermo) || '?',
+        ios: (g.fd && g.fd.ios) || 'nd'
+      };
+    },
+
+    /* Testo leggibile: aggregato di tutto l'archivio, per l'invio manuale di
+       ripiego e per il pannello. Non e' quello che parte in automatico. */
+    /* Il rapporto: aggregato su tutti i giri in archivio. Righe chiave: valore
+       per un umano nei DM, piu' una riga `json:` gia' pronta da incollare in
+       dati/rapporti.jsonl senza ritoccarla.
+       NON contiene: coordinate, tracce, nomi di strada, orari. Solo somme. */
+    rapporto: function (tester, seq) {
+      var a = leggi();
+      var tutti = a.giri.concat(a.aperto ? [a.aperto] : []);
+      if (!tutti.length) return null;
+
+      var min = 0, vMin = 0, km = 0, ann = 0, an = {}, build = '?', disp = '?';
+      var dal = '9999-99-99', al = '0000-00-00', paese = '?';
+      for (var i = 0; i < tutti.length; i++) {
+        var g = tutti[i];
+        min += Math.max(0, (g.t1 || g.t0) - g.t0) / 60000;
+        vMin += (g.voceMs || 0) / 60000;
+        km += (g.m || 0) / 1000;
+        ann += g.ann || 0;
+        for (var k in g.an) an[k] = (an[k] || 0) + g.an[k];
+        build = g.build || build; paese = g.paese || paese;
+        if (g.fd) disp = g.fd.ios + ' ' + g.fd.schermo;
+        if (g.g < dal) dal = g.g;
+        if (g.g > al) al = g.g;
+      }
+      min = Math.round(min); vMin = Math.round(vMin); km = Math.round(km);
+
+      var anStr = [];
+      for (var t in an) anStr.push(t + '=' + an[t]);
+
+      var riga = {
+        data: oggi(), tester: tester || '?', tipo: 'giro',
+        durata_min: min, voce_min: vMin, km: km, build: build,
+        /* `auto` distingue questo dal rapporto scritto a mano: genera-cruscotto.py
+           somma TUTTI i tipo:"giro", e senza questo flag un giro raccontato anche
+           a parole verrebbe contato due volte. */
+        auto: true,
+        giri: tutti.length, annunci: ann, anomalie: an,
+        dispositivo: disp, paese: paese, dal: dal, al: al,
+        seq: seq || 0
+        /* `dove` NON c'e', apposta: il cruscotto lo stampa in chiaro e il campo
+           nasce per il nome della strada. Vedi la spec, sezione Vincoli. */
+      };
+
+      return 'Co-Driver — rapporto automatico\n' +
+        'rv: 2\n' +
+        'seq: ' + (seq || 0) + '\n' +
+        'tester: ' + (tester || '?') + '\n' +
+        'build: ' + build + '\n' +
+        'paese: ' + paese + '\n' +
+        'giri: ' + tutti.length + '\n' +
+        'durata_min: ' + min + '\n' +
+        'voce_min: ' + vMin + '\n' +
+        'km: ' + km + '\n' +
+        'annunci: ' + ann + '\n' +
+        'anomalie: ' + (anStr.length ? anStr.join(' ') : 'nessuna') + '\n' +
+        'dispositivo: ' + disp + '\n' +
+        'dal: ' + dal + '\n' +
+        'al: ' + al + '\n' +
+        'json: ' + JSON.stringify(riga) + '\n';
+    },
+
+    /* Invio. L'app NON trasmette: apre il foglio di condivisione e il tester
+       decide dove mandarlo.
+       DA CHIAMARE DENTRO UN GESTO UTENTE, in modo sincrono: su iOS `share()`
+       fuori da un gesto viene rifiutata. Il testo si prepara PRIMA. */
+    invia: function (tester) {
+      var testo = BB.rapporto(tester);
+      if (!testo) return Promise.resolve('vuoto');
+      if (navigator.share) {
+        return navigator.share({ title: 'Co-Driver — rapporto', text: testo })
+          .then(function () { return 'condiviso'; })
+          .catch(function () { return 'annullato'; });
+      }
+      try {
+        if (navigator.clipboard) navigator.clipboard.writeText(testo);
+      } catch (e) {}
+      return Promise.resolve('copiato');
+    },
+
+    /* Azzera l'archivio. Serve al tester dopo aver mandato il rapporto, se non
+       vuole che il prossimo invio ricontenga gli stessi giri. */
+    azzera: function () {
+      try { localStorage.removeItem(CHIAVE); } catch (e) {}
+      giro = null; ultima = null; voceDa = 0;
+    },
+
+    /* Per il pannello: quanto c'e' in archivio, senza costruire il rapporto. */
+    stato: function () {
+      var a = leggi();
+      return { giri: a.giri.length, aperto: !!a.aperto,
+               byte: (function () { try { return (localStorage.getItem(CHIAVE) || '').length; }
+                                    catch (e) { return 0; } })() };
+    }
+  };
+
+  /* La chiusura su pagehide e' l'unica cosa che il modulo aggancia da solo:
+     senza, ogni giro finito chiudendo la scheda risulterebbe una morte per
+     memoria, e il contatore piu' importante diventerebbe rumore. */
+  try {
+    globale.addEventListener('pagehide', function () { BB.chiudi(); });
+  } catch (e) {}
+
+  globale.SN = BB;
+})(typeof window !== 'undefined' ? window : this);
+/* --->8--- scatola-nera.js --->8---
+   ---- da qui in giu' e' codice dell'app, non del modulo ----
+   Gli agganci veri stanno sparsi dove succedono le cose (startGps, il fix GPS,
+   dilo, il bottone dell'audio, nota, stopGps). Qui c'e' solo cio' che il modulo
+   deve sapere dell'app: chi guida, dove, e come si spedisce. */
+
+/* Il paese finisce nel rapporto perche' un difetto puo' essere di un paese solo:
+   limiti diversi, rotatorie ovunque in Belgio, autovelox assenti in Francia per
+   legge. Il manifesto delle regioni NON ha un campo paese, quindi si mappa qui —
+   e cio' che non e' in elenco vale '?', non 'IT'. Una regione nuova che compare
+   come '?' e' un promemoria; con un default comodo sarebbe una riga sbagliata nel
+   foglio che nessuno andrebbe mai a controllare. */
+const PAESE_REG = {brussels:'BE', flanders:'BE', wallonia:'BE', wallonia_de:'BE',
+                   bretagne:'FR', valle_aosta:'IT', piemonte:'IT', liguria:'IT',
+                   lombardia:'IT', trentino_alto_adige:'IT', veneto:'IT',
+                   friuli_venezia_giulia:'IT', emilia_romagna:'IT', toscana:'IT',
+                   umbria:'IT', marche:'IT', lazio:'IT', abruzzo:'IT'};
+function paeseAttivo(){
+  const p = new Set((RSTATE.att||[]).map(id => PAESE_REG[id] || '?'));
+  return p.size === 1 ? Array.from(p)[0] : p.size ? 'mix' : '?';
+}
+
+/* L'id del tester: dal link d'invito, poi salvato. Senza id il rapporto parte lo
+   stesso, marcato '?' — il segno che il modulo usa per tutto cio' che non sa —
+   perche' un rapporto anonimo vale piu' di nessun rapporto. */
+const TESTER_K = 'codriver-tester';
+let TESTER = null;
+try{ TESTER = localStorage.getItem(TESTER_K) || null }catch(e){}
+if(testerDalLink){
+  TESTER = testerDalLink;
+  try{ localStorage.setItem(TESTER_K, TESTER) }
+  catch(e){ nota('id tester non salvato (i rapporti partiranno anonimi): '+e.message) }
+}
+
+/* Il punto di raccolta e' un modulo Google, collaudato il 2026-08-29 con un invio
+   vero: POST, HTTP 200, riga nel foglio. `sendBeacon` e non `fetch` perche' parte
+   anche mentre l'app se ne va in background — che e' esattamente il momento in cui
+   un giro si chiude. La risposta NON e' leggibile: «consegnato» puo' solo voler
+   dire «uscito dal telefono», ed e' il motivo per cui ogni rapporto porta un `seq`
+   progressivo — i buchi nel foglio si vedono, anche se non si prevengono.
+   Il service worker non intercetta le POST (`sw.js`: `if (req.method !== 'GET')
+   return`): verificato, e non va cambiato. */
+const SN_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSd9VTUrFgtgGYqR_Sl4f2FblTzXQuzcLzHGgtFy-Peo6AzNvg/formResponse';
+function spedisciRapporto(tester, json){
+  try{
+    const d = new URLSearchParams();
+    d.set('entry.2096580042', tester || '?');
+    d.set('entry.1312300295', json);
+    if(navigator.sendBeacon){
+      const ok = navigator.sendBeacon(SN_URL, d);
+      /* `sendBeacon` torna `false` quando il browser si rifiuta di accodare la
+         richiesta — CSP della pagina ospite, coda piena, contesto non ammesso — e
+         NON lascia nessun'altra traccia: niente console, niente rete, niente
+         errore. Misurato il 2026-08-31 nel banco: `false`, e nel registro di rete
+         nemmeno un tentativo. Il rapporto resta in coda e riparte al giro dopo,
+         quindi non si perde niente; ma senza questa riga un invio che non parte
+         MAI sarebbe indistinguibile da uno che parte sempre. `nota()` accorpa i
+         messaggi uguali, quindi non riempie il registro. */
+      if(!ok) nota('rapporto beta rifiutato dal browser (resta in coda)');
+      return ok;
+    }
+    /* Senza sendBeacon resta il fetch no-cors: stessa opacita' della risposta,
+       meno garanzie quando l'app sta gia' andando via. */
+    return fetch(SN_URL, {method:'POST', mode:'no-cors', body:d})
+             .then(() => true).catch(() => false);
+  }catch(e){ nota('rapporto beta non spedito: '+e.message); return false }
+}
+
+/* ⚠ L'INTERRUTTORE DELL'INVIO AUTOMATICO — spento, e il motivo NON e' tecnico.
+   Il rapporto porta l'id di una persona identificata e parte verso un server di
+   terzi: va dichiarato PRIMA che accada, non dopo. Al 2026-08-31 non lo e':
+     · l'informativa pubblicata (co-driver-beta/beta.html, «versione 1 · 29 agosto
+       2026») parla solo dei dati del modulo di candidatura, e dice «la posizione
+       resta sul telefono — l'app non la invia a nessun server»;
+     · i termini (termini-v1.md, testata v2) al punto 8 coprono i feedback che
+       MANDA il tester, non una raccolta automatica di metriche d'uso.
+   Con l'interruttore spento il modulo conta e accoda in locale e NIENTE esce dal
+   telefono: e' lo stato voluto, non un lavoro a meta'. Per accenderlo servono una
+   riga nell'informativa e una nei termini — e alzare TERMINI_VER, che li rifa'
+   accettare a tutti. Il blocco e' registrato in co-driver-beta/scatola-nera-spec.md
+   § AGGIORNAMENTO 2026-08-29 come decisione di Tiago sentita da lui: si toglie
+   quando lo dice lui, cambiando questa riga. */
+const SN_INVIO = false;
+window.SN.configura({tester: TESTER || '?',
+                     spedisci: SN_INVIO ? spedisciRapporto : null});
+
+/* Le anomalie non si annotano una per una nei punti di guasto: si leggono da
+   `nota()`, che e' gia' l'imbuto unico di tutto cio' che l'app si ingoia. Un
+   aggancio invece di dieci — e un guasto NUOVO che passa di li' viene classificato
+   senza che nessuno si ricordi di venirlo ad aggiungere qui.
+   Il prezzo e' che la classificazione guarda il testo: gli stralci sono presi sulla
+   parte dei messaggi che non cambia (quella prima dei numeri e dei nomi di file).
+   Cio' che non riconosce non conta: degrada in silenzio, che per un segnale di beta
+   e' la direzione giusta di sbagliare.
+   La tabella sta DENTRO la funzione apposta: `nota()` puo' essere chiamata mentre
+   l'app sta ancora leggendo le impostazioni, cioe' prima che questa parte del file
+   sia stata eseguita, e una costante di modulo li' sarebbe ancora in zona morta. */
+function anomaliaDi(msg){
+  const segni = [
+    ['gps-perso',        ['segnale perso', 'senza posizione', 'strada persa']],
+    ['voce-interrotta',  ['audio non risvegliato', 'sessione audio rifiutato']],
+    ['sidecar-scartato', ['scartat', 'spenta:', 'spenti:']],
+    ['dati-ko',          ['non salvata offline', 'non caricat', 'illeggibil']]
+  ];
+  const m = String(msg).toLowerCase();
+  for(const [tipo, stralci] of segni)
+    if(stralci.some(x => m.indexOf(x) >= 0)) return tipo;
+  return '';
+}
+
+/* Apre un giro. Non all'avvio dell'app: aprirne uno per ogni apertura del pannello
+   gonfierebbe il conteggio dei giri, che e' il denominatore di tutto il resto. */
+function snAvvia(){
+  window.SN.avvia({build: APPVER, paese: paeseAttivo()});
+  /* La voce puo' essere gia' accesa da una sessione precedente — si salva fra i
+     riavvii — e in quel caso il bottone non lo tocca nessuno: senza questa riga un
+     giro intero fatto parlando risulterebbe a voce spenta. */
+  window.SN.voce(!!S.audio);
+}
+/* iOS congela la scheda quando si passa a un'altra app, e il modulo chiude il giro
+   su `pagehide` (senza, ogni giro finito cosi' sembrerebbe una morte per memoria e
+   il contatore piu' importante diventerebbe rumore). Ma se si torna e il GPS sta
+   ancora seguendo, la seconda meta' della guida non la conterebbe piu' nessuno: qui
+   se ne apre uno nuovo. Due giri invece di uno si vedono nel foglio e si sommano;
+   mezza guida persa no. */
+addEventListener('pageshow', () => {
+  if(S.watchId != null && !window.SN.stato().aperto) snAvvia();
+});
 
 /* velocità (km/h) per 1000 giri, per marcia */
 function gearKmh(){ const c=CARS[S.car]; return c.g.map(r=>r*S.cal); }
@@ -4024,10 +4643,43 @@ function viewBounds(){
    quindi i confini in profondita' e la riduzione finale non cambiano: cambia solo la
    grana. Costa 408 Path2D per fotogramma invece di 136 — misurati 0,035 ms per 136,
    quindi circa un decimo di millisecondo, dentro il rumore di un frame da 16,7. */
+/* LE FASCE ERANO TARATE SU PROFONDITA' CHE NON STANNO SULLO SCHERMO (2026-08-31).
+   Tiago: «il 3D continua ad avere le strade un po' troppo grandi, fa cose leggermente
+   strane». Misurato in guida, e non e' il valore delle larghezze: e' questa tabella.
+
+   Le fasce vivono in `t = d/(1,2·R)`. Ma `t` sullo schermo non va da zero a infinito:
+   il fondo dell'inquadratura sta sempre a `t` fra 0,44 e 0,53 (dipende SOLO
+   dall'inclinazione, non dallo zoom: `d` e `R` si scalano insieme) e il bordo alto a
+   1,25 con l'inclinazione del bottone 3D. Con i vecchi confini — il primo a 1,162 —
+   di 24 fasce se ne accendevano DUE, e la prima copriva da sola i tre quarti bassi
+   dello schermo a moltiplicatore 1,00 fisso.
+   Cioe': la strada non si restringeva con la distanza. Da sotto il cofano al bordo
+   alto la prospettiva vera chiede un fattore 1,33 -> 0,67, meta' esatta; l'app
+   disegnava 1,00 -> 0,94. Una carreggiata di larghezza costante sullo schermo non
+   sembra una strada che se ne va: sembra nastro colorato appoggiato sul nero — ed e'
+   anche perche' sembrano «troppo grandi», visto che in fondo all'inquadratura quei
+   pixel descrivevano 10,8 m di carreggiata invece di 6,5.
+
+   Le 24 fasce non erano inutili: erano tutte oltre il bordo alto dello schermo. Il
+   lavoro del 2026-08-25 sulla GRANA (da 8 a 24, per togliere lo scalino) resta giusto
+   e resta qui — cambia dove sono le fasce, non quante.
+
+   Adesso: confini geometrici fra 0,42 e 1,75, cioe' esattamente la fetta inquadrata,
+   passo del 6,1% (sotto la soglia del 5,9%-16,6% misurata allora per lo scalino), e
+   moltiplicatore = la prospettiva vera `R/d`, non piu' una curva `t^-0,6` inventata.
+   L'ancoraggio a 0,75 e' la profondita' a cui sta l'AUTO, non il centro mappa: cosi'
+   la strada sotto di te resta larga quanto e' oggi — quella e' gia' tarata guidando,
+   due volte — e a rimpicciolire e' solo cio' che e' lontano, che e' la meta' sbagliata.
+   Fuori dagli estremi non serve niente: sotto `FMUL[0]` e sopra `FMUL[22]` gli indici
+   saturano da soli, in `fasciaDi` e nella camminata per punto di `tracciaRete`. */
 const NFASCE=24;
 const FASCE=new Float32Array(NFASCE);      // moltiplicatore di larghezza
 const FMUL=new Float32Array(NFASCE);       // confine della fascia, in unità di CAM.R*1.2
-for(let f=0;f<NFASCE;f++){ FASCE[f]=Math.pow(1.35,-0.2*f); FMUL[f]=Math.pow(1.35,(f+1.5)/3) }
+const TF_MIN=0.42, TF_MAX=1.75, TF_ANC=0.75;
+for(let f=0,r=Math.pow(TF_MAX/TF_MIN,1/NFASCE);f<NFASCE;f++){
+  FMUL[f]=TF_MIN*Math.pow(r,f+1);
+  FASCE[f]=TF_ANC/(TF_MIN*Math.pow(r,f+0.5));   // = R/d: la prospettiva, non una curva a occhio
+}
 function fasciaDi(d){
   const t=d/(CAM.R*1.2);
   for(let f=0;f<NFASCE-1;f++) if(t<FMUL[f]) return f;
@@ -4682,8 +5334,8 @@ function disegna3d(c0,c1,r0,r1){
   }
   if(S.scale>0.35){
     ctx.strokeStyle=TC.grigia;
-    const wG=larg3d(SPESS.grigia, META.grigia);
-    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wG*FASCE[f]; ctx.stroke(T.grey[f]) }
+    const mG=META.grigia*S.scale;
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=Math.max(SPESS.grigia, mG*FASCE[f]); ctx.stroke(T.grey[f]) }
   }
   /* Stessa dissolvenza dei ranghi minori della vista piana, e con la stessa funzione:
      due criteri separati tornerebbero a divergere, e il difetto si vedrebbe solo
@@ -4694,27 +5346,35 @@ function disegna3d(c0,c1,r0,r1){
      è quella in cui la strada deve sembrare una strada. Costa una passata di stroke
      in più su un frame che sta a 0,3 ms su 16,7. */
   ctx.strokeStyle = (S.tema==='chiaro') ? CORPO3D.chiaro : CORPO3D.scuro;
-  const wCr=larg3d(SPESS.retto+SPESS.corpo, META.corpo);
-  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wCr*FASCE[f];
+  /* IL PAVIMENTO IN PIXEL STA DENTRO IL CICLO, non piu' fuori (2026-08-31), ed e' la
+     seconda meta' della correzione delle fasce. `larg3d` sceglieva UNA volta fra pixel
+     e metri e poi moltiplicava per la fascia: finche' la fascia valeva 1,00 dappertutto
+     non si vedeva, ma con la prospettiva vera il minimo in pixel verrebbe moltiplicato
+     per 0,5 e una residenziale lontana tornerebbe il filo da cui siamo partiti il 23.
+     Cosi' invece la carreggiata si restringe come deve finche' resta leggibile, poi si
+     posa sul minimo in pixel e li' resta. Il margine grigio attorno all'anima oscilla
+     di mezzo pixel nel passaggio fra i due regimi: sotto la soglia in cui si vede. */
+  const mC=META.corpo*S.scale;
+  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=Math.max(SPESS.retto+SPESS.corpo, mC*FASCE[f]);
     ctx.stroke(T.paths[7][f]); if(aMin>0.004) ctx.stroke(T.pmin[7][f]) }
   for(let k=6;k>=0;k--){
-    const wCk=larg3d(SPESS.curva(k)+SPESS.corpo, META.corpo);
-    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wCk*FASCE[f];
+    const pxCk=SPESS.curva(k)+SPESS.corpo;
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=Math.max(pxCk, mC*FASCE[f]);
       ctx.stroke(T.paths[k][f]); if(aMin>0.004) ctx.stroke(T.pmin[k][f]) }
   }
   ctx.strokeStyle=CLS[7].col;
-  const wAr=larg3d(SPESS.retto, META.anima);
+  const mA=META.anima*S.scale;
   if(aMin>0.004){ ctx.globalAlpha=aMin;
-    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wAr*FASCE[f]; ctx.stroke(T.pmin[7][f]) }
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=Math.max(SPESS.retto, mA*FASCE[f]); ctx.stroke(T.pmin[7][f]) }
     ctx.globalAlpha=1 }
-  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wAr*FASCE[f]; ctx.stroke(T.paths[7][f]) }
+  for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=Math.max(SPESS.retto, mA*FASCE[f]); ctx.stroke(T.paths[7][f]) }
   for(let k=6;k>=0;k--){
     ctx.strokeStyle=CLS[k].col;
-    const wAk=larg3d(SPESS.curva(k), META.anima);
+    const pxAk=SPESS.curva(k);
     if(aMin>0.004){ ctx.globalAlpha=aMin;
-      for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wAk*FASCE[f]; ctx.stroke(T.pmin[k][f]) }
+      for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=Math.max(pxAk, mA*FASCE[f]); ctx.stroke(T.pmin[k][f]) }
       ctx.globalAlpha=1 }
-    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=wAk*FASCE[f]; ctx.stroke(T.paths[k][f]) }
+    for(let f=NFASCE-1;f>=0;f--){ ctx.lineWidth=Math.max(pxAk, mA*FASCE[f]); ctx.stroke(T.paths[k][f]) }
   }
   if(S.snap && S.mode!=='free'){
     const P=new Path2D();
@@ -6522,6 +7182,11 @@ function dilo(chiavi, urgente){
   }
   VOCE.sorgente=nodi; VOCE.fino=t;
   musicaSu(t - VOCE.ctx.currentTime);
+  /* Si conta qui in fondo e non all'ingresso: sopra ci sono quattro uscite
+     anticipate (audio spento, sprite non caricato, sta gia' parlando) e contarle
+     vorrebbe dire contare note che nessuno ha sentito. `nodi` vuoto = chiavi fuori
+     dal vocabolario, cioe' ancora silenzio. */
+  if(nodi.length) window.SN.annuncio();
   return t-t0;
 }
 VOCE.fino = 0;
@@ -7602,6 +8267,10 @@ function startGps(){
   const gia = S.watchId!=null;
   setMode('follow'); S.said.clear(); S.scale=Math.max(S.scale,1.5); S.zoomLibero=false; wakeOn();
   if(gia) return;
+  /* Il giro della scatola nera si apre QUI: e' l'unico punto in cui si comincia
+     davvero a localizzare. Sopra, col `watch` gia' vivo, questo bottone e' solo il
+     ricentra — e un giro nuovo a ogni ricentra falserebbe tutti i conteggi. */
+  snAvvia();
   toast(tr().gpsSearch,2500);
   gpsGuai=0; gpsUltimo=Date.now(); gpsPuliti=0; S.gpsBuco=false;
   S.watchId=navigator.geolocation.watchPosition(p=>{
@@ -7613,6 +8282,9 @@ function startGps(){
     if(x<BB[0]-30000||x>BB[2]+30000||y<BB[1]-30000||y>BB[3]+30000){
       toast(tr().outZone,6000);
     }
+    /* Le coordinate entrano qui e NON escono: il modulo ne ricava una distanza e
+       scorda la fix. Vedi la regola in testa alla sezione SCATOLA NERA. */
+    window.SN.passo(p.coords.latitude, p.coords.longitude, p.coords.accuracy||null);
     suggestRegion(p.coords.latitude, p.coords.longitude);
     feed(x,y,hd,p.coords.speed||0,p.coords.accuracy||0);
   },err=>{
@@ -7649,6 +8321,11 @@ function startGps(){
 function stopGps(){
   if(S.watchId!=null){navigator.geolocation.clearWatch(S.watchId);S.watchId=null}
   if(S.wake){S.wake.release().catch(()=>{});S.wake=null}
+  /* Fine guida: il rapporto entra in coda (scrittura sincrona, sempre riuscita).
+     L'invio NON si tenta qui — questa funzione gira anche mentre l'app se ne sta
+     andando, dove una richiesta asincrona non ha nessuna garanzia di partire e
+     crederla partita e' peggio che non tentarla. Si spedisce al giro dopo. */
+  window.SN.chiudi();
 }
 
 /* demo free-roam: segue il grafo */
@@ -7782,6 +8459,7 @@ if(bDemo) bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
    fuori da un gesto utente il primo suono viene scartato in silenzio. Da qui si
    sveglia il contesto e si scarica lo sprite della lingua attiva. */
 bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
+  window.SN.voce(S.audio);      // minuti di voce VERI, non minuti di voce disponibile
   if(S.audio){
     svegliaVoce();
     /* «copilota attivo» è la PRIMA cosa che si sente, quindi è la peggiore da
