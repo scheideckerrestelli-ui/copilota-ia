@@ -1,0 +1,23 @@
+# Cache al bordo di Cloudflare.
+#
+# Senza questo file Pages serve tutto con `s-maxage=604800`: sette giorni di
+# cache al bordo, che i deploy NON svuotano. Misurato l'1/09/2026 sulla pagina
+# beta: caricata la versione nuova, `codriver.pages.dev/beta` continuava a dare
+# quella di dieci ore prima (`cf-cache-status: HIT`, `age: 36152`), mentre
+# `/sw.js` e `/` si erano aggiornati in momenti diversi. La cache e' per data
+# center, quindi due tester in due citta' vedevano due versioni diverse.
+#
+# `must-revalidate` costa un 304 per richiesta e vale il prezzo: qui si pubblica
+# per cambiare quello che la gente legge, e una pubblicazione che arriva fra
+# sette giorni non e' una pubblicazione.
+/*
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Le clip vocali sono l'eccezione: 3,5 MB che non cambiano mai senza cambiare
+# nome, e su rete mobile riscaricarle a ogni giro sarebbe un danno vero.
+/voce-it.m4a
+  Cache-Control: public, max-age=31536000, immutable
+/voce-en.m4a
+  Cache-Control: public, max-age=31536000, immutable
+/voce-fr.m4a
+  Cache-Control: public, max-age=31536000, immutable
