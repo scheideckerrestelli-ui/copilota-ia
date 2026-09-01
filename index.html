@@ -849,7 +849,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '237';
+const APPVER = '242';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3334,6 +3334,164 @@ const CARS = {
             "tr/min, 280 kg avec le pilote. Règle le rapport final avec le curseur : la référence "+
             "est à 4 000 tr/min, un régime qu'on tient vraiment à moto."},
 };
+/* ============ IL PROFILO DELLA SUA AUTO ARRIVA DAL LINK ============
+   Fino al 1/09 al tester si diceva «seleziona il profilo piu' vicino alla tua
+   auto». A chi ha un 595 col motore forgiato da 310 CV toccava il generico da
+   150: meta' della potenza vera, e quindi marce suggerite e velocita' in curva
+   tarate su un'altra macchina. Parola di Tiago: «potresti semplicemente creare
+   un profilo per ognuno di loro automaticamente».
+   Il profilo lo costruisce co-driver-beta/profili.py dai dati veri della sua
+   auto (database + quello che ha dichiarato lui) e viaggia nel link d'invito.
+
+   PERCHE' NEL FRAMMENTO (`#p=`) E NON NELLA QUERY. Il frammento non viene
+   spedito al server: non entra nei log di GitHub Pages ne' in quelli di
+   Cloudflare, ne' nel Referer. Invisibile non lo e' — il link viaggia in un DM
+   e sta nella posta inviata, sui server di chi la trasporta e in ogni inoltro —
+   ma per il modello di un'auto e' la scelta giusta, e per un dato davvero
+   sensibile non basterebbe. Nella query si accetta di proposito NIENTE: se lo
+   si accettasse «per robustezza», un link ricomposto a mano rimetterebbe l'auto
+   del tester nei log del sito in silenzio.
+   Il ripiego, se un'app di messaggistica taglia il frammento, e' il vecchio
+   `?a=` che viaggia nello stesso link: si finisce sul profilo piu' vicino fra
+   gli otto, cioe' esattamente com'era prima. Mai peggio.
+
+   PRECEDENZE: `p` batte `a` (e' il profilo vero contro un'approssimazione), e
+   il link batte il salvato — se Tiago rimanda un invito e' perche' il profilo
+   di prima era sbagliato. Come `?a=`, si consuma: letto una volta, salvato,
+   tolto dall'indirizzo. Un'assegnazione e' un punto di partenza, non una gabbia.
+
+   VALIDAZIONE STRETTA, e non e' pignoleria: `nm` finisce dentro un innerHTML
+   nelle chip dell'auto (renderCar), quindi il filtro che lascia passare solo
+   lettere, cifre, spazio e trattino e' cio' che tiene fuori il markup. Tutto il
+   resto e' a intervalli: un solo controllo fallito e il parametro si butta
+   INTERO, senza mezze applicazioni. Quello che arriva da un indirizzo non e'
+   nostro finche' non l'abbiamo guardato. */
+const PROF_CHIAVE = 'copilota-profilo';
+/* Spaziatura dei rapporti per numero di marce: non e' il cambio del tester —
+   quello non lo sa nessuno — e' una spaziatura rappresentativa presa dai cambi
+   veri qui sopra. La scala assoluta la mette `ref`, e la corregge il cursore. */
+const PROF_SPAZ = {
+  1:[1.0], 4:[0.26,0.47,0.72,1.0], 5:[0.235,0.411,0.605,0.795,1.0],
+  6:[0.190,0.3325,0.490,0.6425,0.810,1.0],
+  7:[0.1244,0.1976,0.3125,0.4576,0.6186,0.7947,1.0],
+  8:[0.125,0.205,0.300,0.410,0.545,0.685,0.840,1.0],
+  9:[0.1123,0.1855,0.2671,0.3665,0.4967,0.6010,0.6948,0.8382,1.0],
+};
+function profiloDecodifica(s){
+  try{
+    if(typeof s!=='string' || s.length<20 || s.length>200) return null;
+    const c = s.split('.');
+    if(c.length!==15 || c[0]!=='1') return null;
+    const num=(x,lo,hi)=>{ const v=+x;
+      return (x!=='' && Number.isFinite(v) && v>=lo && v<=hi) ? v : null };
+    const nm = c[1].replace(/_/g,' ').replace(/[^A-Za-z0-9 -]/g,'').replace(/\s+/g,' ').trim().slice(0,32);
+    const tz = c[4], fl = c[12];
+    const cv=num(c[2],40,1500), kg=num(c[3],500,3500), n=num(c[5],1,10),
+          gr=num(c[6],60,130),  cd=num(c[7],30,120),   cr=num(c[8],5,25),
+          bo=num(c[9],1,5000),  rl=num(c[10],3000,12000), rf=num(c[11],15,85),
+          cs=num(c[13],0,1500), an=num(c[14],0,2030);
+    if(!nm || cv===null||kg===null||n===null||gr===null||cd===null||cr===null||
+       bo===null||rl===null||rf===null||cs===null||an===null) return null;
+    if(!Number.isInteger(n) || !PROF_SPAZ[n]) return null;
+    if(tz!=='a' && tz!=='p' && tz!=='i') return null;
+    if(!/^[a-z-]{1,6}$/.test(fl)) return null;
+    if(rl <= bo) return null;
+    if(an!==0 && (an<1980 || an>2030)) return null;
+    const ha = k => fl.indexOf(k) >= 0;
+    const mila = (v,sep) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
+    const cvS = (cs && Math.abs(cs-cv) > 3) ? cs : 0;
+    const T3 = {
+      it:{tz:{a:'anteriore',p:'posteriore',i:'integrale'}, marce:' marce', auto:'cambio automatico',
+          serie:'Di serie faceva '+cvS+' CV. ', mille:'.', dec:',',
+          alz:', alzata perché hai dichiarato assetto o gomme non di serie',
+          stima:'Aerodinamica, attrito e rapportatura sono STIME ricavate dalla classe dell\'auto: '+
+                'servono a partire, non sono il tuo libretto. ',
+          stimaDb:'Anche i dati di serie vengono da una scheda stimata, non verificata. ',
+          testa:'Profilo costruito sulla TUA auto, non su una simile: ',
+          corpo:' CV, ### kg col guidatore, trazione @@@, ',
+          coda:'Prima di partire tara i «Rapporti» qui sopra: scegli una marcia e sposta il cursore '+
+               'finché il numero non è la velocità che il tuo tachimetro segna a 2.000 giri in quella '+
+               'marcia. Da lì l\'app ricava tutte le altre. Se un numero non torna, dillo: si corregge.',
+          fascia:'Fascia utile ***-+++ giri, tenuta di riferimento '},
+      en:{tz:{a:'front-wheel drive',p:'rear-wheel drive',i:'all-wheel drive'}, marce:'-speed', auto:'automatic',
+          serie:'Stock it made '+cvS+' hp. ', mille:',', dec:'.',
+          alz:', raised because you declared non-standard suspension or tyres',
+          stima:'Aerodynamics, rolling resistance and gearing are ESTIMATES from the car\'s class: '+
+                'they get you started, they are not your logbook. ',
+          stimaDb:'The stock figures come from an estimated data sheet, not a verified one. ',
+          testa:'Profile built on YOUR car, not on a similar one: ',
+          corpo:' hp, ### kg with driver, @@@, ',
+          coda:'Before setting off, set the «Ratios» above: pick a gear and move the slider until the '+
+               'number matches the speed your own dashboard shows at 2,000 rpm in that gear. The app '+
+               'derives all the others from it. If a figure looks wrong, say so: it can be fixed.',
+          fascia:'Useful band ***-+++ rpm, reference grip '},
+      fr:{tz:{a:'traction avant',p:'propulsion',i:'transmission intégrale'}, marce:' rapports', auto:'boîte automatique',
+          serie:'D\'origine elle faisait '+cvS+' ch. ', mille:' ', dec:',',
+          alz:', relevée parce que tu as déclaré des suspensions ou des pneus non d\'origine',
+          stima:'Aérodynamique, résistance au roulement et étagement sont des ESTIMATIONS tirées de la '+
+                'catégorie de la voiture : de quoi partir, pas ta carte grise. ',
+          stimaDb:'Les données d\'origine viennent elles aussi d\'une fiche estimée, non vérifiée. ',
+          testa:'Profil construit sur TA voiture, pas sur une voiture proche : ',
+          corpo:' ch, ### kg avec le conducteur, @@@, ',
+          coda:'Avant de partir, règle les «Rapports» ci-dessus : choisis un rapport et déplace le '+
+               'curseur jusqu\'à ce que le nombre corresponde à la vitesse que ton compteur affiche à '+
+               '2 000 tr/min sur ce rapport. L\'app en déduit tous les autres. Si un chiffre ne colle '+
+               'pas, dis-le : ça se corrige.',
+          fascia:'Plage utile ***-+++ tr/min, adhérence de référence '},
+    };
+    const p = {
+      nm:nm, sub:'', auto:(n===1), n:n, g:PROF_SPAZ[n].slice(), ref:rf,
+      cv:cv, kg:kg, cda:cd/100, crr:cr/1000, boost:bo, rpmLim:rl, grip:gr/100,
+      d_it:'', d_en:'', d_fr:'',
+      /* Etichetta corta e stabile del profilo, per chi un domani dovra' dire su
+         quale taratura girava un rapporto della scatola nera: due giri con numeri
+         diversi non si confrontano se non si sa se e' cambiata l'app o l'auto. */
+      pid:(()=>{ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0;
+                 return ('00000'+(h>>>0).toString(36)).slice(-6) })(),
+    };
+    for(const L3 in T3){
+      const t=T3[L3];
+      p['d_'+L3] = t.testa + cv + t.corpo.replace('###', mila(kg,t.mille)).replace('@@@', t.tz[tz])
+        + (n===1 ? t.auto : n + t.marce) + '. '
+        + (cvS ? t.serie : '')
+        + t.fascia.replace('***', mila(bo,t.mille)).replace('+++', mila(rl,t.mille))
+        + (gr/100).toFixed(2).replace('.', t.dec) + (ha('a') ? t.alz : '') + '. '
+        + t.stima + (ha('s') ? t.stimaDb : '') + t.coda;
+    }
+    p.sub = (an ? an+' · ' : '') + cv + ' CV · ' + mila(kg,'.') + ' kg · '
+          + (n===1 ? 'automatica' : n + ' marce');
+    return p;
+  }catch(e){ return null }
+}
+/* Il frammento e basta: vedi il commento sopra sul perche' la query non si legge. */
+const profiloGrezzo = (() => {
+  try{
+    const h = location.hash || '';
+    const v = new URLSearchParams(h.charAt(0)==='#' ? h.slice(1) : h).get('p');
+    return v || null;
+  }catch(e){ return null }
+})();
+const profiloDalLink = profiloGrezzo ? profiloDecodifica(profiloGrezzo) : null;
+/* Letti PRIMA di scrivere qualunque cosa: servono piu' sotto per sapere se il link
+   sta davvero CAMBIANDO veicolo o sta solo riconfermando quello che c'e' gia'. */
+const profiloPrima = (() => { try{ return localStorage.getItem(PROF_CHIAVE) }catch(e){ return null } })();
+const carPrima = (() => { try{ return (JSON.parse(localStorage.getItem('copilota2')||'{}')).car || null }
+                          catch(e){ return null } })();
+/* Registrato PRIMA del ripristino da localStorage, non dopo: chi ha gia' scelto
+   la sua auto ha `car:'mio'` salvato, e il ripristino controlla `CARS[st.car]`.
+   Registrandolo dopo, al secondo avvio il tester tornerebbe all'auto di partenza
+   senza capire perche'. */
+try{
+  if(profiloDalLink){
+    CARS.mio = profiloDalLink;
+    localStorage.setItem(PROF_CHIAVE, profiloGrezzo);
+  }else{
+    const p = profiloPrima && profiloDecodifica(profiloPrima);
+    if(p) CARS.mio = p;
+    else if(profiloPrima) localStorage.removeItem(PROF_CHIAVE);   // salvato illeggibile: non si tiene
+  }
+}catch(e){}
+
 const boostOf = () => CARS[S.car].boost || 3000;
 const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
 /* Automatico = l'auto NON ha una marcia da suggerire, e questo succede per due
@@ -3764,9 +3922,14 @@ try{
      diversa, e' perche' la prima assegnazione era sbagliata. Ma vale una volta sola,
      perche' subito sotto il parametro sparisce dall'indirizzo. */
   if(autoDalLink) S.car = autoDalLink;
+  /* Il profilo su misura batte `?a=`: `a` e' il piu' vicino fra gli otto, `p` e'
+     la macchina sua. Se arrivano tutti e due — e succede, perche' li mandiamo
+     nello stesso link apposta — comanda `p`, e `a` resta solo il ripiego per il
+     caso in cui il frammento venga tagliato per strada. */
+  if(profiloDalLink) S.car = 'mio';
   /* «Ha gia' scelto» non si deduce da `S.car`: quello ha un valore di partenza, e senza
      questa distinzione la prima schermata non comparirebbe mai a nessuno. */
-  S.carScelto = !!(st.car || autoDalLink);
+  S.carScelto = !!(st.car || autoDalLink || profiloDalLink);
   if(st.tema==='chiaro'||st.tema==='scuro'||st.tema==='auto')S.tema=st.tema;
   if(typeof st.antic==='number') S.antic=Math.max(-1,Math.min(3,st.antic));
   if(st.style&&STYLES[st.style])S.style=st.style;   // i vecchi 'd'/'n'/'a' cadono su 'strada'
@@ -3779,11 +3942,35 @@ try{
   if(st.d3)S.d3=true;
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
+/* La rapportatura e' un dato dell'auto come gli altri, e cambiando veicolo va
+   rifatta: la 9a di un cambio a nove marce non vuol dire niente su un cinque
+   marce. E' la stessa cosa che fa il click su una chip in renderCar — solo che
+   il link cambiava l'auto e lasciava la taratura di quella di prima, cioe' i
+   giri sbagliati a ogni annuncio di marcia. Difetto vecchio: valeva gia' per
+   `?a=` da solo.
+   Solo se il link CAMBIA davvero veicolo. Se riconferma quello che c'e' gia'
+   — stesso profilo, stessa auto — la taratura resta quella che il tester ha
+   fatto col cursore guidando, che e' l'unica giusta e gli e' costata un giro. */
+const veicoloNuovoDalLink = profiloDalLink ? (profiloPrima !== profiloGrezzo)
+                          : (autoDalLink ? carPrima !== autoDalLink : false);
+if(veicoloNuovoDalLink){
+  const v = profiloDalLink || CARS[autoDalLink];
+  if(v && v.ref){ S.cal = v.ref; S.calG = 0; }
+}
 /* Tolto dall'indirizzo appena letto: vedi il commento sopra. `replaceState` non
    ricarica e non aggiunge una voce alla cronologia, quindi il tasto indietro del
    telefono continua a fare quello che faceva. */
-if(autoDalLink || testerDalLink){
+if(autoDalLink || testerDalLink || profiloDalLink){
   try{ const u=new URL(location.href); u.searchParams.delete('a'); u.searchParams.delete('t');
+       /* Il frammento si azzera INTERO, e va detto: oggi `location.hash` non lo
+          legge nessun altro in questo file, quindi non porta via niente. Chi un
+          domani vorra' usare il frammento per altro deve toglierne solo `p`, se
+          no si cancella il suo. Senza questa riga il profilo resterebbe
+          appiccicato all'indirizzo: `u.hash` viene riattaccato qui sotto di
+          proposito, e chi si e' messo l'app in schermata Home su iOS riparte
+          sempre dall'indirizzo di quel giorno, frammento compreso — cioe' il
+          profilo assegnato tornerebbe a ogni avvio cancellando la sua scelta. */
+       u.hash = '';
        /* `window.history` e non `history` nudo: sono la stessa cosa per il browser, ma
           il controllo `no-undef` di verifica-push non ha `history` nella lista bianca
           dei globali e lo segnala come identificatore fantasma. La lista incompleta va
@@ -3793,6 +3980,15 @@ if(autoDalLink || testerDalLink){
 }
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
   {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+/* L'auto arrivata dal link si SALVA subito. Senza questa riga il parametro decide
+   solo l'avvio in corso: viene consumato dall'indirizzo e poi non lo dice piu'
+   nessuno, quindi chi apre l'invito, guida, chiude e riapre l'app dalla schermata
+   Home ritrova l'auto di partenza — e pure la schermata di prima scelta, perche'
+   `carScelto` si deduce da quello che c'e' in memoria.
+   Difetto vecchio, non del profilo: valeva gia' per `?a=` da solo, ed e' capitato
+   davvero (invito del 31/08). Si vede solo alla SECONDA apertura, ed e' per questo
+   che nessuno se n'era accorto: alla prima funziona tutto. */
+if(autoDalLink || profiloDalLink) save();
 
 
 /* ============ SCATOLA NERA DELLA BETA ============
