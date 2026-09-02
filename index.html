@@ -444,6 +444,15 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .rrow.daattivare{background:var(--evidenza);border-radius:9px;padding-left:8px;padding-right:8px}
   .rrow .rbt.vai{border-color:var(--accent);color:var(--accent);font-weight:600}
   .rrow.here .rnm b::after{content:' ●';color:var(--accent);font-size:11px;vertical-align:2px}
+  #invitoBox{margin:10px 0 4px;padding:12px 13px;border:1px solid var(--bordo2);
+    border-radius:11px;background:var(--fondo2)}
+  #invitoBox h3{margin:0 0 6px}
+  .invito-row{display:flex;gap:8px;margin-top:8px}
+  .invito-row input{flex:1;min-width:0;border:1px solid var(--bordo2);border-radius:9px;
+    padding:10px 11px;font:inherit;font-size:13px;background:var(--fondo3);color:var(--ink)}
+  .invito-row input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .invito-row .btn{flex:none;width:auto;padding:10px 16px;font-size:13.5px;margin:0}
+  #invitoEsito:empty{display:none}
   /* Gruppi per paese nel pannello Mappe: l'intestazione e' un bottone, non un
      <details>, perche' il triangolino di sistema su iOS non si lascia impaginare
      e la riga deve stare sulla stessa griglia delle regioni. */
@@ -600,6 +609,22 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <h2><span data-lang="it">Il mio <i class="ac">veicolo</i></span><span data-lang="en">My <i class="ac">vehicle</i></span><span data-lang="fr">Mon <i class="ac">véhicule</i></span></h2>
   <h3><span data-lang="it">Auto</span><span data-lang="en">Cars</span><span data-lang="fr">Voitures</span></h3>
   <div class="row2" id="carChips"></div>
+  <!-- IL LINK D'INVITO, DA REINCOLLARE. Su iPhone l'app messa in schermata Home ha
+       una memoria SUA, separata da Safari: profilo, mappe scaricate e termini
+       accettati non passano di la'. Il tester apre il link in Safari, vede la sua
+       auto, installa, e dall'icona si ritrova l'app vuota con l'auto di partenza.
+       Segnalato da Enrico il 2/09 con un video, e capita a chiunque installi.
+       Qui puo' rimettere il suo profilo senza che Tiago gli rimandi niente.
+       Si mostra SOLO a chi un profilo non ce l'ha: a chi ce l'ha sarebbe rumore. -->
+  <div id="invitoBox" hidden>
+    <h3><span data-lang="it">Hai un link d'invito?</span><span data-lang="en">Got an invite link?</span><span data-lang="fr">Tu as un lien d'invitation ?</span></h3>
+    <p class="disc" id="invitoSpieg"></p>
+    <div class="invito-row">
+      <input id="invitoIn" type="text" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off">
+      <button class="btn" id="invitoGo"></button>
+    </div>
+    <p class="disc" id="invitoEsito"></p>
+  </div>
   <!-- Le moto stanno in un gruppo loro: non e' un'altra riga di chip, e' un altro
        modello fisico (piega invece di accelerazione laterale, regime di riferimento
        4.000 invece di 2.000, bersagli da guanto). Scegliere una chip qui sotto
@@ -865,7 +890,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '247';
+const APPVER = '248';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3732,6 +3757,10 @@ const T = {
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', load:'Attiva ora', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
     paesi:{it:'Italia', be:'Belgio', fr:'Francia', '?':'Altre regioni'},
+    invSpieg:'Se l\'app è in schermata Home su iPhone, ha una memoria sua: il profilo della tua auto non passa da Safari. Incolla qui il link che ti hanno mandato e torna com\'era.',
+    invPh:'incolla il link', invGo:'Applica',
+    invOk:n=>'Fatto: '+n+'. Riapro l\'app…',
+    invNo:'Questo non è un link d\'invito valido. Deve contenere la parte dopo il cancelletto, quella che comincia con «#p=».',
     gReg:n=>n+(n===1?' regione':' regioni'), gGiu:n=>n+' sul telefono', gNess:'nessuna scaricata',
     noSave:'Non riesco a salvare la scelta: spazio esaurito o navigazione privata. Libera spazio e riprova.',
     perf:(f,a)=>'Sta girando a '+f+' fotogrammi al secondo su '+a+' tratti caricati. Segue lo schermo: 120 su iPhone Pro con ProMotion, 60 sugli altri, meno da fermo o in risparmio energetico.',
@@ -3799,6 +3828,10 @@ const T = {
     pickMap:'pick a map', maps:'Maps', dl:'Download', load:'Activate', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
     paesi:{it:'Italy', be:'Belgium', fr:'France', '?':'Other regions'},
+    invSpieg:'A web app on the iPhone Home Screen has its own storage: your car profile does not carry over from Safari. Paste the link you were sent and it comes back.',
+    invPh:'paste the link', invGo:'Apply',
+    invOk:n=>'Done: '+n+'. Reopening…',
+    invNo:'That is not a valid invite link. It must include the part after the hash, the one starting with “#p=”.',
     gReg:n=>n+(n===1?' region':' regions'), gGiu:n=>n+' on this phone', gNess:'none downloaded',
     noSave:'Cannot save your choice: storage full or private browsing. Free some space and try again.',
     perf:(f,a)=>'Running at '+f+' frames per second over '+a+' loaded segments. It follows the display: 120 on ProMotion iPhones, 60 elsewhere, less when parked or in low power mode.',
@@ -3863,6 +3896,10 @@ const T = {
     pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', load:'Activer', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
     paesi:{it:'Italie', be:'Belgique', fr:'France', '?':'Autres régions'},
+    invSpieg:'Sur l\'écran d\'accueil de l\'iPhone, l\'app a sa propre mémoire : le profil de ta voiture ne vient pas de Safari. Colle ici le lien qu\'on t\'a envoyé et tout revient.',
+    invPh:'colle le lien', invGo:'Appliquer',
+    invOk:n=>'C\'est fait : '+n+'. Je rouvre l\'app…',
+    invNo:'Ce n\'est pas un lien d\'invitation valide. Il doit contenir la partie après le dièse, celle qui commence par « #p= ».',
     gReg:n=>n+(n===1?' région':' régions'), gGiu:n=>n+' sur le téléphone', gNess:'aucune téléchargée',
     noSave:'Impossible d\'enregistrer le choix : espace insuffisant ou navigation privée. Libère de l\'espace et réessaie.',
     perf:(f,a)=>'Tourne à '+f+' images par seconde sur '+a+' tronçons chargés. Ça suit l\'écran : 120 sur iPhone Pro avec ProMotion, 60 sur les autres, moins à l\'arrêt ou en mode économie d\'énergie.',
@@ -9106,8 +9143,57 @@ function gearTableHtml(){
    correggere da solo senza scrivere a nessuno, se no la prima assegnazione errata
    diventa un tester che guida per una settimana col profilo di un'altra macchina. */
 let carApertoTutto = false;
+/* Il riquadro «ho un link d'invito». Vive qui e non nel blocco del profilo perche'
+   ha bisogno del DOM del pannello auto, ed e' l'unico posto in cui uno va a cercare
+   quando vede l'auto sbagliata. Non naviga verso il link incollato: scrive negli
+   stessi due posti in cui scriverebbe il link e ricarica. Cosi' funziona anche se
+   il tester incolla un link di un'altra origine (github.io invece di pages.dev),
+   che e' successo davvero mentre spostavamo il mirror. */
+function montaInvito(){
+  const box = document.getElementById('invitoBox');
+  if(!box) return;
+  box.hidden = !!CARS.mio;
+  if(box.hidden) return;
+  const inp = document.getElementById('invitoIn');
+  const bt  = document.getElementById('invitoGo');
+  const sp  = document.getElementById('invitoSpieg');
+  const es  = document.getElementById('invitoEsito');
+  if(sp) sp.textContent = tr().invSpieg;
+  if(inp) inp.placeholder = tr().invPh;
+  if(bt && !bt.dataset.pronto){
+    bt.dataset.pronto = '1';
+    bt.textContent = tr().invGo;
+    bt.onclick = () => {
+      es.textContent = '';
+      const testo = (inp.value || '').trim();
+      /* Si pesca `p` e `t` da qualunque forma incollata: link intero, pezzo solo,
+         con o senza spazi intorno. Poi si VALIDA col decodificatore vero: se non
+         passa quello, non si salva niente. */
+      const mp = testo.match(/[#&?]p=([^&\s#]+)/) || testo.match(/^(1\.[^\s&#]+)$/);
+      const mt = testo.match(/[?&]t=([a-z0-9-]{1,40})\b/);
+      const grezzo = mp ? decodeURIComponent(mp[1]) : null;
+      const prof = grezzo ? profiloDecodifica(grezzo) : null;
+      if(!prof){ es.textContent = tr().invNo; es.style.color = 'var(--pericolo)'; return; }
+      try{
+        localStorage.setItem(PROF_CHIAVE, grezzo);
+        if(mt) localStorage.setItem(TESTER_K, mt[1]);
+        const st = JSON.parse(localStorage.getItem('copilota2') || '{}');
+        st.car = 'mio';
+        /* Stessa regola del link: veicolo nuovo, taratura da rifare. Lasciare quella
+           di prima vuol dire i giri sbagliati a ogni annuncio di marcia. */
+        if(prof.ref){ st.cal = prof.ref; st.calG = 0; }
+        localStorage.setItem('copilota2', JSON.stringify(st));
+      }catch(e){ es.textContent = tr().noSave || 'memoria piena'; es.style.color='var(--pericolo)'; return; }
+      es.style.color = '';
+      es.textContent = tr().invOk(prof.nm + ' · ' + prof.cv + ' CV');
+      setTimeout(() => location.reload(), 900);
+    };
+  }
+}
+
 function renderCar(){
   carChips.innerHTML=''; motoChips.innerHTML='';
+  montaInvito();
   const compatto = !VISTA_PIENA && S.carScelto && !carApertoTutto;
   for(const k in CARS){
     const c=CARS[k];
