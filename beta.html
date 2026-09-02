@@ -469,8 +469,24 @@
       try{ localStorage.setItem('codriver:lang', l); }catch(e){}
     });
   }
+  /* L'ordine conta: prima il link, poi quello che avevi scelto, poi il telefono.
+     Il link serve a Tiago, che manda l'invito a un belga o a un inglese e vuole
+     mandargli la pagina GIA' nella sua lingua invece di sperare che il telefono
+     dell'altro sia impostato bene. E serve anche a lui per rileggersi la versione
+     inglese senza cambiare la lingua del Mac. */
   var lang0 = null;
-  try{ lang0 = localStorage.getItem('codriver:lang'); }catch(e){}
+  try{
+    var q = new URLSearchParams(location.search).get('lang');
+    if(q === 'it' || q === 'fr' || q === 'en'){
+      lang0 = q;
+      /* si ricorda anche per dopo: chi arriva col link inglese e poi torna sulla
+         pagina da un segnalibro non se la ritrova in italiano */
+      try{ localStorage.setItem('codriver:lang', q); }catch(e){}
+    }
+  }catch(e){}
+  if(!lang0){
+    try{ lang0 = localStorage.getItem('codriver:lang'); }catch(e){}
+  }
   if(lang0 !== 'it' && lang0 !== 'fr' && lang0 !== 'en'){
     var nav = ((navigator.language || '') + '').toLowerCase();
     lang0 = nav.indexOf('fr') === 0 ? 'fr' : nav.indexOf('it') === 0 ? 'it' : 'en';
