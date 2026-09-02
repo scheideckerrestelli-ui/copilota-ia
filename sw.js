@@ -3,7 +3,7 @@
    (cambia solo col dataset), cosi' "elimina la mappa X" e' selettivo e un fix di
    codice non fa riscaricare niente. */
 /* sorgente: 449a968ae3 +NON-COMMITTATO */
-const APP = 'copilota-app-v248';
+const APP = 'copilota-app-v249';
 const DATA_PREFIX = 'copilota-data-';
 // niente './index.html' nella SHELL: su Cloudflare Pages risponde 308 (pretty URL)
 // e cache.addAll rifiuta le risposte redirette — l'install del SW fallirebbe intera.

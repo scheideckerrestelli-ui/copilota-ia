@@ -890,7 +890,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '248';
+const APPVER = '249';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3999,7 +3999,14 @@ const autoDalLink = (() => {
    com'e'. Non autentica niente e non prova niente — e' un'etichetta, come `?a=`. */
 const testerDalLink = (() => {
   try{
-    const p = new URLSearchParams(location.search).get('t');
+    /* Prima la query, che e' la forma dei link gia' consegnati il 2/09. Poi il
+       frammento, che e' la forma in cui l'indirizzo resta DOPO la prima lettura:
+       serve perche' su iPhone l'app in schermata Home riparte da quell'indirizzo,
+       e senza `t` i suoi giri arriverebbero al foglio senza un nome sopra. */
+    const q = new URLSearchParams(location.search).get('t');
+    const h = location.hash || '';
+    const f = new URLSearchParams(h.charAt(0)==='#' ? h.slice(1) : h).get('t');
+    const p = q || f;
     return (p && /^[a-z0-9-]{1,40}$/.test(p)) ? p : null;
   }catch(e){ return null }
 })();
@@ -4017,7 +4024,12 @@ try{
      la macchina sua. Se arrivano tutti e due — e succede, perche' li mandiamo
      nello stesso link apposta — comanda `p`, e `a` resta solo il ripiego per il
      caso in cui il frammento venga tagliato per strada. */
-  if(profiloDalLink) S.car = 'mio';
+  /* Il profilo comanda solo se e' NUOVO. Da quando resta appiccicato
+     all'indirizzo (vedi sopra) lo si rilegge a ogni avvio: senza questa
+     condizione, chi dopo sceglie un'altra auto se la vedrebbe cancellare al
+     riavvio successivo. Nuovo vuol dire diverso da quello gia' salvato, che e'
+     esattamente il caso «Tiago ha rimandato un invito corretto». */
+  if(profiloDalLink && profiloPrima !== profiloGrezzo) S.car = 'mio';
   /* L'auto salvata puo' essere una di quelle appena tolte come doppione: allora
      `CARS[st.car]` non esiste piu' e il ripristino qui sopra l'ha saltata, che
      lascerebbe l'auto di partenza (una MiTo) a chi guida una Fiesta. */
@@ -4057,15 +4069,24 @@ if(veicoloNuovoDalLink){
    telefono continua a fare quello che faceva. */
 if(autoDalLink || testerDalLink || profiloDalLink){
   try{ const u=new URL(location.href); u.searchParams.delete('a'); u.searchParams.delete('t');
-       /* Il frammento si azzera INTERO, e va detto: oggi `location.hash` non lo
-          legge nessun altro in questo file, quindi non porta via niente. Chi un
-          domani vorra' usare il frammento per altro deve toglierne solo `p`, se
-          no si cancella il suo. Senza questa riga il profilo resterebbe
-          appiccicato all'indirizzo: `u.hash` viene riattaccato qui sotto di
-          proposito, e chi si e' messo l'app in schermata Home su iOS riparte
-          sempre dall'indirizzo di quel giorno, frammento compreso — cioe' il
-          profilo assegnato tornerebbe a ogni avvio cancellando la sua scelta. */
-       u.hash = '';
+       /* IL FRAMMENTO ADESSO RESTA, ed e' un cambio di rotta voluto (2/09).
+          Prima si azzerava, per paura che il profilo tornasse a ogni avvio
+          cancellando la scelta di chi poi cambiava auto a mano. Quella paura si
+          cura meglio piu' sotto, applicando il profilo solo quando il link e'
+          NUOVO; azzerare curava il sintomo e rompeva l'installazione.
+          Il perche' del cambio: su iPhone l'app messa in schermata Home ha una
+          memoria separata da Safari, e riparte dall'indirizzo registrato quel
+          giorno. Con l'indirizzo nudo ripartiva senza profilo, cioe' con l'auto
+          di partenza — capitava a chiunque installasse, video di Enrico del 2/09.
+          Tenendo `p` e `t` nel frammento, l'icona porta con se' l'auto giusta.
+          La query invece si ripulisce lo stesso, e la differenza non e' estetica:
+          `?a=` e `&t=` finiscono nei log del sito e nel Referer, il frammento no,
+          non viene proprio spedito. */
+       const fr = new URLSearchParams();
+       if(profiloGrezzo) fr.set('p', profiloGrezzo);
+       if(testerDalLink) fr.set('t', testerDalLink);
+       const frs = fr.toString();
+       u.hash = frs ? '#' + frs.replace(/%2E/gi, '.').replace(/%5F/gi, '_') : '';
        /* `window.history` e non `history` nudo: sono la stessa cosa per il browser, ma
           il controllo `no-undef` di verifica-push non ha `history` nella lista bianca
           dei globali e lo segnala come identificatore fantasma. La lista incompleta va
