@@ -444,6 +444,22 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .rrow.daattivare{background:var(--evidenza);border-radius:9px;padding-left:8px;padding-right:8px}
   .rrow .rbt.vai{border-color:var(--accent);color:var(--accent);font-weight:600}
   .rrow.here .rnm b::after{content:' ●';color:var(--accent);font-size:11px;vertical-align:2px}
+  /* Gruppi per paese nel pannello Mappe: l'intestazione e' un bottone, non un
+     <details>, perche' il triangolino di sistema su iOS non si lascia impaginare
+     e la riga deve stare sulla stessa griglia delle regioni. */
+  .gcap{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;border:0;
+    background:none;color:var(--ink);font:inherit;cursor:pointer;padding:16px 0 9px;
+    border-bottom:1px solid var(--linea2)}
+  .gcap .gnm{font-size:13px;font-weight:700;letter-spacing:.13em;text-transform:uppercase}
+  .gcap .gsub{flex:1;font-size:11.5px;color:var(--ink2);letter-spacing:.02em}
+  .gcap .gfre{flex:none;width:0;height:0;border-left:5px solid transparent;
+    border-right:5px solid transparent;border-top:6px solid var(--ink2);
+    transform:rotate(-90deg);transition:transform .15s}
+  .gcap.aperto .gnm{color:var(--accent)}
+  .gcap.aperto .gfre{transform:rotate(0deg);border-top-color:var(--accent)}
+  .gcap:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  .gbox .rrow:last-of-type{border-bottom:0}
+  @media (prefers-reduced-motion:reduce){ .gcap .gfre{transition:none} }
 </style>
 
 <canvas id="map"></canvas>
@@ -849,7 +865,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '245';
+const APPVER = '247';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3492,6 +3508,38 @@ try{
   }
 }catch(e){}
 
+/* IL DOPPIONE. Il catalogo ha otto auto fisse, e il profilo su misura arriva in
+   piu': per chi guida una macchina che nel catalogo c'e' gia' (Emanuele con la
+   Fiesta) il pannello ne mostrava DUE, quasi uguali, e non si capiva quale fosse
+   la sua. Parola di Tiago il 2/09: «togli la sua vecchia fiesta se no ha un
+   doppione».
+   Si toglie solo il doppione VERO, per nome: «Ford Fiesta» copre «Ford Fiesta
+   ST-Line», ma «Abarth 595» non tocca «Altra auto», che per Manuel resta il
+   ripiego generico e serve. Il confronto e' per prefisso di parole intere, cosi'
+   una Golf non si mangia una Golf R.
+   Se l'auto in uso era proprio quella tolta, si passa al profilo suo: e' la stessa
+   macchina con i numeri giusti, non un cambio di veicolo. */
+const AUTO_TOLTE = [];
+try{
+  if(CARS.mio){
+    const piano = x => (x||'').toString().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,' ').trim();
+    const mio = piano(CARS.mio.nm);
+    if(mio){
+      for(const k of Object.keys(CARS)){
+        if(k === 'mio') continue;
+        const q = piano(CARS[k].nm);
+        if(!q) continue;
+        if(q === mio || q.startsWith(mio + ' ') || mio.startsWith(q + ' ')){
+          AUTO_TOLTE.push(k);
+          delete CARS[k];
+        }
+      }
+    }
+  }
+}catch(e){}
+
 const boostOf = () => CARS[S.car].boost || 3000;
 const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
 /* Automatico = l'auto NON ha una marcia da suggerire, e questo succede per due
@@ -3683,6 +3731,8 @@ const T = {
     outZone:'Sei fuori dalle mappe caricate.',
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', load:'Attiva ora', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
+    paesi:{it:'Italia', be:'Belgio', fr:'Francia', '?':'Altre regioni'},
+    gReg:n=>n+(n===1?' regione':' regioni'), gGiu:n=>n+' sul telefono', gNess:'nessuna scaricata',
     noSave:'Non riesco a salvare la scelta: spazio esaurito o navigazione privata. Libera spazio e riprova.',
     perf:(f,a)=>'Sta girando a '+f+' fotogrammi al secondo su '+a+' tratti caricati. Segue lo schermo: 120 su iPhone Pro con ProMotion, 60 sugli altri, meno da fermo o in risparmio energetico.',
     ver:(v,pwa)=>'Versione '+v+(pwa?' · app installata':' · dal browser')+'. Se qui il numero non sale dopo un aggiornamento, la copia vecchia e\' rimasta in cache: chiudi del tutto l\'app dal selettore e riaprila.',
@@ -3748,6 +3798,8 @@ const T = {
     outZone:'You are outside the loaded maps.',
     pickMap:'pick a map', maps:'Maps', dl:'Download', load:'Activate', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
+    paesi:{it:'Italy', be:'Belgium', fr:'France', '?':'Other regions'},
+    gReg:n=>n+(n===1?' region':' regions'), gGiu:n=>n+' on this phone', gNess:'none downloaded',
     noSave:'Cannot save your choice: storage full or private browsing. Free some space and try again.',
     perf:(f,a)=>'Running at '+f+' frames per second over '+a+' loaded segments. It follows the display: 120 on ProMotion iPhones, 60 elsewhere, less when parked or in low power mode.',
     ver:(v,pwa)=>'Version '+v+(pwa?' · installed app':' · from the browser')+'. If this number does not go up after an update, the old copy is still cached: close the app from the switcher and reopen it.',
@@ -3810,6 +3862,8 @@ const T = {
     outZone:'Tu es en dehors des cartes chargées.',
     pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', load:'Activer', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
+    paesi:{it:'Italie', be:'Belgique', fr:'France', '?':'Autres régions'},
+    gReg:n=>n+(n===1?' région':' régions'), gGiu:n=>n+' sur le téléphone', gNess:'aucune téléchargée',
     noSave:'Impossible d\'enregistrer le choix : espace insuffisant ou navigation privée. Libère de l\'espace et réessaie.',
     perf:(f,a)=>'Tourne à '+f+' images par seconde sur '+a+' tronçons chargés. Ça suit l\'écran : 120 sur iPhone Pro avec ProMotion, 60 sur les autres, moins à l\'arrêt ou en mode économie d\'énergie.',
     ver:(v,pwa)=>'Version '+v+(pwa?' · application installée':' · depuis le navigateur')+'. Si ce numéro n\'augmente pas après une mise à jour, l\'ancienne copie est restée en cache : ferme complètement l\'app depuis le sélecteur et rouvre-la.',
@@ -3927,6 +3981,10 @@ try{
      nello stesso link apposta — comanda `p`, e `a` resta solo il ripiego per il
      caso in cui il frammento venga tagliato per strada. */
   if(profiloDalLink) S.car = 'mio';
+  /* L'auto salvata puo' essere una di quelle appena tolte come doppione: allora
+     `CARS[st.car]` non esiste piu' e il ripristino qui sopra l'ha saltata, che
+     lascerebbe l'auto di partenza (una MiTo) a chi guida una Fiesta. */
+  if(CARS.mio && st.car && !CARS[st.car]) S.car = 'mio';
   /* «Ha gia' scelto» non si deduce da `S.car`: quello ha un valore di partenza, e senza
      questa distinzione la prima schermata non comparirebbe mai a nessuno. */
   S.carScelto = !!(st.car || autoDalLink || profiloDalLink);
@@ -8825,10 +8883,13 @@ function applicaMappe(){
   return true;
 }
 
-function renderMaps(){
-  if(!mapList) return;
-  mapList.innerHTML='';
-  for(const r of REG){
+/* Quali gruppi sono aperti. Vive fuori da renderMaps perche' la funzione viene
+   richiamata a ogni scarico e a ogni attivazione: se lo stato stesse dentro, il
+   pannello si richiuderebbe sotto le dita di chi ha appena toccato Scarica. */
+const PAESI_APERTI = new Set();
+let paesiDecisi = false;
+
+function rigaRegione(r){
     const inst=RSTATE.inst.includes(r.id), att=RSTATE.att.includes(r.id);
     const row=document.createElement('div');
     row.className='rrow'+(r.id===hereId?' here':'');
@@ -8885,8 +8946,71 @@ function renderMaps(){
       };
       row.appendChild(del);
     }
-    mapList.appendChild(row);
+    return row;
+}
+
+function renderMaps(){
+  if(!mapList) return;
+  mapList.innerHTML='';
+
+  /* Diciotto regioni una sotto l'altra erano un muro: si scorreva a lungo per
+     trovare la propria. Qui si raggruppano per paese, e ogni gruppo si apre e si
+     chiude. Il paese arriva dal manifesto (`paese` in regions.json, scritto da
+     mkpwa.py): l'app non ha nessuna lista da tenere aggiornata, e una regione
+     senza paese finisce nel gruppo «altre» invece di sparire. */
+  const gruppi = new Map();
+  for(const r of REG){
+    const k = r.paese || '?';
+    if(!gruppi.has(k)) gruppi.set(k, []);
+    gruppi.get(k).push(r);
   }
+  const primi = ['it','be','fr'];
+  const ordine = primi.filter(k=>gruppi.has(k))
+                      .concat([...gruppi.keys()].filter(k=>!primi.includes(k)));
+
+  /* Quali aprire, la prima volta: quello dove il GPS ti vede, e quelli in cui hai
+     gia' scaricato qualcosa. Se non c'e' ne' l'uno ne' gli altri, si apre il primo:
+     un pannello tutto chiuso sembrerebbe vuoto. */
+  if(!paesiDecisi){
+    paesiDecisi = true;
+    for(const k of ordine){
+      const rs = gruppi.get(k);
+      if(rs.some(r=>r.id===hereId) || rs.some(r=>RSTATE.inst.includes(r.id))) PAESI_APERTI.add(k);
+    }
+    if(!PAESI_APERTI.size && ordine.length) PAESI_APERTI.add(ordine[0]);
+  }
+
+  for(const k of ordine){
+    const rs = gruppi.get(k);
+    const giu = rs.filter(r=>RSTATE.inst.includes(r.id));
+    const aperto = PAESI_APERTI.has(k);
+
+    const cap = document.createElement('button');
+    cap.className = 'gcap' + (aperto ? ' aperto' : '');
+    cap.type = 'button';
+    cap.setAttribute('aria-expanded', aperto ? 'true' : 'false');
+    const dett = tr().gReg(rs.length) + ' · ' +
+                 (giu.length ? tr().gGiu(giu.length) + ' · ' + MB(giu.reduce((a,r)=>a+pesoTot(r),0))
+                             : tr().gNess);
+    cap.innerHTML = '<span class="gnm">' + ((tr().paesi||{})[k] || k) + '</span>' +
+                    '<span class="gsub">' + dett + '</span><i class="gfre"></i>';
+    mapList.appendChild(cap);
+
+    const box = document.createElement('div');
+    box.className = 'gbox';
+    if(!aperto) box.hidden = true;
+    for(const r of rs) box.appendChild(rigaRegione(r));
+    mapList.appendChild(box);
+
+    cap.onclick = () => {
+      const ora = !PAESI_APERTI.has(k);
+      if(ora) PAESI_APERTI.add(k); else PAESI_APERTI.delete(k);
+      box.hidden = !ora;
+      cap.classList.toggle('aperto', ora);
+      cap.setAttribute('aria-expanded', ora ? 'true' : 'false');
+    };
+  }
+
   const att=RSTATE.att.map(rById).filter(Boolean);
   /* Avviso di memoria. Misurato: 40 MB di dati diventano ~260 MB di heap una volta
      costruiti gli indici, cioè circa 6,5 volte. Oltre una certa soglia il telefono
