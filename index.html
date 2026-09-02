@@ -674,6 +674,28 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <span data-lang="it">Non superare mai il limite della strada</span>
     <span data-lang="en">Never exceed the road speed limit</span><span data-lang="fr">Ne jamais dépasser la limite de la route</span></label>
   <p style="margin-top:6px;font-size:11.5px" id="legalDesc"></p>
+  <label class="opt"><input type="checkbox" id="camChk">
+    <span data-lang="it">Avvisi autovelox</span>
+    <span data-lang="en">Speed camera warnings</span><span data-lang="fr">Alertes radars</span></label>
+  <p style="margin-top:6px;font-size:11.5px" id="camDesc"></p>
+  <div class="disc" data-lang="it">Dove sono leciti conviene tenerli accesi. Ma in <b>Germania</b>
+    la legge (§23 Abs. 1c StVO) vieta di <b>guidare</b> con un'app che segnala i controlli, e
+    l'illecito è avere la funzione attiva — non che una telecamera suoni: 75 € e un punto, anche
+    se è il passeggero a tenerla accesa. In <b>Francia</b> è vietata la posizione esatta, per
+    questo le mappe francesi non ne contengono nessuna. Spegnendo qui non si annuncia e non si
+    mostra più niente, in tutte le mappe.</div>
+  <div class="disc" data-lang="en">Keep them on where they are legal. But in <b>Germany</b> the law
+    (§23 Abs. 1c StVO) forbids <b>driving</b> with an app that signals speed controls, and the
+    offence is having the feature switched on — not a camera going off: €75 and one point, even if
+    a passenger is holding it. In <b>France</b> exact positions are forbidden, which is why the
+    French maps contain none. Switching this off stops every warning and every on-screen marker,
+    on all maps.</div>
+  <div class="disc" data-lang="fr">Garde-les actifs là où ils sont légaux. Mais en <b>Allemagne</b>
+    la loi (§23 Abs. 1c StVO) interdit de <b>conduire</b> avec une app qui signale les contrôles,
+    et l'infraction est d'avoir la fonction active — pas qu'un radar sonne : 75 € et un point,
+    même si c'est le passager qui la tient. En <b>France</b> la position exacte est interdite,
+    d'où l'absence totale de radars dans les cartes françaises. En éteignant ici, plus aucune
+    annonce ni aucun repère à l'écran, sur toutes les cartes.</div>
   <div class="disc" data-lang="it">La velocità di riferimento è √(accelerazione laterale × raggio):
     un valore <b>teorico</b>, che presume asfalto asciutto e pulito, gomme in ordine e strada
     libera. Non tiene conto di pendenza, sopraelevazione, ghiaia, umido all'ombra né di chi arriva
@@ -890,7 +912,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '249';
+const APPVER = '251';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1359,11 +1381,58 @@ const toLL = (x,y) => [x/KX+M.lon0, y/KY+M.lat0];
    Le distanze vere (len, curve, autovelox) sono metri calcolati in fase di
    elaborazione con la proiezione locale giusta, e l'app riscala la geometria con
    sc=len/L: l'errore dell'equirettangolare resta nel disegno, non nelle note. */
-function setOrigin(list){
+/* DOVE ERI L'ULTIMA VOLTA, e serve a una cosa sola: scegliere l'origine di proiezione
+   all'avvio, quando il GPS non ha ancora risposto. Arrotondata a un DECIMO DI GRADO
+   (~11 km): basta per capire in quale regione stai, e a quella grana non e' piu' una
+   posizione. Resta sul telefono e non esce di qui — la scatola nera non la vede e
+   nessuno la spedisce. Si riscrive solo quando il decimo cambia, cioe' ogni ~11 km. */
+const DOVE_K = 'copilota-dove';
+let DOVE = null;
+try{ const j = JSON.parse(localStorage.getItem(DOVE_K) || 'null');
+     if(j && typeof j.la === 'number' && typeof j.lo === 'number') DOVE = j;
+}catch(e){ nota('ultima posizione illeggibile: '+e.message) }
+function ricordaDove(lat, lon){
+  const la = Math.round(lat*10)/10, lo = Math.round(lon*10)/10;
+  if(DOVE && DOVE.la === la && DOVE.lo === lo) return;
+  DOVE = {la, lo};
+  try{ localStorage.setItem(DOVE_K, JSON.stringify(DOVE)) }catch(e){}
+}
+/* L'ORIGINE STA VICINO A TE, non al centro di tutto (2026-09-02).
+   Era il centro dell'unione delle bbox attive, e finche' si guidava in Italia teneva.
+   Con Francia e Gran Bretagna insieme l'unione va da 42° a 59°, quindi lat0 ~50,5, e
+   `KX = 111320·cos(lat0)` descrive una scala in x che a casa tua non esiste: in
+   Provenza sbaglia del -12%, in Scozia del +18%. Le NOTE restano giuste — le distanze
+   sono metri veri riscalati con `sc = len/L` — a sbagliare sono il DISEGNO e la
+   DIREZIONE, cioe' le due cose che si guardano guidando.
+   Adesso `lat0` viene dalla regione dove sei: quella che contiene l'ultima posizione
+   nota, o la piu' vicina. Le altre regioni attive si deformano di piu', ed e' giusto
+   cosi': stai guardando dove sei, non dove non sei.
+   NON c'e' ricalcolo in marcia, e non e' una dimenticanza. Cambiare origine vuol dire
+   ri-decodificare TUTTA la geometria caricata — misurato, secondi — cioe' inchiodare
+   l'app nel momento peggiore. L'errore che resta dentro una regione e' del 2-3%, e a
+   tenerlo piccolo aiuta un vincolo che c'e' gia': col tetto di memoria non si tengono
+   attive insieme due regioni lontanissime, perche' non ci starebbero.
+   Senza posizione salvata — prima apertura — si torna al centro dell'unione, che e'
+   esattamente il comportamento di prima. */
+function setOrigin(list, dove){
   let la0=90, lo0=180, la1=-90, lo1=-180;
   for(const r of list){ const b=r.bbox;
     if(b[0]<la0)la0=b[0]; if(b[1]<lo0)lo0=b[1]; if(b[2]>la1)la1=b[2]; if(b[3]>lo1)lo1=b[3]; }
-  M = {lat0:(la0+la1)/2, lon0:(lo0+lo1)/2, span:la1-la0};
+  let cla=(la0+la1)/2, clo=(lo0+lo1)/2;
+  if(dove && list.length > 1){
+    /* distanza dal RETTANGOLO, non dal suo centro: dentro una regione vale zero, e una
+       regione lunga e stretta non perde contro una tonda solo perche' ha il centro
+       lontano. La longitudine si accorcia col coseno, se no in Scozia un grado di
+       longitudine peserebbe come uno di latitudine e non e' cosi'. */
+    let best=null, bd=Infinity;
+    for(const r of list){ const b=r.bbox;
+      const dla = Math.max(b[0]-dove.la, 0, dove.la-b[2]);
+      const dlo = Math.max(b[1]-dove.lo, 0, dove.lo-b[3]) * Math.cos(dove.la*Math.PI/180);
+      const d = dla*dla + dlo*dlo;
+      if(d < bd){ bd = d; best = b } }
+    if(best){ cla=(best[0]+best[2])/2; clo=(best[1]+best[3])/2 }
+  }
+  M = {lat0:cla, lon0:clo, span:la1-la0};
   KX = 111320*Math.cos(M.lat0*Math.PI/180);
 }
 
@@ -3779,6 +3848,8 @@ const T = {
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
     legalOn:'Non supera mai il limite della strada.',
     legalOff:'Ignora il limite: solo quello che la curva permette.',
+    camsOn:'Annuncia gli autovelox delle mappe attive.',
+    camsOff:'Spenti: nessun avviso, nessun segnale a schermo.',
     navGo:'VAI', navIn:'fra', navM:'metri', navNow:'ORA', navInto:'in', navMin:'MIN',
     navTurn:{dx:'a destra', sx:'a sinistra', dxs:'secca a destra', sxs:'secca a sinistra',
              dxk:'tieni la destra', sxk:'tieni la sinistra', inv:'inverti la marcia',
@@ -3850,6 +3921,8 @@ const T = {
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
     legalOn:'Never exceeds the road limit.',
     legalOff:'Ignores the limit: only what the corner allows.',
+    camsOn:'Announces speed cameras from the active maps.',
+    camsOff:'Off: no warning, nothing on screen.',
     navGo:'GO', navIn:'in', navM:'meters', navNow:'NOW', navInto:'onto', navMin:'MIN',
     navTurn:{dx:'turn right', sx:'turn left', dxs:'sharp right', sxs:'sharp left',
              dxk:'keep right', sxk:'keep left', inv:'make a U-turn',
@@ -3918,6 +3991,8 @@ const T = {
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
     legalOn:'Ne dépasse jamais la limite de la route.',
     legalOff:'Ignore la limite : seulement ce que permet le virage.',
+    camsOn:'Annonce les radars des cartes actives.',
+    camsOff:'Éteints : aucune alerte, rien à l\'écran.',
     navGo:'ALLER', navIn:'dans', navM:'mètres', navNow:'MAINTENANT', navInto:'sur', navMin:'MIN',
     navTurn:{dx:'à droite', sx:'à gauche', dxs:'fort à droite', sxs:'fort à gauche',
              dxk:'tiens la droite', sxk:'tiens la gauche', inv:'fais demi-tour',
@@ -3951,7 +4026,7 @@ const S = {
   dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
   dvx:0, dvy:0, dvh:0, dva:0,   // e le loro VELOCITA': senza, l'inseguimento riparte da fermo a ogni fix e si sente
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
-  car:'m5', cal:36, calG:0, style:'strada', legal:true,
+  car:'m5', cal:36, calG:0, style:'strada', legal:true, cams:true,
   antic:0,            // secondi di anticipo voce IN PIU' (o in meno) rispetto allo stile
    // calG = marcia su cui si legge la taratura (0 = decidila tu)
   snap:null,          // {e, i, t, dir, dist}
@@ -4043,6 +4118,7 @@ try{
   if(typeof st.cal==='number')S.cal=st.cal;
   if(typeof st.calG==='number')S.calG=st.calG;
   if(typeof st.legal==='boolean')S.legal=st.legal;
+  if(typeof st.cams==='boolean')S.cams=st.cams;
   if(typeof st.autoMode==='boolean')S.autoMode=st.autoMode;
   if(typeof st.pace==='boolean')S.pace=st.pace;
   if(st.audio)S.audio=true;
@@ -4095,7 +4171,7 @@ if(autoDalLink || testerDalLink || profiloDalLink){
        window.history.replaceState(null, '', u.pathname + (u.search||'') + u.hash) }catch(e){}
 }
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,cams:S.cams,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 /* L'auto arrivata dal link si SALVA subito. Senza questa riga il parametro decide
    solo l'avvio in corso: viene consumato dall'indirizzo e poi non lo dice piu'
    nessuno, quindi chi apre l'invito, guida, chiude e riapre l'app dalla schermata
@@ -6983,7 +7059,7 @@ function buildAhead(){
        sull'anello non c'e' niente da preavvisare. */
     if(hops>0 && !S.aheadRot && ROTONDA.has(e.id))
       S.aheadRot = {dist:acc, key:'rot:'+e.id};
-    const camList=E2CAM.get(e.id);
+    const camList = S.cams ? E2CAM.get(e.id) : null;
     if(camList) for(const c of camList){
       const ahead = dir>0 ? c.d-d0 : d0-c.d;
       if(ahead>-25){
@@ -8600,6 +8676,7 @@ function startGps(){
     /* Le coordinate entrano qui e NON escono: il modulo ne ricava una distanza e
        scorda la fix. Vedi la regola in testa alla sezione SCATOLA NERA. */
     window.SN.passo(p.coords.latitude, p.coords.longitude, p.coords.accuracy||null);
+    ricordaDove(p.coords.latitude, p.coords.longitude);
     suggestRegion(p.coords.latitude, p.coords.longitude);
     feed(x,y,hd,p.coords.speed||0,p.coords.accuracy||0);
   },err=>{
@@ -9140,7 +9217,8 @@ const carChips=document.getElementById('carChips'), motoChips=document.getElemen
       anticSlider=document.getElementById('anticSlider'),
       anticVal=document.getElementById('anticVal'),
       anticDesc=document.getElementById('anticDesc'),
-      legalDesc=document.getElementById('legalDesc');
+      legalDesc=document.getElementById('legalDesc'),
+      camChk=document.getElementById('camChk'), camDesc=document.getElementById('camDesc');
 function gearTableHtml(){
   /* Il tetto (vTop) si applica QUI, alla presentazione, e non dentro gearKmh:
      gearKmh e' il rapporto fisico giri->km/h da cui la taratura risale ai giri,
@@ -9265,6 +9343,8 @@ function renderCar(){
   autoChk.checked=S.autoMode;
   legalChk.checked=S.legal;
   legalDesc.textContent=tr()[S.legal?'legalOn':'legalOff'];
+  camChk.checked=S.cams;
+  camDesc.textContent=tr()[S.cams?'camsOn':'camsOff'];
 }
 /* Il cursore, la frase sopra e le chip della marcia dicono la stessa cosa e devono
    cambiare insieme: un solo posto che le riscrive tutte. */
@@ -9309,6 +9389,12 @@ anticSlider.oninput=()=>{ S.antic=parseFloat(anticSlider.value)||0; renderAntic(
    non fare niente finche' non cambi strada. */
 anticSlider.onchange=()=>{ S.said.clear(); save(); updateNote(); S.need=true };
 legalChk.onchange=()=>{S.legal=legalChk.checked; save(); renderCar(); updateNote(); S.need=true};
+/* Spegnere non silenzia soltanto: taglia la RACCOLTA, quindi spariscono insieme la voce
+   e il riquadro a schermo. E' quello che chiede la legge tedesca, dove l'illecito e'
+   avere la funzione attiva e non il singolo annuncio. `S.said.clear()` perche' se no una
+   camera gia' annunciata resta segnata come detta e riaccendendo non si ripete. */
+camChk.onchange=()=>{S.cams=camChk.checked; save(); renderCar(); S.said.clear();
+                     S.aheadCams=[]; updateNote(); S.need=true};
 /* `S.said` si svuota apposta: le note gia' annunciate contengono la marcia, e senza
    ripulire il gia'-detto la prima curva dopo l'interruttore resterebbe muta o
    continuerebbe a nominarla. Stessa ragione per cui `renderCar` rifa' la tabella:
@@ -10077,7 +10163,7 @@ async function boot(){
     return;
   }
 
-  setOrigin(att);                    // origine comune: PRIMA di decodificare qualsiasi cosa
+  setOrigin(att, DOVE);              // origine comune: PRIMA di decodificare qualsiasi cosa
   const totBytes = att.reduce((a,r)=>a+r.bytes,0);
   let done = 0;
   for(const r of att){
