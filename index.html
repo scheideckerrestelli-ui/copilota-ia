@@ -797,7 +797,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     velocità e postazioni di controllo sono <b>indicativi</b>, derivati da dati pubblici
     (© OpenStreetMap contributors, ODbL) e possono essere errati o non aggiornati: fanno fede la
     segnaletica stradale e il tachimetro del veicolo. <b>L'assenza di avvisi non garantisce
-    l'assenza di controlli.</b> Guarda la strada, non lo schermo — imposta tutto da fermo.</div>
+    l'assenza di controlli.</b> Guarda la strada, non lo schermo: imposta tutto da fermo.</div>
   <div class="disc" data-lang="en">An informational tool, not a safety device. Speed limits and
     enforcement points are <b>indicative</b>, derived from public data (© OpenStreetMap
     contributors, ODbL), and may be wrong or out of date: road signs and your own speedometer are
@@ -849,7 +849,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '242';
+const APPVER = '244';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3404,10 +3404,10 @@ function profiloDecodifica(s){
       it:{tz:{a:'anteriore',p:'posteriore',i:'integrale'}, marce:' marce', auto:'cambio automatico',
           serie:'Di serie faceva '+cvS+' CV. ', mille:'.', dec:',',
           alz:', alzata perché hai dichiarato assetto o gomme non di serie',
-          stima:'Aerodinamica, attrito e rapportatura sono STIME ricavate dalla classe dell\'auto: '+
-                'servono a partire, non sono il tuo libretto. ',
+          stima:'Aerodinamica, attrito e rapportatura sono stime ricavate dalla classe dell\'auto: '+
+                'servono a partire, e se hai i numeri veri si correggono. ',
           stimaDb:'Anche i dati di serie vengono da una scheda stimata, non verificata. ',
-          testa:'Profilo costruito sulla TUA auto, non su una simile: ',
+          testa:'Profilo costruito sui numeri della tua auto: ',
           corpo:' CV, ### kg col guidatore, trazione @@@, ',
           coda:'Prima di partire tara i «Rapporti» qui sopra: scegli una marcia e sposta il cursore '+
                'finché il numero non è la velocità che il tuo tachimetro segna a 2.000 giri in quella '+
@@ -3694,7 +3694,7 @@ const T = {
     applicaDopo:'Si caricano quando tocchi Fatto.',
     logTit:'Cosa è andato storto (resta qui, non ti interrompe in guida):',
     logSfratto:'le mappe scaricate NON sono protette: il telefono può cancellarle quando ha bisogno di spazio',
-    tooMuch:mb=>'Molte mappe attive (~'+mb+' MB): l\'app può chiudersi mentre guidi. Tieni attive solo quelle dove vai — spegnerle non le cancella.',
+    tooMuch:mb=>'Molte mappe attive (~'+mb+' MB): l\'app può chiudersi mentre guidi. Tieni attive solo quelle dove vai: spegnerle non le cancella.',
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
@@ -7260,7 +7260,7 @@ function creaCtx(){
       VOCE.testa = hp;                    // la catena comincia dall'EQ, non piu' dal compressore
     }catch(e){
       VOCE.testa = null;
-      nota('voce senza compressore: '+e.message+' — si sentira\' piu\' piano');
+      nota('voce senza compressore: '+e.message+', si sentira\' piu\' piano');
     }
   }
   return VOCE.ctx;
@@ -9601,7 +9601,7 @@ function renderResults(term){
   for(const r of list) rigaRis(r);
   if(!list.length){
     const d=document.createElement('div'); d.className='info';
-    d.textContent = IX.nGeo ? tr().ixNone+' — '+tr().ixHint : tr().ixNoGeo;
+    d.textContent = IX.nGeo ? tr().ixNone+': '+tr().ixHint : tr().ixNoGeo;
     resEl.appendChild(d);
   }
   resEl.classList.add('show');
@@ -9813,7 +9813,7 @@ async function boot(){
     REG = await (await fetch('regions.json')).json();
     if(!Array.isArray(REG) || !REG.length || !REG[0].id) throw new Error('elenco vuoto o illeggibile');
   }catch(err){
-    splashMsg.textContent = 'elenco mappe non caricato ('+err.message+') — ricarica la pagina';
+    splashMsg.textContent = 'elenco mappe non caricato ('+err.message+'), ricarica la pagina';
     return;
   }
   rload();
