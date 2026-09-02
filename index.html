@@ -912,7 +912,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '251';
+const APPVER = '255';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3825,7 +3825,7 @@ const T = {
     outZone:'Sei fuori dalle mappe caricate.',
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', load:'Attiva ora', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
-    paesi:{it:'Italia', be:'Belgio', fr:'Francia', '?':'Altre regioni'},
+    paesi:{it:'Italia', be:'Belgio', fr:'Francia', gb:'Regno Unito', '?':'Altre regioni'},
     invSpieg:'Se l\'app è in schermata Home su iPhone, ha una memoria sua: il profilo della tua auto non passa da Safari. Incolla qui il link che ti hanno mandato e torna com\'era.',
     invPh:'incolla il link', invGo:'Applica',
     invOk:n=>'Fatto: '+n+'. Riapro l\'app…',
@@ -3898,7 +3898,7 @@ const T = {
     outZone:'You are outside the loaded maps.',
     pickMap:'pick a map', maps:'Maps', dl:'Download', load:'Activate', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
-    paesi:{it:'Italy', be:'Belgium', fr:'France', '?':'Other regions'},
+    paesi:{it:'Italy', be:'Belgium', fr:'France', gb:'United Kingdom', '?':'Other regions'},
     invSpieg:'A web app on the iPhone Home Screen has its own storage: your car profile does not carry over from Safari. Paste the link you were sent and it comes back.',
     invPh:'paste the link', invGo:'Apply',
     invOk:n=>'Done: '+n+'. Reopening…',
@@ -3968,7 +3968,7 @@ const T = {
     outZone:'Tu es en dehors des cartes chargées.',
     pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', load:'Activer', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
-    paesi:{it:'Italie', be:'Belgique', fr:'France', '?':'Autres régions'},
+    paesi:{it:'Italie', be:'Belgique', fr:'France', gb:'Royaume-Uni', '?':'Autres régions'},
     invSpieg:'Sur l\'écran d\'accueil de l\'iPhone, l\'app a sa propre mémoire : le profil de ta voiture ne vient pas de Safari. Colle ici le lien qu\'on t\'a envoyé et tout revient.',
     invPh:'colle le lien', invGo:'Appliquer',
     invOk:n=>'C\'est fait : '+n+'. Je rouvre l\'app…',
