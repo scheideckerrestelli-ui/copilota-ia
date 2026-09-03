@@ -917,7 +917,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '258';
+const APPVER = '259';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4462,7 +4462,7 @@ if(autoDalLink || profiloDalLink) save();
     return Math.sqrt(x * x + y * y) * R;          // l'errore e' sotto il metro
   }
 
-  function nuovoGiro(build, paese, veicolo) {
+  function nuovoGiro(build, paese, veicolo, regione) {
     return {
       g: oggi(), build: build || '?', paese: paese || '?',
       /* ELENCO, non valore singolo: chi ha piu' di un mezzo li cambia dentro lo
@@ -4473,6 +4473,14 @@ if(autoDalLink || profiloDalLink) save();
          Il nome del veicolo NON e' un dato di posizione: e' il modello, che il
          tester ha gia' dichiarato lui nel modulo. */
       veic: veicolo ? [veicolo] : [],
+      /* Le mappe che il tester ha ACCESO nel pannello, per nome leggibile.
+         NON e' una posizione e non viene dal GPS: e' una sua scelta, la stessa
+         che gia' alimenta `paese`. La differenza conta, perche' l'informativa
+         accettata dai tester dice «il GPS viene letto ed elaborato solo sul tuo
+         dispositivo»: la regione accesa non lo contraddice, la regione DEDOTTA
+         dalla posizione si'. Chi un domani volesse riempirlo con `hereId` — la
+         regione in cui il GPS ti vede — sta cambiando la promessa, non il campo. */
+      reg: regione || '?',
       t0: Date.now(), t1: 0, m: 0, voceMs: 0, ann: 0,
       an: {}, fd: firmaDispositivo()
     };
@@ -4551,7 +4559,7 @@ if(autoDalLink || profiloDalLink) save();
         a.aperto = null;
       }
 
-      giro = nuovoGiro(opt.build, opt.paese, opt.veicolo);
+      giro = nuovoGiro(opt.build, opt.paese, opt.veicolo, opt.regione);
       ultima = null; voceDa = 0;
       a.aperto = giro;
       scrivi(a);                       // una scrittura all'apertura, poi silenzio
@@ -4690,7 +4698,8 @@ if(autoDalLink || profiloDalLink) save();
         ios: (g.fd && g.fd.ios) || 'nd',
         /* Vuoto quando il giro e' partito prima di questa versione: si degrada
            a '?' e nessuno dei conti a valle cambia. */
-        veicolo: (g.veic && g.veic.length) ? g.veic.join(' > ') : '?'
+        veicolo: (g.veic && g.veic.length) ? g.veic.join(' > ') : '?',
+        regione: g.reg || '?'
       };
     },
 
@@ -4816,6 +4825,15 @@ const PAESE_REG = {brussels:'BE', flanders:'BE', wallonia:'BE', wallonia_de:'BE'
                    lombardia:'IT', trentino_alto_adige:'IT', veneto:'IT',
                    friuli_venezia_giulia:'IT', emilia_romagna:'IT', toscana:'IT',
                    umbria:'IT', marche:'IT', lazio:'IT', abruzzo:'IT'};
+/* Le mappe accese, per nome. Stessa sorgente di `paeseAttivo()`: `RSTATE.att`,
+   cioe' quello che il tester ha acceso LUI nel pannello. Non `hereId`, che e' la
+   regione in cui il GPS ti vede — quella non esce di qui, e non deve. */
+function regioneAttiva(){
+  try{
+    const nomi = (RSTATE.att || []).map(id => (REG.find(r => r.id === id) || {}).nm || id);
+    return nomi.length ? nomi.slice(0, 4).join(' · ') + (nomi.length > 4 ? ' +' + (nomi.length - 4) : '') : '?';
+  }catch(e){ return '?' }
+}
 function paeseAttivo(){
   const p = new Set((RSTATE.att||[]).map(id => PAESE_REG[id] || '?'));
   return p.size === 1 ? Array.from(p)[0] : p.size ? 'mix' : '?';
@@ -4915,7 +4933,8 @@ function anomaliaDi(msg){
 /* Apre un giro. Non all'avvio dell'app: aprirne uno per ogni apertura del pannello
    gonfierebbe il conteggio dei giri, che e' il denominatore di tutto il resto. */
 function snAvvia(){
-  window.SN.avvia({build: APPVER, paese: paeseAttivo(), veicolo: nomeVeicolo()});
+  window.SN.avvia({build: APPVER, paese: paeseAttivo(), veicolo: nomeVeicolo(),
+                   regione: regioneAttiva()});
   /* La voce puo' essere gia' accesa da una sessione precedente — si salva fra i
      riavvii — e in quel caso il bottone non lo tocca nessuno: senza questa riga un
      giro intero fatto parlando risulterebbe a voce spenta. */
