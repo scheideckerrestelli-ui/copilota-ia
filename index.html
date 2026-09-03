@@ -433,6 +433,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .rrow .rnm{flex:1;min-width:0}
   .rrow .rnm b{display:block;font-size:15px;line-height:1.25}
   .rrow .rnm span{font-size:11.5px;color:var(--ink2);letter-spacing:.02em}
+  /* la figurina che dice DOVE sta la regione: il paese in grigio, lei accesa */
+  .rrow .mm{flex:none;width:38px;height:29px;display:block}
+  .rrow .mm .mm-a{fill:var(--ink2);opacity:.22}
+  .rrow .mm .mm-on{fill:var(--accent);opacity:1;stroke:var(--fondo);stroke-width:.5}
+  .rrow .mm .mm-lontana{fill:none;stroke:var(--accent);stroke-width:1.1;stroke-dasharray:2 1.4}
   .rrow .rbt{flex:none;border:1px solid var(--bordo2);border-radius:9px;padding:8px 12px;
     font:inherit;font-size:12.5px;background:var(--fondo2);color:var(--ink);cursor:pointer;
     min-width:92px;text-align:center;font-variant-numeric:tabular-nums}
@@ -912,7 +917,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '257';
+const APPVER = '258';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3750,6 +3755,15 @@ try{
   }
 }catch(e){}
 
+/* Come si chiama, per la scatola nera. Chiave piu' nome: la chiave serve a
+   contare, il nome a leggere il cruscotto senza avere l'elenco CARS sotto mano.
+   NON e' un dato di posizione — e' il modello, che il tester ha gia' dichiarato
+   lui nel modulo — e serve da quando qualcuno ha piu' di un mezzo: un giro di
+   86 minuti non dice niente se non si sa su cosa e' stato fatto. */
+function nomeVeicolo(){
+  try{ const c = CARS[S.car]; return c ? S.car + ' · ' + c.nm : (S.car || '?') }
+  catch(e){ return '?' }
+}
 const boostOf = () => CARS[S.car].boost || 3000;
 const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
 /* Automatico = l'auto NON ha una marcia da suggerire, e questo succede per due
@@ -4448,9 +4462,17 @@ if(autoDalLink || profiloDalLink) save();
     return Math.sqrt(x * x + y * y) * R;          // l'errore e' sotto il metro
   }
 
-  function nuovoGiro(build, paese) {
+  function nuovoGiro(build, paese, veicolo) {
     return {
       g: oggi(), build: build || '?', paese: paese || '?',
+      /* ELENCO, non valore singolo: chi ha piu' di un mezzo li cambia dentro lo
+         stesso giro. Enrico dal 3/09 ha tre profili (la sua MiTo, una Cadillac
+         elettrica e un furgone) e passa dall'uno all'altro in Spagna: un solo
+         valore direbbe l'ultimo e perderebbe gli altri, e un rapporto di 86
+         minuti non vuol dire niente se non si sa su cosa e' stato fatto.
+         Il nome del veicolo NON e' un dato di posizione: e' il modello, che il
+         tester ha gia' dichiarato lui nel modulo. */
+      veic: veicolo ? [veicolo] : [],
       t0: Date.now(), t1: 0, m: 0, voceMs: 0, ann: 0,
       an: {}, fd: firmaDispositivo()
     };
@@ -4529,7 +4551,7 @@ if(autoDalLink || profiloDalLink) save();
         a.aperto = null;
       }
 
-      giro = nuovoGiro(opt.build, opt.paese);
+      giro = nuovoGiro(opt.build, opt.paese, opt.veicolo);
       ultima = null; voceDa = 0;
       a.aperto = giro;
       scrivi(a);                       // una scrittura all'apertura, poi silenzio
@@ -4556,6 +4578,17 @@ if(autoDalLink || profiloDalLink) save();
 
     /* Voce accesa/spenta. Si sommano gli INTERVALLI, non il tempo in cui la voce
        era disponibile: la domanda della beta e' quanto la usano davvero. */
+    /* Cambio di mezzo a giro aperto. Si accoda solo se e' diverso dall'ultimo,
+       cosi' riaprire il pannello dei veicoli senza cambiare niente non sporca
+       l'elenco. Non tocca ne' i km ne' i minuti: quelli restano del giro. */
+    veicolo: function (nome) {
+      if (!giro || !nome) return false;
+      giro.veic = giro.veic || [];
+      if (giro.veic[giro.veic.length - 1] === nome) return false;
+      giro.veic.push(nome);
+      return true;
+    },
+
     voce: function (accesa) {
       if (!giro) return;
       var t = Date.now();
@@ -4654,7 +4687,10 @@ if(autoDalLink || profiloDalLink) save();
            dello schermo, che distingue le famiglie. Il modello vero e' gia' in
            dati/tester.json, dichiarato dal tester: e' li' che va letto. */
         dispositivo: (g.fd && g.fd.schermo) || '?',
-        ios: (g.fd && g.fd.ios) || 'nd'
+        ios: (g.fd && g.fd.ios) || 'nd',
+        /* Vuoto quando il giro e' partito prima di questa versione: si degrada
+           a '?' e nessuno dei conti a valle cambia. */
+        veicolo: (g.veic && g.veic.length) ? g.veic.join(' > ') : '?'
       };
     },
 
@@ -4879,7 +4915,7 @@ function anomaliaDi(msg){
 /* Apre un giro. Non all'avvio dell'app: aprirne uno per ogni apertura del pannello
    gonfierebbe il conteggio dei giri, che e' il denominatore di tutto il resto. */
 function snAvvia(){
-  window.SN.avvia({build: APPVER, paese: paeseAttivo()});
+  window.SN.avvia({build: APPVER, paese: paeseAttivo(), veicolo: nomeVeicolo()});
   /* La voce puo' essere gia' accesa da una sessione precedente — si salva fra i
      riavvii — e in quel caso il bottone non lo tocca nessuno: senza questa riga un
      giro intero fatto parlando risulterebbe a voce spenta. */
@@ -9140,10 +9176,82 @@ function applicaMappe(){
 const PAESI_APERTI = new Set();
 let paesiDecisi = false;
 
+/* ============ LA FIGURINA DEL PAESE ============
+   «Spagna settentrionale» o «Midi-Pyrénées» non dicono niente a chi non ha quel
+   paese in testa, e i nomi delle regioni sono quasi tutti cosi'. Qui accanto a ogni
+   riga si disegna il paese in grigio e la sua regione accesa: si capisce a colpo
+   d'occhio se e' il nord, il sud o l'isola.
+
+   Non scarica niente e non porta nessun disegno nuovo: la sagoma esce dai `bbox`
+   che il manifesto ha gia' per ogni regione. Messe tutte insieme, quelle di un
+   paese ne fanno la forma — grossolana, ma riconoscibile, ed e' l'unica che non
+   puo' andare fuori sincrono col resto, perche' e' fatta degli stessi dati.
+
+   DUE CORREZIONI CHE SERVONO DAVVERO.
+   1. I gradi di longitudine si accorciano andando a nord (per il coseno della
+      latitudine): senza correzione la Gran Bretagna verrebbe larga quasi il doppio
+      del vero, e la Sicilia troppo stretta.
+   2. Le regioni molto lontane dal grosso del paese non entrano nel telaio, se no
+      lo sfondano. Le Canarie stanno 8 gradi sotto e 7 a ovest della Spagna
+      continentale: contarle vorrebbe dire disegnare la penisola grande meno della
+      meta'. Restano fuori dal telaio, e vengono disegnate schiacciate contro il
+      bordo giusto e col tratteggio, che vuol dire «e' li' fuori, non in scala». */
+const MM_W = 38, MM_H = 29, MM_LONTANA = 8;   // gradi oltre i quali una regione e' «fuori»
+const _telai = new Map();
+function telaioPaese(paese){
+  if(_telai.has(paese)) return _telai.get(paese);
+  const rs = REG.filter(x => (x.paese || '?') === paese);
+  // bbox = [latMin, lonMin, latMax, lonMax]
+  const cLon = x => (x.bbox[1] + x.bbox[3]) / 2, cLat = x => (x.bbox[0] + x.bbox[2]) / 2;
+  const ord = f => rs.map(f).sort((a, b) => a - b);
+  const mLon = ord(cLon)[rs.length >> 1], mLat = ord(cLat)[rs.length >> 1];
+  const vicina = x => Math.abs(cLon(x) - mLon) <= MM_LONTANA && Math.abs(cLat(x) - mLat) <= MM_LONTANA;
+  const base = rs.filter(vicina);
+  const src = base.length ? base : rs;          // se sono tutte sparse, si tiene tutto
+  const t = {
+    rs,
+    lonA: Math.min(...src.map(x => x.bbox[1])), lonB: Math.max(...src.map(x => x.bbox[3])),
+    latA: Math.min(...src.map(x => x.bbox[0])), latB: Math.max(...src.map(x => x.bbox[2])),
+    lontane: new Set(rs.filter(x => !vicina(x)).map(x => x.id)),
+  };
+  _telai.set(paese, t);
+  return t;
+}
+function minimappa(r){
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'mm');
+  svg.setAttribute('viewBox', '0 0 ' + MM_W + ' ' + MM_H);
+  svg.setAttribute('aria-hidden', 'true');
+  const t = telaioPaese(r.paese || '?');
+  const k = Math.cos((t.latA + t.latB) / 2 * Math.PI / 180) || 1;
+  const wG = Math.max(1e-6, (t.lonB - t.lonA) * k), hG = Math.max(1e-6, t.latB - t.latA);
+  const s = Math.min((MM_W - 2) / wG, (MM_H - 2) / hG);
+  const ox = (MM_W - wG * s) / 2, oy = (MM_H - hG * s) / 2;
+  const X = lon => ox + (lon - t.lonA) * k * s;
+  const Y = lat => oy + (t.latB - lat) * s;              // nord in alto
+  const cl = (v, a, b) => v < a ? a : v > b ? b : v;
+  const metti = (q, cls) => {
+    const x1 = cl(X(q.bbox[1]), 0, MM_W), x2 = cl(X(q.bbox[3]), 0, MM_W);
+    const y1 = cl(Y(q.bbox[2]), 0, MM_H), y2 = cl(Y(q.bbox[0]), 0, MM_H);
+    const e = document.createElementNS(NS, 'rect');
+    e.setAttribute('x', x1.toFixed(2)); e.setAttribute('y', y1.toFixed(2));
+    e.setAttribute('width',  Math.max(2, x2 - x1).toFixed(2));
+    e.setAttribute('height', Math.max(2, y2 - y1).toFixed(2));
+    e.setAttribute('rx', '0.6');
+    e.setAttribute('class', cls);
+    svg.appendChild(e);
+  };
+  for(const q of t.rs) if(q.id !== r.id) metti(q, 'mm-a');
+  metti(r, t.lontane.has(r.id) ? 'mm-lontana' : 'mm-on');   // la sua sopra a tutte
+  return svg;
+}
+
 function rigaRegione(r){
     const inst=RSTATE.inst.includes(r.id), att=RSTATE.att.includes(r.id);
     const row=document.createElement('div');
     row.className='rrow'+(r.id===hereId?' here':'');
+    row.appendChild(minimappa(r));
     const nm=document.createElement('div');
     nm.className='rnm';
     nm.innerHTML='<b>'+r.nm+'</b><span>'+MB(pesoTot(r))+' · '+r.km.toLocaleString('it-IT')+' km · '+
@@ -9423,6 +9531,8 @@ function renderCar(){
     // del veicolo vecchio, e da auto a moto cambiano tutte e due.
     b.onclick=()=>{S.car=k; S.carScelto=true; carApertoTutto=false;
                    if(c.ref)S.cal=c.ref; S.calG=0; S.said.clear(); applicaVeicolo();
+                   // se il giro e' aperto, il cambio di mezzo si accoda al rapporto
+                   try{ window.SN && window.SN.veicolo(nomeVeicolo()) }catch(e){}
                    renderCar(); save(); updateNote(); S.need=true};
     (c.tipo==='moto' ? motoChips : carChips).appendChild(b);
   }
