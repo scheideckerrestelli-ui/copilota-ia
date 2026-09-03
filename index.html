@@ -912,7 +912,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '255';
+const APPVER = '257';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3312,6 +3312,99 @@ const CARS = {
             "et leur largeur sont de tous les jours. Entretien : SP-98 depuis 100 000 km, et à "+
             "100 000 km la courroie de distribution à bain d'huile a été remplacée — le point "+
             "faible connu de ce moteur."},
+  /* ============ ELETTRICA E FURGONE (2026-09-02) ============
+     Aggiunte per Enrico, che è in Spagna con tutte e due. Sono anche le prime
+     due CLASSI che l'elenco non aveva: un'auto senza marce e un veicolo alto e
+     pesante. Il modello regge entrambe senza toccare la fisica — `vTop` lavora
+     su cv/kg/cda/crr e non sa cosa muove le ruote — ma vanno dette due cose.
+     1. `auto:true` con `n:1` non è una scorciatoia: è la stessa strada dello
+        scooter, e la usa già il decodificatore del link (`auto:(n===1)`).
+        Spegne il riquadro delle marce, l'indicatore e la marcia nelle note.
+     2. Con `auto:true` i campi `boost`, `rpmLim` e `ref` non li legge nessuno:
+        `bestGear` non viene chiamato e il cursore è nascosto. Restano scritti
+        perché un giorno qualcuno li leggerà comunque, e allora è meglio che
+        dicano il vero invece di un numero preso da un'auto a benzina. */
+  lyr:{nm:'Cadillac Lyriq', sub:'SUV elettrico · 340 CV · trazione posteriore · monomarcia',
+       /* Versione RWD da 250 kW, quella venduta in Spagna. La AWD Sport fa 528 CV
+          e pesa una cinquantina di kg in più: se è quella, cambiano cv e kg, il
+          resto no. Cd 0,32 per un frontale di ~2,75 m² -> cda 0,88.
+          Controprova: 340 CV, 2.650 kg, cda 0,88 danno un tetto FISICO di 255
+          km/h, ma il limitatore sta a 190 ed è lui a decidere. Stesso caso della
+          C43, e per questo `vlim` esiste. Il rendimento 0,85 dentro `vTop` è da
+          trasmissione a ingranaggi: su un elettrico sarebbe ~0,95, quindi il
+          255 è semmai prudente. Non cambia niente: comanda il limitatore.
+          `ref` vero sarebbe ~13 km/h ogni 1000 giri MOTORE (riduzione singola,
+          15.000 giri a fondo scala), sotto il minimo del cursore che è 15. Sta
+          a 16 perché il cursore è nascosto e un valore fuori scala si
+          incastrerebbe al primo che lo riapre. */
+       auto:true, n:1, g:[1.0], ref:16, grip:0.85, boost:0, rpmLim:15000,
+       cv:340, kg:2650, cda:0.88, crr:0.011, vlim:190,
+       d_it:"Elettrica: un solo rapporto, quindi nessuna marcia da suggerire e il riquadro "+
+            "sparisce. Restano i raggi, le velocità di curva e l'anticipo della voce. Due cose "+
+            "cambiano davvero rispetto a un SUV termico. La prima è la massa: 2.650 kg sono cinque "+
+            "quintali più di un GLC, e la frenata che il copilota dà per scontata è la stessa per "+
+            "tutti — se arrivi lungo, la nota era giusta e la frenata no. La seconda è che il "+
+            "pacco batteria sta nel pavimento: il baricentro è più basso di quanto dica l'altezza, "+
+            "e la tenuta di riferimento (0,85) è sopra quella del GLC pur essendo un'auto più "+
+            "pesante e più grande. Il tetto è il limitatore a 190, non l'aria: fisicamente ne "+
+            "farebbe 255.",
+       d_en:"Electric: a single ratio, so there is no gear to suggest and the box disappears. "+
+            "Radii, corner speeds and voice lead time all stay. Two things really change compared "+
+            "with a combustion SUV. First, mass: 2,650 kg is half a tonne more than a GLC, and the "+
+            "braking the co-driver assumes is the same for everyone — if you run deep, the call was "+
+            "right and the braking was not. Second, the battery pack sits in the floor: the centre "+
+            "of gravity is lower than the height suggests, and reference grip (0.85) is above the "+
+            "GLC's despite this being a heavier, larger car. The ceiling is the 190 km/h limiter, "+
+            "not the air: physically it would reach 255.",
+       d_fr:"Électrique : un seul rapport, donc aucun rapport à conseiller et la case disparaît. "+
+            "Les rayons, les vitesses de virage et l'anticipation de la voix restent. Deux choses "+
+            "changent vraiment par rapport à un SUV thermique. D'abord la masse : 2 650 kg, une "+
+            "demi-tonne de plus qu'un GLC, et le freinage que le copilote suppose est le même pour "+
+            "tous — si tu arrives long, l'annonce était juste et le freinage non. Ensuite, la "+
+            "batterie est dans le plancher : le centre de gravité est plus bas que la hauteur ne le "+
+            "laisse croire, et l'adhérence de référence (0,85) dépasse celle du GLC alors que la "+
+            "voiture est plus lourde et plus grande. Le plafond, c'est le limiteur à 190, pas "+
+            "l'air : physiquement elle irait à 255.",
+       },
+  van:{nm:'Furgone / Van', sub:'medio · 2.0 diesel 150 CV · 6 marce · es. Transit Custom, Trafic, Vito',
+       /* Profilo di CLASSE, non di un modello: chi ne guida uno a noleggio non sa
+          quale gli danno, e fra Transit Custom, Trafic e Vito la differenza sta
+          dentro il margine del modello. Rapporti da 6 marce di furgone: la 6ª è
+          lunga, con 215/65 R16 fa ~49 km/h ogni 1000 giri, ed è il valore di
+          partenza del cursore.
+          Controprova: 150 CV, 2.100 kg, cda 1,10 danno 177 km/h contro i ~175
+          dichiarati per un Transit Custom 150. Stesso metro delle auto.
+          I 2.100 kg sono a VUOTO con il guidatore. Carico non è nel profilo, ed
+          è scritto nella descrizione perché cambia tutto e non si può indovinare. */
+       auto:false, n:6, ref:49, grip:0.72, boost:1500, rpmLim:4000,
+       cv:150, kg:2100, cda:1.10, crr:0.013,
+       g:[0.175,0.315,0.480,0.650,0.820,1.0],
+       d_it:"Furgone medio a passo corto, 2.0 diesel da 150 CV, sei marce lunghe. La fascia utile "+
+            "è bassa e stretta, da 1.500 a 4.000 giri, quindi la marcia consigliata è quasi sempre "+
+            "più alta di quella che verrebbe da tirare. Il numero che conta però è un altro: la "+
+            "tenuta di riferimento è 0,72, la più bassa dell'elenco insieme alle custom. Alto, "+
+            "molle, gomme da carico — lo stesso raggio che in MiTo esce a 80 qui esce a 68, e non "+
+            "è prudenza dell'app, è il furgone. Un avvertimento onesto: nel profilo ci sono 2.100 "+
+            "kg, cioè a vuoto col guidatore. Se sei carico pesi mezza tonnellata di più e le "+
+            "velocità di curva diventano ottimistiche — vacci sotto di suo.",
+       d_en:"Medium short-wheelbase van, 2.0 diesel, 150 hp, six tall gears. The useful band is low "+
+            "and narrow, 1,500 to 4,000 rpm, so the suggested gear is nearly always taller than "+
+            "instinct says. The number that matters is another one though: reference grip is 0.72, "+
+            "the lowest in the list alongside the cruisers. Tall, soft, load-rated tyres — the same "+
+            "radius that comes out at 80 in the MiTo comes out at 68 here, and that is not the app "+
+            "being careful, that is the van. An honest warning: the profile carries 2,100 kg, that "+
+            "is empty with the driver. Loaded you are half a tonne heavier and the corner speeds "+
+            "turn optimistic — stay under them on your own.",
+       d_fr:"Fourgon moyen à empattement court, 2.0 diesel de 150 ch, six rapports longs. La plage "+
+            "utile est basse et étroite, de 1 500 à 4 000 tr/min, donc le rapport conseillé est "+
+            "presque toujours plus long que ce que l'instinct dicte. Mais le chiffre qui compte est "+
+            "ailleurs : l'adhérence de référence est de 0,72, la plus basse de la liste avec les "+
+            "customs. Haut, souple, pneus de charge — le même rayon qui sort à 80 en MiTo sort à 68 "+
+            "ici, et ce n'est pas l'app qui est prudente, c'est le fourgon. Un avertissement "+
+            "honnête : le profil porte 2 100 kg, c'est à vide avec le conducteur. Chargé, tu pèses "+
+            "une demi-tonne de plus et les vitesses de virage deviennent optimistes — reste en "+
+            "dessous de toi-même.",
+       },
   m6: {nm:'Altra auto', sub:'cambio manuale 6 marce',
        auto:false, n:6, g:[0.190,0.3325,0.490,0.6425,0.810,1.0], ref:40,
        cv:150, kg:1300, cda:0.68, crr:0.012,
@@ -3607,10 +3700,23 @@ try{
    Fiesta) il pannello ne mostrava DUE, quasi uguali, e non si capiva quale fosse
    la sua. Parola di Tiago il 2/09: «togli la sua vecchia fiesta se no ha un
    doppione».
-   Si toglie solo il doppione VERO, per nome: «Ford Fiesta» copre «Ford Fiesta
-   ST-Line», ma «Abarth 595» non tocca «Altra auto», che per Manuel resta il
-   ripiego generico e serve. Il confronto e' per prefisso di parole intere, cosi'
-   una Golf non si mangia una Golf R.
+   Si toglie solo il doppione VERO, per nome, confrontando PAROLE INTERE in tre
+   forme, dalla piu' stretta alla piu' larga:
+     1. il nome e' identico;
+     2. uno dei due e' prefisso dell'altro: «Ford Fiesta» copre «Ford Fiesta
+        ST-Line», e una Golf non si mangia una Golf R;
+     3. le parole del nome piu' corto stanno tutte dentro l'altro, anche sparse.
+        E' il caso di Enrico, «Alfa Romeo MiTo» contro «Alfa MiTo»: per prefisso
+        non scattava e il 2/09 nel pannello gli restavano due MiTo, la sua da 114
+        CV e quella di Tiago stage 3+ da 320. Qui servono almeno DUE parole in
+        comune, se no un profilo chiamato «Auto» si porterebbe via «Altra auto»,
+        che per Manuel e' il ripiego generico e serve.
+   Poi il freno vero: se il nome del profilo somiglia a PIU' di un'auto del
+   catalogo non si toglie niente, perche' quel nome non basta a dire quale sia la
+   sua, e fra sbagliare e lasciare il doppione si lascia il doppione. E' quello
+   che tiene in vita i Mercedes: «Mercedes 220 d» sta dentro sia la C 220 d sia
+   la GLC 220 d, e un profilo chiamato solo «Mercedes» le lascia tutte e quattro
+   dov'erano (prima invece le cancellava tutte).
    Se l'auto in uso era proprio quella tolta, si passa al profilo suo: e' la stessa
    macchina con i numeri giusti, non un cambio di veicolo. */
 const AUTO_TOLTE = [];
@@ -3621,14 +3727,24 @@ try{
       .replace(/[^a-z0-9]+/g,' ').trim();
     const mio = piano(CARS.mio.nm);
     if(mio){
+      const mieParole = mio.split(' ');
+      const uguali = [], simili = [];
       for(const k of Object.keys(CARS)){
         if(k === 'mio') continue;
         const q = piano(CARS[k].nm);
         if(!q) continue;
-        if(q === mio || q.startsWith(mio + ' ') || mio.startsWith(q + ' ')){
-          AUTO_TOLTE.push(k);
-          delete CARS[k];
-        }
+        if(q === mio){ uguali.push(k); continue }
+        const sueP = q.split(' ');
+        const corte = mieParole.length <= sueP.length ? mieParole : sueP;
+        const lunghe = new Set(mieParole.length <= sueP.length ? sueP : mieParole);
+        if(q.startsWith(mio + ' ') || mio.startsWith(q + ' ') ||
+           (corte.length >= 2 && corte.every(w => lunghe.has(w)))) simili.push(k);
+      }
+      /* L'uguaglianza esatta vince sempre; se invece a somigliargli sono in due o
+         piu', non si tocca niente. */
+      for(const k of (uguali.length ? uguali : (simili.length === 1 ? simili : []))){
+        AUTO_TOLTE.push(k);
+        delete CARS[k];
       }
     }
   }
@@ -3825,7 +3941,7 @@ const T = {
     outZone:'Sei fuori dalle mappe caricate.',
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', load:'Attiva ora', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
-    paesi:{it:'Italia', be:'Belgio', fr:'Francia', gb:'Regno Unito', '?':'Altre regioni'},
+    paesi:{it:'Italia', be:'Belgio', fr:'Francia', gb:'Regno Unito', es:'Spagna', '?':'Altre regioni'},
     invSpieg:'Se l\'app è in schermata Home su iPhone, ha una memoria sua: il profilo della tua auto non passa da Safari. Incolla qui il link che ti hanno mandato e torna com\'era.',
     invPh:'incolla il link', invGo:'Applica',
     invOk:n=>'Fatto: '+n+'. Riapro l\'app…',
@@ -3898,7 +4014,7 @@ const T = {
     outZone:'You are outside the loaded maps.',
     pickMap:'pick a map', maps:'Maps', dl:'Download', load:'Activate', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
-    paesi:{it:'Italy', be:'Belgium', fr:'France', gb:'United Kingdom', '?':'Other regions'},
+    paesi:{it:'Italy', be:'Belgium', fr:'France', gb:'United Kingdom', es:'Spain', '?':'Other regions'},
     invSpieg:'A web app on the iPhone Home Screen has its own storage: your car profile does not carry over from Safari. Paste the link you were sent and it comes back.',
     invPh:'paste the link', invGo:'Apply',
     invOk:n=>'Done: '+n+'. Reopening…',
@@ -3968,7 +4084,7 @@ const T = {
     outZone:'Tu es en dehors des cartes chargées.',
     pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', load:'Activer', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
-    paesi:{it:'Italie', be:'Belgique', fr:'France', gb:'Royaume-Uni', '?':'Autres régions'},
+    paesi:{it:'Italie', be:'Belgique', fr:'France', gb:'Royaume-Uni', es:'Espagne', '?':'Autres régions'},
     invSpieg:'Sur l\'écran d\'accueil de l\'iPhone, l\'app a sa propre mémoire : le profil de ta voiture ne vient pas de Safari. Colle ici le lien qu\'on t\'a envoyé et tout revient.',
     invPh:'colle le lien', invGo:'Appliquer',
     invOk:n=>'C\'est fait : '+n+'. Je rouvre l\'app…',
