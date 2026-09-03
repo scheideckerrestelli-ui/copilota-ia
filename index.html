@@ -921,7 +921,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '260';
+const APPVER = '262';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3904,19 +3904,38 @@ const MOTO_ON = false;
    una vista da chi sviluppa. */
 const VISTA_PIENA = false;
 /* ============ VISTA 3D ============
-   Tiago, 2026-09-03, guidando: «in 2D e' tutto perfetto, solo che nel 3D le strade
-   fluttuano e non c'e' continuita'». Non e' un sintomo nuovo: sta gia' scritto nella
-   nota del PAVIMENTO IN METRI qui sotto, fra i tre difetti che si vedevano SOLO
-   inclinando la camera. Le larghezze sono state riparate il 31/08 (il pavimento e'
-   entrato dentro il ciclo), ma la CONTINUITA' fra i tratti no: e' quella che resta.
-   Fino a li' il 3D resta spento per tutti, cosi' i tester giudicano l'app sul 2D,
-   che funziona. Non e' un ripiego: e' non far vedere una cosa rotta a cinque persone
-   che stanno provando il prodotto per la prima volta.
-   Stesso patto di MOTO_ON e VISTA_PIENA: UNA costante, tutto il resto derivato, e
-   niente cancellato. `disegna3d`, la camera, il pavimento in metri e la taratura
-   della vista inclinata restano dove sono, intatti: riaccendere e' cambiare questa
-   parola in `true` e nient'altro. */
-const D3_ON = false;
+   RIACCESA il 2026-09-03, su decisione di Tiago, perche' il difetto che l'aveva
+   spenta e' stato trovato e corretto in giornata.
+
+   Era stata spenta al mattino, sue parole guidando: «in 2D e' tutto perfetto, solo
+   che nel 3D le strade fluttuano e non c'e' continuita'». La causa non era ne' la
+   larghezza ne' la geometria: i sottotracciati delle fasce di profondita' si
+   TOCCAVANO invece di sovrapporsi, e con `lineCap='butt'` — voluto, e' quello che fa
+   incontrare gli archi ai nodi — due estremita' squadrate in mezzo a una strada
+   aprivano un cuneo a ogni piega. Riprodotto in guida e isolato per esclusione:
+   togliendo i tagli la strada torna continua, tenendo i tagli con larghezze UGUALI
+   resta spezzata, quindi era il taglio e non il salto di larghezza. La correzione sta
+   in `tracciaRete`: il tratto dopo riparte un punto piu' indietro.
+
+   PERCHE' NESSUNO L'AVEVA VISTO PRIMA, e vale piu' della correzione: le 24 fasce
+   furono introdotte il 25/08 proprio per rendere invisibile il salto, e la cosa fu
+   dichiarata riuscita — ma coi confini di allora sullo schermo se ne accendevano DUE,
+   cioe' c'era al massimo UN taglio in campo. Quel «funziona» non era mai stato messo
+   alla prova. La correzione della prospettiva del 31/08 ha portato le fasce visibili
+   da 2 a 21, e con esse una ventina di tagli per strada: ha reso visibile un difetto
+   che c'era da sempre. Una verifica che gira su codice mai eseguito passa sempre.
+
+   Il patto della costante resta, ed e' servito davvero: UNA parola, tutto il resto
+   derivato, niente cancellato.
+
+   RESTA SPENTA STANOTTE, e la ragione e' scritta due paragrafi sopra da chi ha fatto
+   la correzione: «una verifica che gira su codice mai eseguito passa sempre». La
+   correzione e' committata, argomentata e minima, ma NESSUNO ha ancora guidato con
+   dentro. L'ordine di Tiago del 3/09 sera era «per il momento fallo solo 2d, oppure
+   vedi come fare per risolvere», ed e' andato a dormire: il verdetto su come si vede
+   adesso e' suo, e costa un secondo dargli l'app buona invece di una da giudicare.
+   Se al risveglio gli piace, e' una parola. */
+const D3_ON = false;   // la correzione c'e'; l'accensione aspetta i suoi occhi
 const isMoto = () => MOTO_ON && CARS[S.car].tipo === 'moto';
 function stileAttivo(){
   const st = STYLES[S.style];
@@ -5429,7 +5448,15 @@ function tracciaRete(Pf, xy, a, b, zs){
          fessura di un pixel — che e' lo stesso difetto in piccolo. */
       if(m<cap){ _tsx[m]=W/2+CAM.f*X/d; _tsy[m]=H/2-CAM.f*(Y*CAM.cp+Z*CAM.sp)/d; m++ }
       emettiMorbido(Pf[f], m);
-      _tsx[0]=_tsx[m-1]; _tsy[0]=_tsy[m-1]; m=1;
+      /* SI RIPARTE UN PUNTO PIU' INDIETRO, cosi' le due fasce si SOVRAPPONGONO di un
+         segmento invece di toccarsi. Con `lineCap='butt'` — voluto, e' quello che fa
+         incontrare gli archi ai nodi invece di lasciarli a capsula — due sottotracciati
+         che si toccano in mezzo a una strada mostrano due tagli netti, e dove la strada
+         piega si apre un cuneo fra i due: e' il «le strade fluttuano e non c'e'
+         continuita'» del 3/09. Un segmento di sovrapposizione lo copre, e ai NODI non
+         cambia niente perche' li' il tracciato finisce davvero. */
+      if(m>=2){ _tsx[0]=_tsx[m-2]; _tsy[0]=_tsy[m-2]; _tsx[1]=_tsx[m-1]; _tsy[1]=_tsy[m-1]; m=2 }
+      else { _tsx[0]=_tsx[m-1]; _tsy[0]=_tsy[m-1]; m=1 }
       f=nf;
     }
     if(m<cap){ _tsx[m]=W/2+CAM.f*X/d; _tsy[m]=H/2-CAM.f*(Y*CAM.cp+Z*CAM.sp)/d; m++ }
