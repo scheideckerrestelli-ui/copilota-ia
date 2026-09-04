@@ -668,6 +668,10 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <h3><span data-lang="it">Stile di guida</span><span data-lang="en">Driving style</span><span data-lang="fr">Style de conduite</span></h3>
   <div class="row2" id="styleChips"></div>
   <p style="margin-top:9px" id="styleDesc"></p>
+  <!-- Riga di stato dell'accelerometro: dice se la tenuta la sta MISURANDO o la sta
+       ancora assumendo. Serve perche' un numero che si corregge da solo senza dirlo
+       e' il modo piu' rapido di far perdere fiducia a chi guida. -->
+  <p style="margin-top:6px;font-size:11.5px" id="accDesc"></p>
   <!-- L'anticipo della voce e' legato allo stile, ma i due non sono la stessa cosa:
        si puo' voler passare in curva da Sport ed essere avvisati da Tranquillo. Questo
        cursore serve a scollegarli, e si tara GUIDANDO — per questo mostra i secondi
@@ -679,6 +683,21 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
       color:var(--ink2);letter-spacing:.06em">SEC</small></div>
   </div>
   <p style="margin-top:6px;font-size:11.5px" id="anticDesc"></p>
+  <!-- SOGLIA DI SEVERITA', rubata a Kurvo (4/09/2026). «Set a minimum grade threshold to
+       only hear the curves that matter to you.» E' l'antidoto all'unico modo garantito di
+       perdere un utente: parlare troppo. E' il difetto che ha ucciso l'avviso di curva di
+       Garmin, dove i forum sono pieni di gente che chiede come spegnerlo.
+       Vale SOLO per la voce: a schermo la curva si vede lo stesso, perche' lo schermo non
+       interrompe nessuno. Stessa riga che divide il riquadro della marcia dal suo annuncio. -->
+  <h3><span data-lang="it">Da quale curva in poi parlare</span><span data-lang="en">Which corners to call</span><span data-lang="fr">À partir de quel virage parler</span></h3>
+  <select id="cminSel" style="width:100%">
+    <option value="6">6</option>
+    <option value="5">5</option>
+    <option value="4">4</option>
+    <option value="3">3</option>
+    <option value="2">2</option>
+  </select>
+  <p style="margin-top:6px;font-size:11.5px" id="cminDesc"></p>
   <label class="opt"><input type="checkbox" id="legalChk">
     <span data-lang="it">Non superare mai il limite della strada</span>
     <span data-lang="en">Never exceed the road speed limit</span><span data-lang="fr">Ne jamais dépasser la limite de la route</span></label>
@@ -905,7 +924,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      esattamente il caso in cui divergere non e' un fastidio ma un problema. -->
 <div class="termini" id="termini" hidden>
   <div class="tbox">
-    <div class="ttesto" id="tTesto"><h1>Termini e condizioni della beta di Co-Driver — v4, 4 settembre 2026 (DA APPROVARE)</h1><ol><li><b>Che cos'è.</b> Co-Driver è un'applicazione web in versione <b>beta</b>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li><li><b>Ausilio informativo, non un dispositivo di sicurezza.</b> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <b>informazioni di supporto</b>, non istruzioni di guida né valutazioni della velocità sicura: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada. Gli annunci sono <b>stime generate da un calcolatore</b>: possono essere sbagliati, arrivare <b>in ritardo o in anticipo</b>, oppure <b>non arrivare affatto</b>. Guidare contando sul fatto che la voce parlerà è un uso improprio: la curva va guardata comunque.</li><li><b>Guidi tu: assunzione di rischio.</b> L'uso dell'app avviene <b>a tuo esclusivo rischio</b>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <b>prevalgono sempre</b> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata. <b>Co-Driver non va usata per gareggiare, per cronometrarsi o per inseguire prestazioni su strada aperta</b>, in nessuna forma e con nessuno strumento. È un aiuto alla guida, non un permesso di spingere: l'app non assegna primati, non tiene classifiche e non premia la velocità, e usarla per quello è una violazione di questi termini oltre che, quasi sempre, del codice della strada.</li><li><b>Obblighi di legge.</b> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <b>fissato a un supporto</b> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li><li><b>Dati non garantiti.</b> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li><li><b>Limitazione di responsabilità.</b> <b>Nella misura massima consentita dalla legge applicabile</b>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li><li><b>Dove si usa.</b> L'uso previsto è <b>in auto, in Italia, in Belgio e in Bretagna (Francia)</b>. In Francia gli avvisi autovelox sono vietati dalla legge: per la Bretagna l'app <b>non contiene alcun dato autovelox</b>, di proposito. Fuori da questi territori l'app non va usata: in particolare gli avvisi autovelox sono vietati anche in Germania e in Svizzera.</li><li><b>I tuoi feedback.</b> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <b>solo con il tuo permesso esplicito</b>, caso per caso.</li><li><b>Statistiche d'uso.</b> A fine sessione l'app invia automaticamente un rapporto con misure d'uso (durata, minuti di voce, chilometri, numero di annunci, codici di malfunzionamento, versione dell'app e del sistema, dimensioni dello schermo) e il tuo identificativo di tester. <b>Non viene inviata la posizione</b>, in nessuna forma. Il dettaglio sta nell'informativa sulla pagina beta.</li><li><b>Gratis ora, a pagamento poi.</b> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li><li><b>Durata e modifiche.</b> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li></ol><p><b>Privacy in una riga</b> (informativa completa sulla pagina beta): i dati del modulo servono solo a gestire la beta, l'app manda statistiche d'uso a fine sessione e <b>la posizione GPS resta sul telefono</b> — quella non la invia a nessun server.</p></div>
+    <div class="ttesto" id="tTesto"><h1>Termini e condizioni della beta di Co-Driver — v4, 4 settembre 2026 (DA APPROVARE)</h1><ol><li><b>Che cos'è.</b> Co-Driver è un'applicazione web in versione <b>beta</b>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li><li><b>Ausilio informativo. Non un dispositivo di sicurezza, non un navigatore.</b> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <b>informazioni di supporto</b>, non istruzioni di guida né valutazioni della velocità sicura, e non sostituiscono la tua attenzione né il tuo giudizio: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. <b>Gli occhi restano sulla strada</b>, non sullo schermo: tutto quello che serve arriva a voce proprio perché guardare non serva. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada. Gli annunci sono <b>stime generate da un calcolatore</b>: possono essere sbagliati, arrivare <b>in ritardo o in anticipo</b>, oppure <b>non arrivare affatto</b>. Guidare contando sul fatto che la voce parlerà è un uso improprio: la curva va guardata comunque.</li><li><b>Guidi tu: assunzione di rischio.</b> L'uso dell'app avviene <b>a tuo esclusivo rischio</b>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <b>prevalgono sempre</b> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata. <b>Co-Driver non va usata per gareggiare, per cronometrarsi o per inseguire prestazioni su strada aperta</b>, in nessuna forma e con nessuno strumento. È un aiuto alla guida, non un permesso di spingere: l'app non assegna primati, non tiene classifiche e non premia la velocità, e usarla per quello è una violazione di questi termini oltre che, quasi sempre, del codice della strada.</li><li><b>Obblighi di legge.</b> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <b>fissato a un supporto</b> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li><li><b>Dati non garantiti.</b> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li><li><b>Limitazione di responsabilità.</b> <b>Nella misura massima consentita dalla legge applicabile</b>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li><li><b>Dove si usa.</b> L'uso previsto è <b>in auto, in Italia, in Belgio e in Bretagna (Francia)</b>. In Francia gli avvisi autovelox sono vietati dalla legge: per la Bretagna l'app <b>non contiene alcun dato autovelox</b>, di proposito. Fuori da questi territori l'app non va usata: in particolare gli avvisi autovelox sono vietati anche in Germania e in Svizzera.</li><li><b>I tuoi feedback.</b> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <b>solo con il tuo permesso esplicito</b>, caso per caso.</li><li><b>Statistiche d'uso.</b> A fine sessione l'app invia automaticamente un rapporto con misure d'uso (durata, minuti di voce, chilometri, numero di annunci, codici di malfunzionamento, versione dell'app e del sistema, dimensioni dello schermo) e il tuo identificativo di tester. <b>Non viene inviata la posizione</b>, in nessuna forma. Il dettaglio sta nell'informativa sulla pagina beta.</li><li><b>Gratis ora, a pagamento poi.</b> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li><li><b>Durata e modifiche.</b> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li></ol><p><b>In una riga: è un aiuto alla guida, non un permesso di spingere.</b></p><p><b>Privacy in una riga</b> (informativa completa sulla pagina beta): i dati del modulo servono solo a gestire la beta, l'app manda statistiche d'uso a fine sessione e <b>la posizione GPS resta sul telefono</b> — quella non la invia a nessun server.</p></div>
     <button class="btn" id="tOk">Ho letto e accetto</button>
   </div>
 </div>
@@ -921,7 +940,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '263';
+const APPVER = '265';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3935,9 +3954,26 @@ const VISTA_PIENA = false;
    riaccendere: «riattiva il 3d». Il verdetto era suo e l'ha dato lui, che e' come
    doveva andare.
 
-   Se tornasse a fluttuare, spegnere e' rimettere `false` qui e nient'altro: la strada
-   per farlo e' provata due volte in ventiquattr'ore. */
-const D3_ON = true;
+   SPENTA DI NUOVO IL 4/09 SERA, e questa volta il difetto ha un nome diverso.
+   Tiago ha guidato con la v263 e ha mandato due schermate (21:05, zoom 20 e 10 m):
+   la correzione delle fasce ha tenuto, ma resta un'altra cosa, e nelle foto e' netta.
+
+   LA STRADA CAMBIA LARGHEZZA QUANDO CAMBIA COLORE. In `SPESS`: retto 6,0, curva
+   dolce 7,6, curva stretta 8,6, e ogni classe e' un Path2D suo stroked a parte. Fra
+   un rettilineo e un tornante il salto e' del 43%, e con `lineCap='butt'` due
+   estremita' squadrate di larghezza diversa si incontrano lasciando un gradino. In
+   piano non si nota — la strada e' sottile e l'occhio legge il colore, non la
+   larghezza — ma inclinata le fasce moltiplicano e il gradino diventa una sporgenza.
+   E' il «fluttuano e non c'e' continuita'» che resta.
+
+   Il salto e' nato il 22/08, quando Tiago aveva chiesto strade piu' larghe (retto
+   4,2→6,0, curva≤2 6,4→8,6), e si e' amplificato con la prospettiva vera del 31/08:
+   di nuovo una cosa che c'era da sempre e che una configurazione nuova ha reso
+   visibile. La riparazione e' in mano a «Feature roadmap», col dato preciso.
+
+   Spegnere e riaccendere e' sempre questa parola, ed e' la terza volta in due giorni
+   che serve: il patto della costante si e' ripagato da solo. */
+const D3_ON = false;   // gradino di larghezza fra le classi: si riaccende quando sparisce
 const isMoto = () => MOTO_ON && CARS[S.car].tipo === 'moto';
 function stileAttivo(){
   const st = STYLES[S.style];
@@ -4016,6 +4052,13 @@ const T = {
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
+    cminTutteOpt:'Tutte le curve',
+    cminTutte:'La voce chiama tutte le curve.',
+    cminFino:'La voce chiama da {n} in giù. Le più larghe le vedi a schermo e basta, ma se una si stringe la senti comunque.',
+    accSpento:'Tenuta assunta dallo stile: {b} m/s². L\'accelerometro è spento.',
+    accAspetta:'Tenuta assunta dallo stile: {b} m/s². Sto misurando quella vera: {n} curve su {min}.',
+    accMisura:'Tenuta misurata su {n} curve: {m} m/s². È quella che sto usando.',
+    accMisuraLim:'Tenuta misurata su {n} curve: {m} m/s². Uso {u}: lo stile che hai scelto resta il tetto.',
     legalOn:'Non supera mai il limite della strada.',
     legalOff:'Ignora il limite: solo quello che la curva permette.',
     camsOn:'Annuncia gli autovelox delle mappe attive.',
@@ -4089,6 +4132,13 @@ const T = {
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
+    cminTutteOpt:'Every corner',
+    cminTutte:'The voice calls every corner.',
+    cminFino:'The voice calls {n} and tighter. Wider ones stay on screen only, but you still hear the ones that tighten.',
+    accSpento:'Grip assumed from the style: {b} m/s². The accelerometer is off.',
+    accAspetta:'Grip assumed from the style: {b} m/s². Measuring the real one: {n} corners out of {min}.',
+    accMisura:'Grip measured over {n} corners: {m} m/s². That is what I am using.',
+    accMisuraLim:'Grip measured over {n} corners: {m} m/s². Using {u}: the style you picked stays the ceiling.',
     legalOn:'Never exceeds the road limit.',
     legalOff:'Ignores the limit: only what the corner allows.',
     camsOn:'Announces speed cameras from the active maps.',
@@ -4159,6 +4209,13 @@ const T = {
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
+    cminTutteOpt:'Tous les virages',
+    cminTutte:'La voix annonce tous les virages.',
+    cminFino:'La voix annonce à partir de {n}. Les plus larges restent à l\'écran, mais si un virage se resserre tu l\'entends quand même.',
+    accSpento:'Adhérence supposée d\'après le style : {b} m/s². L\'accéléromètre est éteint.',
+    accAspetta:'Adhérence supposée d\'après le style : {b} m/s². Je mesure la vraie : {n} virages sur {min}.',
+    accMisura:'Adhérence mesurée sur {n} virages : {m} m/s². C\'est celle que j\'utilise.',
+    accMisuraLim:'Adhérence mesurée sur {n} virages : {m} m/s². J\'utilise {u} : le style choisi reste le plafond.',
     legalOn:'Ne dépasse jamais la limite de la route.',
     legalOff:'Ignore la limite : seulement ce que permet le virage.',
     camsOn:'Annonce les radars des cartes actives.',
@@ -4197,6 +4254,8 @@ const S = {
   dvx:0, dvy:0, dvh:0, dva:0,   // e le loro VELOCITA': senza, l'inseguimento riparte da fermo a ogni fix e si sente
   fixT:0, vx:0, vy:0, // istante e velocità dell'ultimo fix, per stimare dove sei adesso
   car:'m5', cal:36, calG:0, style:'strada', legal:true, cams:true,
+  accel:true,         // l'accelerometro corregge la tenuta. NON e' `acc`, che e' la precisione del GPS
+  cmin:6,             // classe piu' ALTA (= piu' larga) che la voce annuncia. 6 = tutte
   antic:0,            // secondi di anticipo voce IN PIU' (o in meno) rispetto allo stile
    // calG = marcia su cui si legge la taratura (0 = decidila tu)
   snap:null,          // {e, i, t, dir, dist}
@@ -4288,6 +4347,8 @@ try{
   if(typeof st.cal==='number')S.cal=st.cal;
   if(typeof st.calG==='number')S.calG=st.calG;
   if(typeof st.legal==='boolean')S.legal=st.legal;
+  if(typeof st.accel==='boolean')S.accel=st.accel;
+  if(st.cmin>=2 && st.cmin<=6)S.cmin=st.cmin|0;
   if(typeof st.cams==='boolean')S.cams=st.cams;
   if(typeof st.autoMode==='boolean')S.autoMode=st.autoMode;
   if(typeof st.pace==='boolean')S.pace=st.pace;
@@ -4341,7 +4402,7 @@ if(autoDalLink || testerDalLink || profiloDalLink){
        window.history.replaceState(null, '', u.pathname + (u.search||'') + u.hash) }catch(e){}
 }
 const save=()=>{try{localStorage.setItem('copilota2',JSON.stringify(
-  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,cams:S.cams,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 /* L'auto arrivata dal link si SALVA subito. Senza questa riga il parametro decide
    solo l'avvio in corso: viene consumato dall'indirizzo e poi non lo dice piu'
    nessuno, quindi chi apre l'invito, guida, chiude e riapre l'app dalla schermata
@@ -5080,8 +5141,161 @@ function marciaDaDire(vRif){
   if(!(vTuo > GEAR_V_MIN)) return true;   // nessun passo da leggere: si dice, come sempre
   return vTuo >= vRif*GEAR_MUTO;
 }
-/* Tenuta di riferimento = stile di guida × quanto regge l'auto. */
-const latA = ()=>stileAttivo().a * (CARS[S.car].grip||1);
+/* ============ L'ACCELEROMETRO ============
+   Fino al 4/09/2026 la tenuta laterale era una COSTANTE INDOVINATA: 2,0 / 2,6 / 3,2 / 4,6
+   m/s2 scritti a mano negli stili, moltiplicati per un `grip` scritto a mano nell'auto. Da
+   quel numero esce la velocita' di riferimento di OGNI curva, e da quella escono la marcia
+   consigliata, il momento in cui parte la voce e la decisione di tacere. Tutto il modello
+   poggiava su un numero assunto.
+
+   Il telefono quel numero lo MISURA, sessanta volte al secondo, gratis, dentro la pagina.
+   In questo file `devicemotion` non era mai stato acceso.
+
+   TRE TRAPPOLE, tutte trovate provando il banco `prova-accelerometro.html` e tutte capaci
+   di far sembrare che funzioni mentre misura un'altra cosa:
+
+   (1) IL SEGNO. `accelerationIncludingGravity` a riposo NON punta in giu': punta in SU.
+       Misura l'accelerazione propria, e un telefono fermo e' accelerato verso l'alto da
+       cio' che lo regge. Senza il meno, il prodotto vettoriale esce rovesciato e ogni
+       curva a destra viene contata come una a sinistra.
+   (2) LA DURATA MINIMA non e' la durata della curva: e' il tempo passato sopra la soglia
+       d'uscita, che e' molto meno. Una curva vera da 2,5 m/s2 lunga 1,1 s ci sta sopra
+       circa sei decimi. Con la soglia a 900 ms il banco contava ZERO curve su un giro
+       intero, e diceva «servono piu' curve» a chi ne aveva appena fatte dieci.
+   (3) IL PERCENTILE. Con `floor` invece di `ceil`, su dieci valori il «90esimo
+       percentile» restituiva l'indice 9, cioe' il MASSIMO: esattamente il numero che il
+       p90 esiste per scartare. Il verdetto diceva «guidi in Sport» perche' una volta hai
+       preso un dosso storto.
+
+   LA MEMORIA. Il vincolo di questo progetto e' l'heap di iOS, non i millisecondi. Qui non
+   si accumula niente campione per campione: solo medie mobili a finestra fissa e un anello
+   di al massimo `ACC_MAX` picchi. Un'ora a 60 Hz sarebbero 216.000 campioni, ed e'
+   esattamente il modo in cui si strozza l'app senza accorgersene. */
+const ACC_TAU     = 0.12;   // s, passa-basso: la latA utile sta sotto i 2 Hz, le buche molto sopra
+const ACC_ENTRA   = 1.5;    // m/s2: sotto non e' una curva, e' un cambio di corsia
+const ACC_ESCE    = 1.0;    // m/s2: isteresi, o una curva sola diventa cinque
+const ACC_ESCE_MS = 600;
+const ACC_MIN_MS  = 450;    // vedi trappola (2)
+const ACC_MAX     = 200;    // l'anello: la memoria non cresce mai
+const ACC_MIN_N   = 12;     // sotto questo numero di curve non si tocca niente
+/* Quanto la misura puo' spostare la costante. E' volutamente ASIMMETRICO e volutamente
+   stretto. Abbassare la tenuta abbassa le velocita' di riferimento, cioe' va verso il
+   sicuro: si concede fino al 30%. Alzarla le alza, cioe' fa suggerire di passare piu'
+   forte: si concede il 15% e basta. Lo stile scelto resta il padrone, la misura lo
+   corregge. Un numero che si tara da solo senza limiti, su una cosa che finisce in una
+   raccomandazione di guida, non e' una taratura: e' una scommessa. */
+const ACC_GIU = 0.70, ACC_SU = 1.15;
+
+const ACC = {
+  attivo:false, giu:null, avanti:null, lato:null,
+  latF:0, lonF:0, tPrec:0,
+  inCurva:false, picco:0, tCurva:0, sottoDa:0,
+  picchi:[],                       // anello, al massimo ACC_MAX numeri
+  ordinati:null,                   // cache dell'ordinamento, invalidata a ogni curva nuova
+};
+const _n3 = a => { const m=Math.hypot(a[0],a[1],a[2]); return m<1e-6?null:[a[0]/m,a[1]/m,a[2]/m] };
+const _d3 = (a,b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+
+/* La calibrazione non chiede niente a chi guida, e non puo' chiederlo: si fa mentre si
+   parte. Il basso lo da' la gravita' appena il telefono sta fermo (o quasi); l'avanti lo
+   da' la prima accelerazione decisa in rettilineo, di cui si prende la parte orizzontale.
+   Il lato e' il prodotto vettoriale dei due e non va misurato. */
+function accCalibra(acc, ag){
+  if(!ACC.giu){
+    // fermo o quasi: l'unica accelerazione e' la gravita', e punta in su (trappola 1)
+    if(Math.abs(Math.hypot(acc[0],acc[1],acc[2])) < 0.6 && S.v < 1.5)
+      ACC.giu = _n3([-ag[0],-ag[1],-ag[2]]);
+    return false;
+  }
+  if(!ACC.avanti){
+    const p = _d3(acc, ACC.giu);
+    const oriz = [acc[0]-ACC.giu[0]*p, acc[1]-ACC.giu[1]*p, acc[2]-ACC.giu[2]*p];
+    if(Math.hypot(oriz[0],oriz[1],oriz[2]) < 0.8 || S.v < 3) return false;  // troppo poco per capire
+    ACC.avanti = _n3(oriz);
+    ACC.lato = _n3([ACC.giu[1]*ACC.avanti[2]-ACC.giu[2]*ACC.avanti[1],
+                    ACC.giu[2]*ACC.avanti[0]-ACC.giu[0]*ACC.avanti[2],
+                    ACC.giu[0]*ACC.avanti[1]-ACC.giu[1]*ACC.avanti[0]]);
+  }
+  return !!ACC.lato;
+}
+
+function accCampione(ev){
+  if(!S.accel) return;
+  const a = ev.acceleration, ag = ev.accelerationIncludingGravity;
+  if(!ag) return;
+  const vag = [ag.x||0, ag.y||0, ag.z||0];
+  /* `acceleration` senza gravita' su qualche telefono e' nullo. In quel caso si ricava
+     togliendo il vettore gravita' gia' calibrato: `ag = a - giu*9,81`, quindi
+     `a = ag + giu*9,81`. Senza questo ramo la pagina sembra funzionare e misura zero,
+     che e' il peggiore dei modi di fallire. */
+  const vacc = (a && a.x != null) ? [a.x||0, a.y||0, a.z||0]
+             : (ACC.giu ? [vag[0]+ACC.giu[0]*9.81, vag[1]+ACC.giu[1]*9.81, vag[2]+ACC.giu[2]*9.81] : null);
+  if(!vacc) return;
+  if(!accCalibra(vacc, vag)) return;
+
+  const ora = performance.now();
+  const dt = ev.interval ? ev.interval/1000 : (ACC.tPrec ? Math.min(0.2,(ora-ACC.tPrec)/1000) : 0.016);
+  ACC.tPrec = ora;
+  const k = dt/(dt+ACC_TAU);
+  ACC.latF += k*(_d3(vacc, ACC.lato) - ACC.latF);
+  ACC.lonF += k*(_d3(vacc, ACC.avanti) - ACC.lonF);
+
+  /* Sotto i 20 km/h non si misura la tenuta: in manovra e in coda l'accelerometro
+     raccoglie scossoni, non curve. */
+  if(S.v*3.6 < 20){ ACC.inCurva=false; return }
+  const mod = Math.abs(ACC.latF);
+  if(!ACC.inCurva){
+    if(mod >= ACC_ENTRA){ ACC.inCurva=true; ACC.picco=mod; ACC.tCurva=ora; ACC.sottoDa=0 }
+    return;
+  }
+  if(mod > ACC.picco) ACC.picco = mod;
+  if(mod < ACC_ESCE){
+    if(!ACC.sottoDa) ACC.sottoDa = ora;
+    else if(ora - ACC.sottoDa > ACC_ESCE_MS){
+      if(ACC.sottoDa - ACC.tCurva >= ACC_MIN_MS){
+        ACC.picchi.push(ACC.picco);
+        if(ACC.picchi.length > ACC_MAX) ACC.picchi.shift();   // anello
+        ACC.ordinati = null;
+      }
+      ACC.inCurva=false; ACC.picco=0; ACC.sottoDa=0;
+    }
+  } else ACC.sottoDa = 0;
+}
+
+/* Il 90esimo percentile dei picchi, col metodo del rango piu' vicino (trappola 3).
+   L'ordinamento si fa una volta per curva nuova, non a ogni fotogramma: `latA()` viene
+   chiamata decine di volte al secondo dal disegno. */
+function accStima(){
+  const n = ACC.picchi.length;
+  if(n < ACC_MIN_N) return null;
+  if(!ACC.ordinati) ACC.ordinati = ACC.picchi.slice().sort((x,y)=>x-y);
+  return ACC.ordinati[Math.min(n-1, Math.max(0, Math.ceil(0.9*n)-1))];
+}
+
+/* Il permesso su iOS si chiede da un GESTO, e il gesto e' il tocco su «via». Fuori da
+   iOS il permesso non esiste e ci si aggancia e basta. Se l'utente dice di no, non
+   succede niente: `accStima()` resta nulla e la tenuta resta quella dello stile. */
+function accAvvia(){
+  if(ACC.attivo || typeof DeviceMotionEvent === 'undefined') return;
+  const aggancia = () => { addEventListener('devicemotion', accCampione); ACC.attivo = true };
+  try{
+    if(typeof DeviceMotionEvent.requestPermission === 'function'){
+      DeviceMotionEvent.requestPermission()
+        .then(e => { if(e === 'granted') aggancia(); else nota('accelerometro: permesso negato, la tenuta resta quella dello stile') })
+        .catch(e => nota('accelerometro non partito: ' + e.message));
+    } else aggancia();
+  }catch(e){ nota('accelerometro non partito: ' + e.message) }
+}
+
+/* Tenuta di riferimento = stile di guida × quanto regge l'auto, corretta dalla misura
+   quando c'e'. Vedi ACC_GIU/ACC_SU per il perche' la correzione e' asimmetrica. */
+function latA(){
+  const base = stileAttivo().a * (CARS[S.car].grip||1);
+  if(!S.accel) return base;
+  const m = accStima();
+  if(m == null) return base;
+  return Math.min(Math.max(m, base*ACC_GIU), base*ACC_SU);
+}
 const rawCurveKmh = r => Math.round(Math.sqrt(latA()*Math.min(r,900))*3.6);
 /* Su strada aperta la curva non è l'unico vincolo: c'è il limite. Con S.legal
    attivo la velocità di riferimento non lo supera mai — è quasi sempre lui a
@@ -5568,7 +5782,20 @@ function tracciati3d(c0,c1,r0,r1){
       for(let n=0;n<e.runs.length;n+=2){
         const cl=e.runs[n+1];
         tracciaRete(banda===0 ? grey : banda===2 ? pmin[cl] : paths[cl], xy, a, e.runs[n], zq);
-        a=e.runs[n];
+        /* UN SEGMENTO DI SOVRAPPOSIZIONE anche fra CLASSI, per la stessa ragione dei
+           confini di fascia: ogni classe e' un Path2D suo, stroked a parte, e con
+           `lineCap='butt'` due tratti che si toccano in mezzo a una strada mostrano due
+           estremita' squadrate. Dove la strada piega si apre un cuneo, e il bordo della
+           carreggiata diventa una scalinata a ogni cambio di colore.
+           NON e' il salto di larghezza fra le classi, che pure c'e' (retto 6,0 contro
+           tornante 8,6): misurato alla camera di guida, fino alla fascia 16 — i due
+           terzi vicini dello schermo — TUTTE le classi ricevono la stessa larghezza,
+           perche' vince il pavimento in metri, uguale per tutte. Provato anche
+           azzerando la differenza: identico. E' il taglio, non la larghezza.
+           La classe piu' stretta vince la sovrapposizione, perche' le curve si
+           disegnano dopo i rettilinei: il colore di una curva comincia semmai un
+           vertice prima, che e' il verso innocuo. */
+        a=Math.max(0, e.runs[n]-1);
       }
     }
     const gids=GGRID.get(kk);
@@ -7940,7 +8167,7 @@ function catenaNota(){
   const el=[a], max = S.pace ? 3 : 2;
   for(let n=1; n<max; n++){
     const b=cand[n], prev=el[el.length-1];
-    if(!b || piatta(b) || mutoQui(b) || troppoAmpia(b)) break;
+    if(!b || piatta(b) || mutoQui(b) || troppoAmpia(b) || sottoSoglia(b)) break;
     if(b.dist - prev.dist > Math.max(45, S.v*3.2)) break;
     el.push(b);
   }
@@ -8125,6 +8352,30 @@ function piatta(a){
 const CLASSE_MUTA_VELOCE = 5;          // da questa classe in su (più ampia) non si annuncia
 function troppoAmpia(a){
   return a.e.rank===RANGO.veloce && a.c.c>=CLASSE_MUTA_VELOCE;
+}
+
+/* LA SOGLIA DI SEVERITA' (4/09/2026, presa da Kurvo: «set a minimum grade threshold to
+   only hear the curves that matter to you»).
+
+   Non e' una preferenza estetica, e' l'antidoto all'unico modo garantito di perdere un
+   utente: parlare troppo. E' il difetto che ha ucciso l'avviso di curva di Garmin, dove
+   i forum sono pieni di gente che chiede come spegnerlo. Chi guida sempre sulle stesse
+   statali larghe puo' alzare la soglia e sentire solo cio' che conta per lui, invece di
+   spegnere tutta la voce, che e' quello che fa oggi chi si stufa.
+
+   Numeri piu' ALTI sono curve piu' LARGHE (0 tornante, 6 = raggio 250-450 m), quindi la
+   soglia dice «annuncia da questa classe in giu'».
+
+   DUE COSE CHE NON TOCCA, e sono voluta materia di sicurezza, non di stile:
+   - le curve che SI STRINGONO restano annunciate a qualunque soglia. Il raggio che cala
+     dentro la curva e' la cosa che fa piu' danni e la nota che nessun navigatore sa
+     dare: e' gia' fuori dall'interruttore del pacenote per lo stesso motivo;
+   - lo SCHERMO non filtra niente. Lo schermo e' passivo, la voce interrompe. Stessa
+     riga che divide il riquadro della marcia dal suo annuncio. */
+function sottoSoglia(a){
+  if(S.cmin >= 6) return false;                        // 6 = tutte, il valore di partenza
+  if((a.c.st|0) >= STRINGE_MIN) return false;          // «si stringe» non si tace mai
+  return a.c.c > S.cmin;
 }
 
 /* Testo per lo SCHERMO: resta leggibile anche quando la voce tace. */
@@ -8384,7 +8635,7 @@ function updateNote(){
      perche' costa niente e perche' se un domani quel filtro cambia, qui non si torna a
      parlare di una curva gia' presa senza che nessuno se ne accorga. */
   const dicibile = !!av && !av.inside && !S.said.has(av.key) && !S.gpsBuco
-                   && !mutoQui(av) && !piatta(av) && !troppoAmpia(av);
+                   && !mutoQui(av) && !piatta(av) && !troppoAmpia(av) && !sottoSoglia(av);
   /* Un secondo di strada PRIMA del punto in cui si parlera', si chiede alla musica di
      abbassarsi: `S.v` e' in m/s, quindi `S.v` metri sono esattamente un secondo a
      qualunque velocita'. Non anticipa la voce, anticipa solo la richiesta al sistema. */
@@ -9119,7 +9370,7 @@ b3d.onclick=()=>{
   save(); sync3dBtn(); S.need=true;
 };
 sync3dBtn();
-bGps.onclick=()=>S.mode==='follow'?setMode('free'):startGps();
+bGps.onclick=()=>{ accAvvia(); return S.mode==='follow'?setMode('free'):startGps() };
 if(bDemo) bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
 /* Questo tocco è anche l'unico momento in cui iOS lascia aprire il contesto audio:
    fuori da un gesto utente il primo suono viene scartato in silenzio. Da qui si
@@ -9564,6 +9815,8 @@ const carChips=document.getElementById('carChips'), motoChips=document.getElemen
       anticVal=document.getElementById('anticVal'),
       anticDesc=document.getElementById('anticDesc'),
       legalDesc=document.getElementById('legalDesc'),
+      cminSel=document.getElementById('cminSel'), cminDesc=document.getElementById('cminDesc'),
+      accDesc=document.getElementById('accDesc'),
       camChk=document.getElementById('camChk'), camDesc=document.getElementById('camDesc');
 function gearTableHtml(){
   /* Il tetto (vTop) si applica QUI, alla presentazione, e non dentro gearKmh:
@@ -9677,6 +9930,8 @@ function renderCar(){
     styleChips.appendChild(b);
   }
   styleDesc.textContent=stileAttivo()['d_'+L];
+  renderSoglia();
+  renderAcc();
   renderAntic();
   // con l'automatico non c'è nessuna marcia da consigliare: via rapporti e tabella
   gearBox.hidden = isAuto();
@@ -9737,6 +9992,46 @@ anticSlider.oninput=()=>{ S.antic=parseFloat(anticSlider.value)||0; renderAntic(
    non fare niente finche' non cambi strada. */
 anticSlider.onchange=()=>{ S.said.clear(); save(); updateNote(); S.need=true };
 legalChk.onchange=()=>{S.legal=legalChk.checked; save(); renderCar(); updateNote(); S.need=true};
+
+/* La soglia di severita'. Le etichette del menu si scrivono qui e non nell'HTML, perche'
+   sono i nomi delle classi (CLS) e devono restare uno e un posto solo: scritte due volte
+   divergerebbero al primo che cambia una fascia di raggio. */
+function renderSoglia(){
+  const t0 = tr();
+  for(const o of cminSel.options){
+    const c = +o.value;
+    o.textContent = c >= 6 ? t0.cminTutteOpt : (CLS[c].nm + '  ·  ' + CLS[c].rg);
+  }
+  cminSel.value = String(S.cmin);
+  cminDesc.textContent = S.cmin >= 6 ? t0.cminTutte
+                       : t0.cminFino.replace('{n}', CLS[S.cmin].nm);
+}
+cminSel.onchange = () => {
+  const v = +cminSel.value;
+  if(v >= 2 && v <= 6){ S.cmin = v; save(); renderSoglia(); S.said.clear(); }
+};
+
+/* Lo stato dell'accelerometro, in parole. Non e' cosmetico: un numero che si corregge da
+   solo senza dirlo e' il modo piu' rapido di far perdere fiducia a chi guida, e questo
+   numero decide la velocita' di riferimento di ogni curva. */
+function renderAcc(){
+  const t0 = tr(), base = stileAttivo().a * (CARS[S.car].grip||1);
+  const n = ACC.picchi.length, m = accStima();
+  const uno = x => x.toFixed(1).replace('.', ',');
+  if(!S.accel)      accDesc.textContent = t0.accSpento.replace('{b}', uno(base));
+  else if(m == null) accDesc.textContent = t0.accAspetta.replace('{b}', uno(base))
+                                                        .replace('{n}', n).replace('{min}', ACC_MIN_N);
+  else {
+    /* Due frasi diverse, perche' dire «lo stile resta il tetto» quando il tetto non
+       morde e' una spiegazione di una cosa che non e' successa: si legge come rumore. */
+    const u = latA();
+    accDesc.textContent = (Math.abs(u - m) < 0.05 ? t0.accMisura : t0.accMisuraLim)
+      .replace('{n}', n).replace('{m}', uno(m)).replace('{u}', uno(u));
+  }
+}
+/* Si aggiorna da solo mentre guidi, ma SOLO se il pannello e' davvero aperto:
+   `offsetParent` nullo vuol dire nascosto, e costa molto meno di ridisegnare. */
+setInterval(() => { if(accDesc && accDesc.offsetParent !== null) renderAcc() }, 2000);
 /* Spegnere non silenzia soltanto: taglia la RACCOLTA, quindi spariscono insieme la voce
    e il riquadro a schermo. E' quello che chiede la legge tedesca, dove l'illecito e'
    avere la funzione attiva e non il singolo annuncio. `S.said.clear()` perche' se no una
