@@ -769,6 +769,10 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <p id="infoStatsEn" data-lang="en"></p><p id="infoStatsFr" data-lang="fr"></p>
   <p class="disc" id="infoPerf"></p>
   <p class="disc" id="infoVer"></p>
+  <!-- La coda della scatola nera (14/09/2026): i giri che non sono ancora usciti dal
+       telefono. Si vede solo se ce n'e' almeno uno. -->
+  <p class="disc" id="infoCoda" hidden><span id="infoCodaTxt"></span>
+    <button class="rbtn" id="bCoda" type="button"><span data-lang="it">Invia ora</span><span data-lang="en">Send now</span><span data-lang="fr">Envoyer</span></button></p>
   <p class="disc" id="infoLog" hidden style="white-space:pre-line;color:#ffb454"></p>
   <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span><span data-lang="fr">Comment ça marche</span></h3>
   <ul data-lang="it">
@@ -940,7 +944,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '265';
+const APPVER = '266';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4039,6 +4043,7 @@ const T = {
     gReg:n=>n+(n===1?' regione':' regioni'), gGiu:n=>n+' sul telefono', gNess:'nessuna scaricata',
     noSave:'Non riesco a salvare la scelta: spazio esaurito o navigazione privata. Libera spazio e riprova.',
     perf:(f,a)=>'Sta girando a '+f+' fotogrammi al secondo su '+a+' tratti caricati. Segue lo schermo: 120 su iPhone Pro con ProMotion, 60 sugli altri, meno da fermo o in risparmio energetico.',
+    coda:n=>(n===1?'1 giro':n+' giri')+' della beta non '+(n===1?'è ancora partito':'sono ancora partiti')+' dal telefono. '+(n===1?'Parte':'Partono')+' da solo appena c\'è campo, oppure adesso:',
     ver:(v,pwa)=>'Versione '+v+(pwa?' · app installata':' · dal browser')+'. Se qui il numero non sale dopo un aggiornamento, la copia vecchia e\' rimasta in cache: chiudi del tutto l\'app dal selettore e riaprila.',
     gpsPwa:'L\'app aggiunta alla schermata Home ha permessi PROPRI, separati da Safari, e NON compare fra le app in Impostazioni → Localizzazione: non cercarla li\'. L\'unico modo e\' rifarle chiedere il permesso: tieni premuta l\'icona → Rimuovi, riapri il sito in Safari, Condividi → Aggiungi a schermata Home, e alla prima richiesta tocca Consenti.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
@@ -4119,6 +4124,7 @@ const T = {
     gReg:n=>n+(n===1?' region':' regions'), gGiu:n=>n+' on this phone', gNess:'none downloaded',
     noSave:'Cannot save your choice: storage full or private browsing. Free some space and try again.',
     perf:(f,a)=>'Running at '+f+' frames per second over '+a+' loaded segments. It follows the display: 120 on ProMotion iPhones, 60 elsewhere, less when parked or in low power mode.',
+    coda:n=>(n===1?'1 beta drive has':n+' beta drives have')+' not left the phone yet. '+(n===1?'It goes':'They go')+' by itself as soon as there is signal, or right now:',
     ver:(v,pwa)=>'Version '+v+(pwa?' · installed app':' · from the browser')+'. If this number does not go up after an update, the old copy is still cached: close the app from the switcher and reopen it.',
     gpsPwa:'The app added to your Home Screen has its OWN permissions, separate from Safari, and does NOT appear among the apps in Settings → Location Services: do not look for it there. The only way is to make it ask again: hold the icon → Remove, reopen the site in Safari, Share → Add to Home Screen, and tap Allow the first time it asks.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
@@ -4196,6 +4202,7 @@ const T = {
     gReg:n=>n+(n===1?' région':' régions'), gGiu:n=>n+' sur le téléphone', gNess:'aucune téléchargée',
     noSave:'Impossible d\'enregistrer le choix : espace insuffisant ou navigation privée. Libère de l\'espace et réessaie.',
     perf:(f,a)=>'Tourne à '+f+' images par seconde sur '+a+' tronçons chargés. Ça suit l\'écran : 120 sur iPhone Pro avec ProMotion, 60 sur les autres, moins à l\'arrêt ou en mode économie d\'énergie.',
+    coda:n=>(n===1?'1 trajet':n+' trajets')+' de la bêta '+(n===1?'n\'est pas encore parti':'ne sont pas encore partis')+' du téléphone. '+(n===1?'Il part':'Ils partent')+' tout seul dès qu\'il y a du réseau, ou tout de suite :',
     ver:(v,pwa)=>'Version '+v+(pwa?' · application installée':' · depuis le navigateur')+'. Si ce numéro n\'augmente pas après une mise à jour, l\'ancienne copie est restée en cache : ferme complètement l\'app depuis le sélecteur et rouvre-la.',
     gpsPwa:'L\'application ajoutée à l\'écran d\'accueil a SES PROPRES permissions, séparées de Safari, et n\'apparaît PAS parmi les apps dans Réglages → Position : ne la cherche pas là. La seule solution est de lui faire redemander la permission : maintiens l\'icône → Supprimer, rouvre le site dans Safari, Partager → Sur l\'écran d\'accueil, et appuie sur Autoriser à la première demande.',
     onDevice:'cartes sur le téléphone', onDevice1:'carte sur le téléphone', freeSpace:'espace disponible', delMap:'Supprimer',
@@ -4599,11 +4606,10 @@ if(autoDalLink || profiloDalLink) save();
       testerId = o.tester || '?';
     },
 
-    /* Prova a svuotare la coda. NON viene chiamata da `chiudi()`, e il motivo e'
-       che `chiudi()` gira anche su `pagehide`: li' una richiesta asincrona non ha
-       nessuna garanzia di partire, e crederla partita e' peggio che non tentarla.
-       Quindi: `chiudi()` ACCODA (scrittura sincrona, sempre riuscita) e lo
-       svuotamento avviene al giro dopo, o quando l'app lo chiede da ferma.
+    /* Prova a svuotare la coda. `chiudi()` resta una scrittura sincrona e non
+       spedisce; lo svuotamento lo lanciano `avvia()` e, dal 14/09, l'uscita
+       dall'app (pagehide e visibilitychange, in fondo al file: li' c'e' il perche').
+       Una voce si toglie dalla coda solo DOPO che il trasporto ha detto si'.
        Si ferma al primo fallimento: l'ordine si mantiene e non si martella la rete. */
     svuota: function () {
       if (!trasporto) return Promise.resolve(0);
@@ -4895,16 +4901,47 @@ if(autoDalLink || profiloDalLink) save();
     stato: function () {
       var a = leggi();
       return { giri: a.giri.length, aperto: !!a.aperto,
+               /* I rapporti che non sono ancora usciti dal telefono. Serve al
+                  pannello: senza, il tester non ha modo di sapere che i suoi giri
+                  non sono arrivati, e noi non abbiamo modo di chiederglielo. */
+               coda: leggiCoda().q.length,
                byte: (function () { try { return (localStorage.getItem(CHIAVE) || '').length; }
                                     catch (e) { return 0; } })() };
     }
   };
 
-  /* La chiusura su pagehide e' l'unica cosa che il modulo aggancia da solo:
-     senza, ogni giro finito chiudendo la scheda risulterebbe una morte per
-     memoria, e il contatore piu' importante diventerebbe rumore. */
+  /* L'USCITA DALL'APP CHIUDE IL GIRO E SPEDISCE (14/09/2026).
+     Fino alla v265 la chiusura su pagehide accodava e basta, e lo svuotamento
+     partiva solo in `avvia()`, cioe' al giro DOPO. Un tester che guidava una volta
+     e poi non riapriva l'app si teneva il rapporto in tasca: il 14/09 nel foglio
+     non c'era una sola riga dei sei tester esterni, mentre loro dicevano di usarla,
+     e i giri di Tiago arrivavano con fino a 28 ore di ritardo.
+     La paura che teneva l'invio fuori da qui («una richiesta asincrona non ha
+     garanzie di partire») vale per `fetch`, non per `sendBeacon`: il beacon si
+     accoda in modo SINCRONO dentro il gestore, ed e' fatto proprio perche' il
+     browser lo consegni dopo che la pagina se n'e' andata. `svuota()` chiama il
+     trasporto sincronamente per il primo rapporto, e i successivi girano in
+     microtask, che finiscono prima che il gestore ceda il passo.
+     Il caso peggiore e' un doppione: il beacon parte, la pagina muore prima di
+     togliere la voce, e al giro dopo la voce riparte. Il doppione lo toglie
+     raccogli-rapporti.py con la chiave (tester, seq, inizio). Un rapporto perso
+     invece non lo recupera nessuno.
+     `visibilitychange` verso hidden spedisce soltanto, senza chiudere: scatta anche
+     a ogni blocco dello schermo, e chiudere li' spezzerebbe una guida in tanti giri.
+     Serve per quello che era gia' in coda e per i browser in cui pagehide non
+     arriva. */
+  function uscita() {
+    try { BB.chiudi(); } catch (e) {}
+    try { BB.svuota(); } catch (e) {}
+  }
   try {
-    globale.addEventListener('pagehide', function () { BB.chiudi(); });
+    globale.addEventListener('pagehide', uscita);
+    var doc = globale.document;
+    if (doc && doc.addEventListener) {
+      doc.addEventListener('visibilitychange', function () {
+        if (doc.visibilityState === 'hidden') { try { BB.svuota(); } catch (e) {} }
+      });
+    }
   } catch (e) {}
 
   globale.SN = BB;
@@ -9238,11 +9275,11 @@ function startGps(){
 function stopGps(){
   if(S.watchId!=null){navigator.geolocation.clearWatch(S.watchId);S.watchId=null}
   if(S.wake){S.wake.release().catch(()=>{});S.wake=null}
-  /* Fine guida: il rapporto entra in coda (scrittura sincrona, sempre riuscita).
-     L'invio NON si tenta qui — questa funzione gira anche mentre l'app se ne sta
-     andando, dove una richiesta asincrona non ha nessuna garanzia di partire e
-     crederla partita e' peggio che non tentarla. Si spedisce al giro dopo. */
+  /* Fine guida: il rapporto entra in coda (scrittura sincrona, sempre riuscita) e
+     parte subito con sendBeacon. Fino al 14/09 partiva solo al giro dopo, e i
+     tester che non riaprivano l'app si tenevano i rapporti: vedi scatola-nera.js. */
   window.SN.chiudi();
+  try{ window.SN.svuota() }catch(e){}
 }
 
 /* demo free-roam: segue il grafo */
@@ -9458,6 +9495,7 @@ function mostraPerf(){
     const v=document.getElementById('infoVer');
     if(v) v.textContent = tr().ver(APPVER, INSTALLATA);
     mostraRegistro();
+    mostraCoda();
     setTimeout(scrivi, 1000); };
   scrivi();
 }
@@ -9465,6 +9503,15 @@ function mostraPerf(){
    mostra sempre una sezione vuota insegna a ignorarla. In cima ci sta lo stato della
    protezione delle mappe, che spiega il guasto peggiore possibile — «dov'è finita la
    mia regione» — e che altrimenti non si potrebbe sapere in nessun modo. */
+/* I giri della beta ancora in coda sul telefono. Esiste perche' il 14/09 nel foglio
+   non c'era una riga dei tester esterni mentre loro dicevano di usare l'app: il
+   rapporto restava in coda e nessuno, da nessuna delle due parti, poteva saperlo. */
+function mostraCoda(){
+  const el=document.getElementById('infoCoda'); if(!el||!window.SN) return;
+  let n=0; try{ n=window.SN.stato().coda||0 }catch(e){}
+  el.hidden = !(SN_INVIO && n>0);
+  if(!el.hidden) document.getElementById('infoCodaTxt').textContent = tr().coda(n)+' ';
+}
 function mostraRegistro(){
   const el=document.getElementById('infoLog'); if(!el) return;
   const righe=[];
@@ -9790,6 +9837,7 @@ function suggestRegion(la,lo){
 document.getElementById('bCar').onclick=()=>openSheet('car');
 document.getElementById('bLegend').onclick=()=>openSheet('legend');
 document.getElementById('bInfo').onclick=()=>openSheet('info');
+document.getElementById('bCoda').onclick=()=>{ try{ window.SN.svuota().then(mostraCoda) }catch(e){} };
 /* L'ingranaggio e' un interruttore, non solo un'apertura: chi lo tocca una seconda
    volta si aspetta di richiudere. Senza questo il tocco cadeva nel ramo «dentro un
    pannello» del gestore qui sotto e non succedeva niente. */
