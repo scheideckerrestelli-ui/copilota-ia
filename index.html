@@ -947,7 +947,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '268';
+const APPVER = '269';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -7850,7 +7850,10 @@ async function caricaVoce(lang){
     }
     creaCtx();
     VOCE.idx[lang] = j.clip;
-    VOCE.buf[lang] = await VOCE.ctx.decodeAudioData(a);
+    const pcm = await VOCE.ctx.decodeAudioData(a);
+    /* Se il calcolo dei livelli fallisce la voce suona com'era prima: `lv` assente = 1. */
+    try{ livelliVoce(pcm, j.clip) }catch(e){ nota('voce '+lang+': livelli non calcolati, suona com\'era: '+(e && e.message || e)) }
+    VOCE.buf[lang] = pcm;
     if(nuova) pulisciVoce(base, q);
     return true;
   }catch(e){ console.warn('voce non caricata ('+lang+'):', e); return false }
@@ -7908,6 +7911,61 @@ function durataFrase(chiavi){
     t += d + GAP;
   }
   return t;
+}
+
+/* GIUNZIONI CURATE (scelta di Tiago, 17/09/2026, dopo le anteprime
+   voce-anteprime-2026-09-17/3-, 6-, 7-giunzioni-curate-*.m4a).
+   Due difetti misurati sulle clip pubblicate, che attaccate senza aria (GAP = 0) si sentono:
+   - CLICK ai bordi: molte clip sono tagliate a meta' onda, e il salto da quel valore a zero
+     e' un «tic» fra una parola e l'altra. Peggiori proprio i legami: en `k.in`/`k.poi`,
+     fr `k.in`/`k.poi`, it `m.lunga`. Cura: 4 ms di dissolvenza a ogni capo, dentro `dilo`.
+     Misurato in Chromium sul segnale secco, energia sopra 16 kHz alle giunzioni (lo sprite a
+     24 kHz li' non ha parlato, quindi e' solo click): mediana +86 dB sul fondo, con 4 ms +36.
+     Le anteprime ascoltate avevano 8 ms (+29), ma 8 ms limavano le consonanti deboli in coda:
+     whisper sentiva «nine» invece di «ninth». Con 4 ms le clip sospette sono 3 contro 4.
+   - SALTI DI VOLUME fra parole della stessa frase: 4-5,4 dB fra il 10° e il 90° percentile
+     («duecento metri destra tre poi sinistra due chiude» va -15, -16, -18, -15, -18, -15 dB).
+     Cura: ogni clip portata a -16,5 dB RMS del parlato (la mediana delle clip), ma mai spostata
+     di piu' di 4 dB, perche' una parola detta piano apposta deve restare piu' piana.
+   Il livello si calcola QUI, sul buffer decodificato, e non sta nell'indice: cosi' resta
+   giusto a ogni rigenerazione della voce senza un passaggio in piu' da ricordare, e non
+   serve alzare VOCE_VER. Costa ~20 ms per lingua al caricamento, e zero memoria: si legge
+   il PCM che c'e' gia'. Regola identica a `cura()` di prove/anteprima-voce.py, cioe' a quello
+   che Tiago ha ascoltato (scarto mediano 0,02 dB, massimo 0,6).
+   Dentro l'app il pareggio conta meno che nelle anteprime, perche' il compressore della catena
+   (`creaCtx`) livellava gia': lo scarto di volume in una frase scende di 0,1-1,8 dB. Resta
+   perche' non costa niente e non fa saturare di piu' (campioni oltre 0 dBFS: 61 prima, 63 dopo).
+   La durata delle clip non cambia di un campione: `durataFrase` resta vera.
+   Banco: prove/prova-voce-giunzioni.js. */
+const VOCE_FADE = 0.004;              // s, dissolvenza a ogni capo della clip
+const VOCE_BERSAGLIO = -16.5;         // dB RMS del parlato
+const VOCE_TETTO = 4;                 // dB, spostamento massimo di una clip
+function livelliVoce(buf, ix){
+  const x = buf.getChannelData(0), sr = buf.sampleRate, fin = Math.max(1, Math.round(sr*0.01));
+  const livello = q => {
+    const a = Math.max(0, Math.round(q.t*sr)), b = Math.min(x.length, a + Math.round(q.d*sr));
+    /* Il parlato va dalla prima all'ultima finestra da 10 ms entro 30 dB dalla piu' forte:
+       il silenzio in testa e in coda non deve abbassare la media e far alzare la clip. */
+    const env = [];
+    for(let i=a; i<b; i+=fin){
+      const e = Math.min(b, i+fin); let s = 0;
+      for(let j=i; j<e; j++) s += Math.abs(x[j]);
+      env.push(s/(e-i));
+    }
+    let max = 0; for(const v of env) if(v > max) max = v;
+    if(!(max > 0)) return 1;
+    const soglia = max*Math.pow(10, -30/20);
+    const i0 = env.findIndex(v => v >= soglia); let i1 = env.length-1;
+    while(i1 > i0 && env[i1] < soglia) i1--;
+    const pa = a + i0*fin, pb = Math.min(b, a + (i1+1)*fin);
+    let s = 0; for(let j=pa; j<pb; j++) s += x[j]*x[j];
+    const rms = 10*Math.log10(s/Math.max(1, pb-pa) + 1e-18);
+    return Math.pow(10, Math.max(-VOCE_TETTO, Math.min(VOCE_TETTO, VOCE_BERSAGLIO - rms))/20);
+  };
+  for(const c of Object.values(ix)){
+    c.lv = livello(c);
+    if(c.v) for(const a of c.v) a.lv = livello(a);
+  }
 }
 
 /* Suona una sequenza di clip. Ritorna la durata totale, 0 se non ha suonato. */
@@ -8194,7 +8252,21 @@ function dilo(chiavi, urgente){
   svegliaVoce();
   /* Solo un annuncio urgente interrompe quello in corso. La curva severa batte la
      manovra: sbagliare strada si rimedia, una curva no. */
-  if(urgente && VOCE.sorgente){ try{VOCE.sorgente.forEach(s=>s.stop())}catch(e){} }
+  /* Anche l'interruzione e' una giunzione: troncata a meta' onda fa lo stesso «tic». Si
+     sfuma in VOCE_FADE, che sta dentro i 20 ms prima dell'annuncio nuovo (`t0` qui sotto). */
+  if(urgente && VOCE.sorgente){
+    const ora = VOCE.ctx.currentTime;
+    for(const s of VOCE.sorgente){
+      try{
+        if(s.liv){
+          s.liv.gain.cancelScheduledValues(ora);
+          s.liv.gain.setValueAtTime(s.liv.gain.value, ora);
+          s.liv.gain.linearRampToValueAtTime(0, ora + VOCE_FADE);
+        }
+        s.stop(ora + VOCE_FADE);
+      }catch(e){}
+    }
+  }
   if(!urgente && VOCE.fino > VOCE.ctx.currentTime) return 0;   // sta già parlando
   /* L'attesa torna da `musicaGiu`: e' zero se la musica e' gia' abbassata o se il
      sistema non sa abbassarla, cioe' non si paga quando non serve. */
@@ -8211,7 +8283,16 @@ function dilo(chiavi, urgente){
     const alt = c.v ? [c].concat(c.v) : null;
     const q = alt ? alt[(Math.random()*alt.length)|0] : c;
     const s=VOCE.ctx.createBufferSource();
-    s.buffer=buf; s.connect(VOCE.testa || VOCE.ctx.destination);
+    s.buffer=buf;
+    /* Giunzioni curate (vedi `livelliVoce`): la clip entra e esce in VOCE_FADE e suona al
+       suo livello. Il nodo si stacca a clip finita, se no la catena ne accumula a ogni nota. */
+    const g = VOCE.ctx.createGain(), lv = q.lv || 1, f = Math.min(VOCE_FADE, q.d/4);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(lv, t + f);
+    g.gain.setValueAtTime(lv, t + q.d - f);
+    g.gain.linearRampToValueAtTime(0, t + q.d);
+    s.connect(g); g.connect(VOCE.testa || VOCE.ctx.destination);
+    s.liv = g; s.onended = () => { try{ g.disconnect() }catch(e){} };
     s.start(t, q.t, q.d); nodi.push(s);
     t += q.d + GAP;
   }
