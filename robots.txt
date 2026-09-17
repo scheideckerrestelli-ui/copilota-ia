@@ -1,0 +1,10 @@
+# Co-Driver, beta chiusa. Le mappe pesano 2 GB e non hanno niente da
+# indicizzare; le pagine sono per chi ha il link.
+User-agent: facebookexternalhit
+User-agent: Twitterbot
+User-agent: WhatsApp
+User-agent: TelegramBot
+Allow: /
+
+User-agent: *
+Disallow: /
