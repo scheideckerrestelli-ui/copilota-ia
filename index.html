@@ -13,6 +13,22 @@
      l'unico punto che possiamo controllare al momento dell'aggiunta alla Home. -->
 <meta name="apple-mobile-web-app-title" content="Co-Driver">
 <meta name="theme-color" content="#101418">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Co-Driver">
+<meta property="og:title" content="Co-Driver">
+<meta property="og:description" content="Curve, velocità di riferimento e marcia, sulle strade d'Italia.">
+<meta property="og:image" content="https://codriver.pages.dev/og-codriver.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Il segno di Co-Driver">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Co-Driver">
+<meta name="twitter:description" content="Curve, velocità di riferimento e marcia, sulle strade d'Italia.">
+<meta name="twitter:image" content="https://codriver.pages.dev/og-codriver.png">
+<!-- NIENTE og:url: il link personale di ogni tester porta ?a=..&t=.. e il profilo nel
+     frammento. Con un og:url fisso la scheda dell'anteprima punterebbe alla radice e
+     chi tocca l'anteprima invece del link si ritroverebbe l'app senza la sua auto. -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -588,14 +604,18 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <span data-lang="it">Lingua e voce</span><span data-lang="en">Language and voice</span><span data-lang="fr">Langue et voix</span>
     <button class="rbtn setval" id="bLang" title="Language">EN</button>
   </div>
-  <!-- Un interruttore solo, non sei: queste scelte sono un dialetto, e mezzo rally
-       mezzo navigatore non e' nessuna delle due lingue. Spento = comportamento di
-       sempre, identico. Il «si stringe» sta FUORI di qui apposta: e' sicurezza, non
-       stile, quindi vale acceso o spento. -->
+  <!-- Un interruttore solo, non sei: queste scelte sono un dialetto, e mezzo esperto
+       mezzo navigatore non e' nessuna delle due lingue. Spento = il modo normale, con
+       la marcia detta e le note staccate. Il «si stringe» sta FUORI di qui apposta: e'
+       sicurezza, non stile, quindi vale acceso o spento.
+       DAL 17/09/2026 NASCE ACCESO (`pace:true` in S, richiesta di Tiago per la beta):
+       chi ha gia' l'app tiene il suo valore salvato, perche' a riga ~4387 le
+       impostazioni salvate battono quello di nascita. Quindi il cambio vale solo per
+       chi installa da adesso. -->
   <label class="opt"><input type="checkbox" id="paceChk">
-    <span data-lang="it">Note stile rally: distanze a voce, note concatenate, marcia non detta</span>
-    <span data-lang="en">Rally-style notes: spoken distances, linked calls, no gear called</span>
-    <span data-lang="fr">Notes façon rallye : distances à voix, notes enchaînées, sans rapport</span></label>
+    <span data-lang="it">Modalità esperto: distanze a voce, note concatenate, marcia non detta</span>
+    <span data-lang="en">Expert mode: spoken distances, linked calls, no gear called</span>
+    <span data-lang="fr">Mode expert : distances à voix, notes enchaînées, sans rapport</span></label>
   <div class="setrow">
     <span data-lang="it">Aspetto</span><span data-lang="en">Appearance</span><span data-lang="fr">Apparence</span>
     <button class="rbtn setval" id="bTema" title="Tema / Theme"></button>
@@ -947,7 +967,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '269';
+const APPVER = '271';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3347,6 +3367,51 @@ const CARS = {
             "et leur largeur sont de tous les jours. Entretien : SP-98 depuis 100 000 km, et à "+
             "100 000 km la courroie de distribution à bain d'huile a été remplacée — le point "+
             "faible connu de ce moteur."},
+  gry:{nm:'Toyota GR Yaris', sub:'2021 · 1.6 turbo 3 cilindri · 261 CV · 6 marce · integrale',
+       /* Rapporti veri dalla scheda tecnica Toyota UK (rif. 201029M): 3,538 · 2,238 · 1,535 ·
+          1,162 · 1,081 · 0,902. Ma i finali sono DUE, 3,941 dalla 1a alla 4a e 3,350 per 5a,
+          6a e RM, quindi i rapporti del solo cambio non si possono confrontare fra loro: i
+          totali sono 13,94 · 8,82 · 6,05 · 4,58 · 3,62 · 3,02, e sono quelli normalizzati
+          sulla 6a in `g`. Senza il secondo finale la 5a sarebbe quasi una copia della 4a.
+          Con 225/40 R18 la 6a fa 40 km/h ogni 1000 giri: 130 km/h stanno a ~3.250 giri,
+          cioe' appena dentro il plateau di coppia.
+          `vlim` 230: «electronically limited», parola di Toyota nel comunicato del
+          10/01/2020, ripetuta in italiano come «limitata elettronicamente». Il tetto FISICO
+          con questi parametri sarebbe 249, quindi decide il limitatore, stesso caso della
+          C43 e della Lyriq.
+          cda 0,75 = Cd 0,352 (dichiarato da Toyota) per un frontale STIMATO di ~2,13 m²
+          (1,805 x 1,455 x 0,81): l'area frontale Toyota non la pubblica.
+          Fascia utile: 360 Nm dichiarati da 3.000 a 4.600 giri, potenza massima a 6.500.
+          Il regime del limitatore della prima serie Toyota non lo pubblica: i 7.200 giri che
+          si trovano in giro sono della SECONDA serie, un'altra macchina. */
+       auto:false, n:6, ref:40, grip:1.02, boost:3000, rpmLim:6500, vlim:230,
+       cv:261, kg:1360, cda:0.75, crr:0.012,
+       g:[0.2167,0.3426,0.4995,0.6598,0.8344,1.0],
+       d_it:"1.618 cm³ tre cilindri turbo, 261 CV, 360 Nm da 3.000 a 4.600 giri, manuale a 6 "+
+            "marce e trazione integrale GR-FOUR, circa 1.360 kg col guidatore. Il cambio ha "+
+            "una particolarita' che si sente: prima e quarta girano su un finale corto, quinta "+
+            "e sesta su uno lungo. Per questo la quinta non e' il doppione della quarta che i "+
+            "numeri del solo cambio farebbero pensare, e la sesta e' una marcia da viaggio "+
+            "vera. In uscita di curva la marcia consigliata resta bassa piu' che su un'anteriore "+
+            "di pari potenza: con l'integrale la coppia va a terra invece di diventare "+
+            "pattinamento. Velocita' massima limitata elettronicamente a 230 km/h.",
+       d_en:"1,618 cc three-cylinder turbo, 261 hp, 360 Nm from 3,000 to 4,600 rpm, 6-speed "+
+            "manual and GR-FOUR all-wheel drive, about 1,360 kg with the driver. The gearbox "+
+            "has a quirk you can feel: first to fourth run on a short final drive, fifth and "+
+            "sixth on a tall one. That is why fifth is not the near-copy of fourth the gearbox "+
+            "ratios alone suggest, and why sixth is a real cruising gear. On corner exit the "+
+            "suggested gear stays lower than on a front-drive car of the same power: with all "+
+            "four wheels driven the torque goes to the ground instead of turning into "+
+            "wheelspin. Top speed electronically limited to 230 km/h.",
+       d_fr:"1 618 cm³ trois cylindres turbo, 261 ch, 360 Nm de 3 000 a 4 600 tr/min, boite "+
+            "manuelle a 6 rapports et transmission integrale GR-FOUR, environ 1 360 kg avec le "+
+            "conducteur. La boite a une particularite qui se sent : de la premiere a la "+
+            "quatrieme le pont est court, en cinquieme et sixieme il est long. C'est pour cela "+
+            "que la cinquieme n'est pas le doublon de la quatrieme que les rapports de boite "+
+            "laisseraient croire, et que la sixieme est un vrai rapport de route. En sortie de "+
+            "virage le rapport conseille reste plus court que sur une traction de meme "+
+            "puissance : avec les quatre roues motrices le couple passe au sol au lieu de "+
+            "devenir du patinage. Vitesse maximale limitee electroniquement a 230 km/h."},
   /* ============ ELETTRICA E FURGONE (2026-09-02) ============
      Aggiunte per Enrico, che è in Spagna con tutte e due. Sono anche le prime
      due CLASSI che l'elenco non aveva: un'auto senza marce e un veicolo alto e
@@ -4258,7 +4323,7 @@ const S = {
   d3:false,           // vista guida 3D: inclinazione + zoom automatici
   pitchLibero:false,  // l'inclinazione l'hai messa tu (due dita o bottone): l'automatismo non ci mette più le mani
   zoomLibero:false,   // l'utente ha pizzicato: da qui in poi lo zoom è suo, non mio
-  mode:'free', audio:false, autoMode:false, pace:false, watchId:null, wake:null,
+  mode:'free', audio:false, autoMode:false, pace:true, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
   dp:null, dhd:null, avanti:0,  // posizione, direzione e anticipo *mostrati*: inseguono i valori veri senza scatti
   dvx:0, dvy:0, dvh:0, dva:0,   // e le loro VELOCITA': senza, l'inseguimento riparte da fermo a ogni fix e si sente
@@ -5171,6 +5236,17 @@ function bestGear(kmh){
 const GEAR_SLANCIO = 1.35;  // quanto puoi ragionevolmente guadagnare da qui all'ingresso
 const GEAR_MUTO    = 0.45;  // sotto questa frazione del riferimento la voce non dice la marcia
 const GEAR_V_MIN   = 3;     // km/h sotto cui non c'è nessun «passo» da leggere: fermo o GPS zoppo
+/* SULLE CURVE VELOCI LA MARCIA NON SI DICE (17/09/2026, scelta di Tiago dopo il riscontro
+   di un tester in GR Yaris: «dice sempre la curva tipo destra 5 seconda marcia»).
+   Classe 5 e 6 sono i raggi da 140 a 450 m: curve che si fanno con la marcia che hai già,
+   dove il numero dice tutto e la marcia non aggiunge niente.
+   E soprattutto lì la marcia era spesso la STESSA per classi diverse, perché si calcola sul
+   passo che tieni (`vPerMarcia`) e non sul raggio: col profilo MiTo la 2ª copre da 45 a
+   78 km/h, cioè le classi 3, 4 e 5 insieme (misurato in prove/prova-marcia-classi.js). Tre
+   curve diverse, la stessa parola: è così che un annuncio vero diventa rumore di fondo.
+   Sotto la 5ª non cambia niente: in tornante e nelle curve strette la marcia è l'informazione
+   che serve prima di arrivarci. */
+const MARCIA_CLS_MAX = 4;   // oltre questa classe (raggio > 140 m) la marcia resta muta
 function vPerMarcia(vRif){
   const vTuo = S.v*3.6;
   if(!(vTuo > GEAR_V_MIN)) return vRif;   // fermo o senza velocità: si torna al riferimento nudo
@@ -8464,7 +8540,7 @@ function chiaviCurva(a, conMarcia){
      stretto di dove hai impostato la traiettoria — ed era misurata nei dati e buttata
      via da quando i dataset sono v3. */
   if((a.c.st|0) >= STRINGE_MIN) agg('m.chiude');
-  if(conMarcia && !isAuto()){
+  if(conMarcia && !isAuto() && a.c.c <= MARCIA_CLS_MAX){
     const vRif = curveKmh(a.c.r, a.e, a.dir, a.c.d0, true);   // la voce non esce mai dal limite
     if(marciaDaDire(vRif)) agg('g.'+bestGear(vPerMarcia(vRif)));
   }
