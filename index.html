@@ -782,6 +782,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>Ogni tratto è colorato per <b>raggio di curva</b> misurato sulla geometria reale.</li>
     <li>Con l'audio attivo le curve vengono <b>annunciate</b> circa 4 secondi prima, alla tua
       velocità, con la <b>marcia</b> giusta per l'auto che hai scelto: più vai forte, più l'annuncio anticipa.</li>
+    <li>La voce è <b>generata con intelligenza artificiale</b>: non è una voce umana.</li>
     <li>La mappa si <b>corica a due dita</b>: appoggiane due e falle scorrere su e giù, come su
       Google Maps. Ruotandole giri la mappa; la <b>bussola</b> rimette nord in alto e la mappa a
       piombo in un tocco. Da molto lontano la vista torna piatta da sola — inclinata non
@@ -800,6 +801,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>Every stretch is coloured by <b>corner radius</b> measured on the real geometry.</li>
     <li>With audio on, corners are <b>called</b> about 4 seconds ahead at your current speed, with
       the right <b>gear</b> for the car you picked: the faster you go, the earlier the call.</li>
+    <li>The voice is <b>AI-generated</b>: it is not a human voice.</li>
     <li>Tilt the map with <b>two fingers</b>: put two down and slide them up or down, the way
       Google Maps does it. Twist them to rotate; the <b>compass</b> puts north back up and the map
       back flat in one tap. Zoomed far out the view flattens on its own — tilted it would show
@@ -818,6 +820,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>Avec le son activé, les virages sont <b>annoncés</b> environ 4 secondes à l'avance, à ta
       vitesse actuelle, avec la <b>vitesse</b> qu'il faut pour la voiture choisie : plus tu vas vite,
       plus tôt vient l'annonce.</li>
+    <li>La voix est <b>générée par intelligence artificielle</b> : ce n'est pas une voix humaine.</li>
     <li>La carte <b>s'incline à deux doigts</b> : pose-les et fais-les glisser de haut en bas, comme
       sur Google Maps. En les tournant, tu tournes la carte ; la <b>boussole</b> remet le nord en
       haut et la carte à plat en un geste. Vue de très loin, la carte redevient plate toute seule —
@@ -944,7 +947,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '267';
+const APPVER = '268';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -7572,6 +7575,43 @@ function avanzaSuStrada(e, dir, i, t, metri){
 }
 
 /* ============ lookahead ============ */
+/* CURVA SPEZZATA DA UN INCROCIO (17/09/2026). Tiago guidando: «duecento metri destra
+   tre» e poco dopo «destra due», sulla stessa curva.
+
+   Gli archi si spezzano a OGNI incrocio e le curve sono memorizzate per arco: una piega
+   che attraversa un incrocio sono DUE record con due chiavi, e la voce diceva tutte e due.
+   Il meccanismo l'aveva gia' misurato prova-doppioni-curve.py il 28/08 (3.276 coppie
+   udibili in Vallonia), con il verdetto che vale ancora: i dati sono GIUSTI e restano
+   come sono — chi arriva dalla laterale imbocca solo la seconda meta', e per lui e' una
+   curva intera. Solo chi conosce la strada DAVANTI sa che le due meta' sono una curva
+   sola, quindi si fondono qui, con la regola con cui process4.py fonde le curve dentro
+   un arco: stesso verso, meno di 20 m fra la fine dell'una e l'inizio dell'altra, si
+   tengono la classe e il raggio piu' stretti.
+
+   Due condizioni in piu' che dentro un arco non servono:
+   - all'incrocio la strada non fa uno SPIGOLO CONTRO il verso della curva. Nel verso
+     della curva puo' girare quanto vuole, e deve poterlo fare: in un tornante spezzato
+     all'apice le corde della polilinea fanno anche 80°, e un tetto fisso di 40° (la
+     prima versione) lasciava doppi proprio i tornanti, 29 casi su 32. Contro il verso
+     invece e' uno spigolo vero — sinistra, scarto a destra all'incrocio, sinistra — e
+     non la stessa piega. Misurato su 1.600 km guidati (Abruzzo, Valle d'Aosta, Vallonia,
+     Lazio): contro il verso si sta entro 10° oppure oltre i 25°, in mezzo quasi niente;
+   - il verso si confronta con `isRight`, che tiene conto di come e' percorso ciascun
+     arco: a un incrocio due archi possono essere scritti in versi opposti, e il campo
+     `dir` della curva da solo darebbe falsi negativi silenziosi.
+   Banco: prove/prova-voce-curve.js (sintetiche + misura sui dati veri). */
+const SPEZZATA_STACCO_M = 20;
+const SPEZZATA_CONTRO = 0.35;         // rad, 20°: oltre, contro il verso, e' uno spigolo
+function curvaSpezzata(prec, e, dir, c, dist){
+  if(!prec || prec.e===e) return false;
+  const destra = isRight(prec);
+  if(destra !== isRight({c, dir})) return false;
+  if(dist - prec.fine >= SPEZZATA_STACCO_M) return false;
+  const uscita  = prec.dir>0 ? segHeading(prec.e, prec.e.np-2) : segHeading(prec.e,0)+Math.PI;
+  const entrata = dir>0 ? segHeading(e,0) : segHeading(e,e.np-2)+Math.PI;
+  const svolta = angDiff(entrata, uscita);             // >0 verso sinistra
+  return (destra ? -svolta : svolta) >= -SPEZZATA_CONTRO;
+}
 function buildAhead(){
   S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[]; S.aheadRot=null;
   const sn=S.snap; if(!sn){ S.pend=0; S.quota=null; return }
@@ -7631,8 +7671,29 @@ function buildAhead(){
       if(!inside && ahead<0) continue;
       const dist = acc + Math.max(0, ahead);
       if(dist>HORIZON) break;
-      S.ahead.push({e, c, dir, dist, inside, key:e.id+':'+c.d0+':'+dir,
-        len:Math.abs(c.d1-c.d0)});
+      /* `fine` = quanto manca alla FINE della curva. Per una curva davanti vale
+         dist + len; per quella in cui sei dentro no, perche' `dist` li' e' zero. */
+      const fine = acc + (dir>0 ? ce-d0 : d0-ce), lc = Math.abs(c.d1-c.d0);
+      const prec = S.ahead[S.ahead.length-1];
+      if(curvaSpezzata(prec, e, dir, c, dist)){
+        /* Si fonde nella curva precedente (vedi `curvaSpezzata`). L'elenco e' ancora in
+           ordine di strada, quindi l'ultima spinta e' davvero quella che precede.
+           «Chiude» non si perde: si tiene il piu' forte dei pezzi, e se il punto piu'
+           stretto sta OLTRE l'incrocio e arriva tardi (stessa regola del 60% di
+           process4.py) si misura contro il raggio d'ingresso del primo pezzo — prima
+           lo diceva, a modo suo, la seconda nota. `c` e' un oggetto NUOVO: quello del
+           dataset appartiene all'arco e non si tocca. */
+        const rin = prec.rin || ((prec.c.st|0) ? prec.c.st*prec.c.r : prec.c.r);
+        const tardi = (prec.len + lc/2) / (prec.len + lc) >= 0.6;
+        const st = Math.max(prec.c.st|0, c.st|0, (tardi && c.r < prec.c.r) ? Math.floor(rin/c.r) : 0);
+        prec.c = {d0:prec.c.d0, d1:prec.c.d1, dir:prec.c.dir,
+                  c:Math.min(prec.c.c, c.c), r:Math.min(prec.c.r, c.r), st};
+        prec.len += (dist - prec.fine) + lc;
+        prec.fine = fine; prec.rin = rin;
+        (prec.pezzi = prec.pezzi || [prec.key]).push(e.id+':'+c.d0+':'+dir);
+      } else {
+        S.ahead.push({e, c, dir, dist, inside, key:e.id+':'+c.d0+':'+dir, len:lc, fine});
+      }
       const i0=idxAt(e,Math.min(c.d0,c.d1)), i1=Math.min(e.np-1, idxAt(e,Math.max(c.d0,c.d1))+1);
       S.aheadSegs.push({e,i0,i1});
     }
@@ -7718,6 +7779,18 @@ const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, comp:null, lim:null, t
    versione a ogni build e verrebbe buttata, mentre lo sprite cambia solo quando
    cambia il vocabolario. */
 const CACHE_VOCE = 'copilota-voce-v1';
+/* VERSIONE DELLA VOCE: si alza A OGNI modifica di un voce-*.json o voce-*.m4a (17/09/2026).
+
+   Questa cache si legge PRIMA della rete e nessuno la svuota mai: chi ha scaricato la
+   voce una volta se la tiene per sempre. Quindi una voce corretta non arrivava a
+   nessuno che l'avesse gia'. E' successo davvero: il 30/08 si era allungato il «poi»
+   nell'indice («il poi non si taglia piu'»), e sui telefoni che avevano la voce dal
+   18/08 quell'indice nuovo non e' mai arrivato. La versione nell'indirizzo fa per la
+   voce quello che `?v=<hash>` fa gia' per i dataset: un file nuovo e' un indirizzo
+   nuovo, la cache lo manca e lo scarica.
+   Indice e sprite vanno SEMPRE insieme e con la stessa versione: un indice nuovo sopra
+   uno sprite vecchio fa dire parole sbagliate senza nessun errore. */
+const VOCE_VER = '2';
 async function prendi(url){
   if(self.caches){
     try{
@@ -7732,17 +7805,53 @@ async function prendi(url){
   const r = await fetch(url);
   return r.ok ? r : Promise.reject(r.status);
 }
+/* Senza rete, con la voce nuova non ancora scaricata: si usa la coppia di una versione
+   PRECEDENTE rimasta in cache, purche' indice e sprite siano della stessa. Meglio la voce
+   di ieri che il silenzio — l'app serve proprio in galleria e fuori campo. */
+async function voceVecchia(base, q){
+  const c = await caches.open(CACHE_VOCE);
+  const ks = await c.keys();
+  const versioni = est => ks.map(k => new URL(k.url))
+    .filter(u => u.pathname.endsWith('/'+base+est) && u.search !== q).map(u => u.search);
+  const comuni = versioni('.json').filter(s => versioni('.m4a').includes(s));
+  if(!comuni.length) throw new Error('niente rete e nessuna voce precedente in cache');
+  const s = comuni[comuni.length-1];
+  const [rj, ra] = await Promise.all([c.match(base+'.json'+s), c.match(base+'.m4a'+s)]);
+  return [await rj.json(), await ra.arrayBuffer()];
+}
+/* Le versioni vecchie si buttano solo DOPO che quella nuova e' caricata tutta: se si
+   buttassero al primo file scaricato, un sprite che non arriva lascerebbe senza voce. */
+function pulisciVoce(base, q){
+  if(!self.caches) return;
+  caches.open(CACHE_VOCE).then(c => c.keys().then(ks => {
+    for(const k of ks){
+      const u = new URL(k.url);
+      if((u.pathname.endsWith('/'+base+'.json') || u.pathname.endsWith('/'+base+'.m4a')) && u.search !== q)
+        c.delete(k);
+    }
+  })).catch(()=>{});
+}
 
 async function caricaVoce(lang){
   if(VOCE.buf[lang]) return true;
+  const base = 'voce-'+lang, q = '?v='+VOCE_VER;
   try{
-    const [j,a] = await Promise.all([
-      prendi('voce-'+lang+'.json').then(r=>r.json()),
-      prendi('voce-'+lang+'.m4a').then(r=>r.arrayBuffer()),
-    ]);
+    let j, a, nuova = true;
+    try{
+      [j,a] = await Promise.all([
+        prendi(base+'.json'+q).then(r=>r.json()),
+        prendi(base+'.m4a'+q).then(r=>r.arrayBuffer()),
+      ]);
+    }catch(e){
+      if(!self.caches) throw e;
+      [j,a] = await voceVecchia(base, q);
+      nuova = false;
+      nota('voce '+lang+' nuova non scaricata, uso quella precedente: '+(e && e.message || e));
+    }
     creaCtx();
     VOCE.idx[lang] = j.clip;
     VOCE.buf[lang] = await VOCE.ctx.decodeAudioData(a);
+    if(nuova) pulisciVoce(base, q);
     return true;
   }catch(e){ console.warn('voce non caricata ('+lang+'):', e); return false }
 }
@@ -8236,22 +8345,23 @@ function chiaviNota(el){
   let ch = chiaviCurva(el[0], !S.pace);
   if(S.pace){ const dk=clipDist(el[0].dist); if(dk) ch=[dk,'d.metri'].concat(ch) }
   for(let n=1;n<el.length;n++){
-    const gap = el[n].dist - el[n-1].dist;
-    const legato = gap <= Math.max(30, S.v*1.4);
-    /* Su strada e' sempre «poi», attaccate o no: il ramo `legato` qui non decide piu'
-       niente, ma resta perche' e' il pacenote a usarlo — scritto come un solo ternario
-       annidato tornerebbe illeggibile alla prossima modifica. */
-    /* «poi» anche in modalità rally, per curve legate (Tiago, 2026-08-23).
+    /* LO STACCO E' IL DRITTO VERO, dalla FINE di una curva all'INIZIO dell'altra
+       (17/09/2026, Tiago guidando in rally: il «poi» non si sente, «scattoso e non si
+       capisce nulla»).
 
-       Era `k.in`, e non era una svista: «destra tre IN sinistra quattro» è la formula
-       dei copiloti veri, e dice una cosa che «poi» non dice — che l'assetto in uscita
-       dalla prima condiziona l'ingresso nella seconda, cioè che sono una manovra sola.
-       «poi» significa invece che fra le due c'è uno stacco. Scelta sua sul suo
-       copilota: si torna indietro cambiando questa riga e basta.
+       Prima si misurava fra i due INIZI, quindi il numero detto fra due curve attaccate
+       era la lunghezza della prima: «destra quattro, quaranta, sinistra quattro» con 10 m
+       di dritto in mezzo. Misurato su 400 km in Abruzzo: 205 legami su 331 dicevano un
+       numero, 190 senza nessun dritto vero (prove/prova-voce-curve.js).
 
-       La distanza in metri sul ramo non-legato RESTA: quella non è «in», è il modo in
-       cui i pacenote veri separano due curve lontane, e non era in discussione. */
-    const legame = (!S.pace || legato) ? 'k.poi' : (clipDist(gap) || 'k.poi');
+       Scelta di Tiago fra tre versioni ascoltate (17/09, opzione B): in rally «poi» se
+       il dritto e' sotto i 40 m, sopra il numero da solo come un copilota vero («destra
+       cinque, sessanta, sinistra quattro»); su strada sempre «poi». La soglia e' quella
+       di `clipDist`, che sotto i 40 m non da' numeri: non serve una costante in piu'.
+       Il «poi» e non `k.in` fra curve legate e' un'altra scelta sua (23/08): «in» dice
+       che sono una manovra sola, e lui l'ha voluto lo stesso cosi'. */
+    const dritto = el[n].dist - (el[n-1].dist + el[n-1].len);
+    const legame = S.pace ? (clipDist(dritto) || 'k.poi') : 'k.poi';
     ch = ch.concat([legame], chiaviCurva(el[n], false));
   }
   return ch;
@@ -8468,29 +8578,16 @@ function updateNote(){
       dilo(ch, true);
     }
   }
-  /* ---- rotatoria in arrivo (guida libera) ----
-     Canale indipendente, come l'autovelox ma NON urgente: si accoda. Le curve
-     dell'anello sono mute (vedi `mutoQui`), e senza questa riga il silenzio
-     improvviso sembrerebbe un difetto: una parola sola spiega tutto, e la
-     rotatoria comunque chiede una frenata. Scelta di Tiago (30/08): «rotonda»
-     all'avvicinamento, poi silenzio fino all'uscita.
-     Col percorso attivo NON parla: li' c'e' gia' «alla rotatoria, la N uscita»
-     del navigatore, e due voci sulla stessa rotatoria sono una di troppo.
-     Il gia'-detto si segna SOLO se la voce ha parlato davvero (`dilo` rifiuta
-     se occupata): stesso schema delle note di curva, per non perdere l'annuncio.
-     ~6,5 s all'imbocco: meno dei 15 dell'autovelox (li' c'e' una frenata da
-     pianificare col cartello, qui basta arrivare pronti), piu' del lead di una
-     curva secca perche' la parola e' una e corta.
-     La clip `n.rot` dice «alla rotatoria» (nacque come prefisso del navigatore):
-     da sola e' un filo ellittica ma si capisce, in tutte e tre le lingue. Alla
-     prossima rigenerazione degli sprite conviene una clip secca «rotonda» /
-     «roundabout» / «rond-point» dedicata a questo canale. */
-  if(S.aheadRot && !S.nav && !S.gpsBuco && !S.said.has(S.aheadRot.key)){
-    const leadRot=Math.max(180, S.v*6.5);
-    if(S.aheadRot.dist<=leadRot && VOCE.idx[L] && VOCE.idx[L]['n.rot']){
-      if(dilo(['n.rot'], false) > 0) S.said.add(S.aheadRot.key);
-    }
-  }
+  /* ---- rotatoria in arrivo SENZA percorso: la voce TACE (17/09/2026) ----
+     Qui c'era un canale che diceva «alla rotatoria» avvicinandosi a un anello in guida
+     libera (scelta di Tiago del 30/08). Tiago, guidando il 17/09, l'ha chiesto via:
+     senza un percorso impostato «alla rotatoria» non dice niente che non si veda, ed
+     e' la frase del NAVIGATORE, che senza percorso non c'e'. Le curve dell'anello
+     restano mute (`mutoQui`), quindi alla rotatoria senza percorso c'e' silenzio.
+     Col percorso non cambia niente: «alla rotatoria, la N uscita» lo dice `tickNav`,
+     che questo canale non ha mai toccato. `S.aheadRot` resta calcolato in
+     `buildAhead`: costa due righe e rimetterlo a voce e' ripristinare questo blocco.
+     Prova: prove/prova-voce-curve.js. */
   /* ---- dossi artificiali ----
      Canale indipendente, come l'autovelox. Il DATO lo espone l'altra sessione con
      `dossoAvanti(e, d)`; qui c'è solo la frase, e finché quella funzione non esiste
@@ -8613,6 +8710,10 @@ function updateNote(){
      vorrebbe dire tararlo su una frenata che hai gia' fatto.
      `el` si compone quindi PRIMA di `vRif`: e' `catenaNota()` che sceglie da dove parte
      la voce, e finche' non ha scelto non c'e' niente su cui fare i conti. */
+  /* Dentro una curva spezzata da un incrocio, il seguito oltre l'incrocio e' la STESSA
+     curva gia' sotto le ruote: non si annuncia piu' da solo, nemmeno quando la voce non
+     ha fatto in tempo a dirla prima perche' era occupata. */
+  for(const z of S.ahead) if(z.inside && z.pezzi) z.pezzi.forEach(k => S.said.add(k));
   const el = catenaNota();
   const ch = el ? chiaviNota(el) : null;
   const av = el && el[0];
@@ -8687,7 +8788,12 @@ function updateNote(){
          morde passa da ~3,5 s a ~8, cioe' da raro a normale su una strada che gira.
          Se la voce e' occupata si riprova al giro dopo, e quando si entra nella curva
          ci pensa `a.inside` a chiudere: non si annuncia una curva gia' presa. */
-      if(dilo(ch, false) > 0){ el.forEach(x => S.said.add(x.key)); S.lastSaid=now }
+      /* `pezzi`: una curva spezzata da un incrocio si segna tutta, se no la sua seconda
+         meta' tornerebbe da sola appena la prima resta alle spalle (vedi `curvaSpezzata`). */
+      if(dilo(ch, false) > 0){
+        el.forEach(x => { S.said.add(x.key); if(x.pezzi) x.pezzi.forEach(k => S.said.add(k)) });
+        S.lastSaid=now;
+      }
     }
   }
   // stessa logica della cache dei tracciati: svuotare tutto vorrebbe dire che una
