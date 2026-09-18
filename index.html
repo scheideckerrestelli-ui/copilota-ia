@@ -603,7 +603,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   </div>
   <div class="setrow">
     <span data-lang="it">Lingua e voce</span><span data-lang="en">Language and voice</span><span data-lang="fr">Langue et voix</span>
-    <button class="rbtn setval" id="bLang" title="Language">EN</button>
+    <button class="rbtn setval" id="bLang" title="Language">IT</button>
   </div>
   <!-- Un interruttore solo, non sei: queste scelte sono un dialetto, e mezzo esperto
        mezzo navigatore non e' nessuna delle due lingue. Spento = il modo normale, con
@@ -971,7 +971,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '273';
+const APPVER = '274';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -9888,7 +9888,11 @@ bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
   save() };
 const bLang=document.getElementById('bLang');
 function applyLang(){
-  bLang.textContent = L==='it' ? 'EN' : L==='en' ? 'FR' : 'IT';
+  /* La sigla della lingua ATTIVA, come il pulsante del tema qui sotto mostra il tema
+     attivo. Fino al 18/09 mostrava quella successiva (in italiano «EN»), e si leggeva
+     come la lingua in uso: Tiago e un tester l'hanno preso per un errore. Il tocco
+     passa ancora alla successiva, it → en → fr. */
+  bLang.textContent = L.toUpperCase();
   if(typeof renderTema==='function') renderTema();
   document.body.classList.toggle('en', L==='en');
   document.body.classList.toggle('fr', L==='fr');
