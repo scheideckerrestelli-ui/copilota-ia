@@ -1,4 +1,14 @@
 <meta charset="utf-8">
+<!--
+Co-Driver · © 2026. Tutti i diritti riservati.
+
+Questo codice è opera del suo autore. Non è concessa alcuna licenza di copia,
+modifica, distribuzione o utilizzo, in tutto o in parte, salvo autorizzazione scritta.
+Il fatto che il sorgente sia leggibile nel browser non ne autorizza il riuso.
+
+I DATI MAPPA NON RICADONO IN QUESTO AVVISO: derivano da OpenStreetMap e sono
+distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
+-->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <!-- NON "black-translucent": con quello il contenuto va sotto la barra di stato e iOS
@@ -446,6 +456,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .setnav svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;
     stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--ink2)}
   .setnav > span{flex:1}
+  .sheet p.lic{margin:14px 2px 0;font-size:11.5px;line-height:1.45;color:var(--ink2)}
+  .sheet p.lic a{color:inherit;text-decoration:underline}
   .setnav i{font-style:normal;color:var(--ink2);font-size:18px;line-height:1}
   .setnav[hidden]{display:none}
   .rrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--linea2)}
@@ -631,6 +643,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.6v.4"></path></svg>
     <span data-lang="it">Informazioni</span><span data-lang="en">About</span><span data-lang="fr">À propos</span><i>›</i></button>
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
+  <!-- LICENZE (18/09/2026, bozza legale 2-3, scelta di Tiago): in fondo al menu e non
+       in Informazioni, perche' Informazioni nella vista del tester e' nascosto e l'ODbL
+       vuole l'attribuzione dove l'utente la vede. Senza il nome dell'autore, per ora. -->
+  <p class="lic" data-lang="it">Dati mappa © collaboratori <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sotto licenza <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Anche curve, limiti, dossi, autovelox e sfondo ne sono elaborazioni e restano sotto la stessa licenza.</p>
+  <p class="lic" data-lang="en">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Corners, limits, bumps, speed cameras and background are derived from it and stay under the same licence.</p>
+  <p class="lic" data-lang="fr">Données cartographiques © contributeurs <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sous licence <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Virages, limites, dos-d’âne, radars et fond de carte en sont dérivés et restent sous la même licence.</p>
 </div></div>
 
 <!-- pannello auto -->
@@ -971,7 +989,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '274';
+const APPVER = '275';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -7700,7 +7718,7 @@ function oltreIlCapo(e, pr, dir){
 }
 function matchRoad(x,y,hd){
   const cands=nearEdges(x,y,80);
-  let best=null;
+  let best=null, allineati=0;
   for(const id of cands){
     const e=E[id], pr=projectOn(e,x,y);
     if(pr.d>80) continue;
@@ -7711,6 +7729,14 @@ function matchRoad(x,y,hd){
       const dv=Math.abs(angDiff(hd,sh)), db=Math.abs(angDiff(hd,sh+Math.PI));
       dir = dv<=db?1:-1;
       score += Math.min(dv,db)*26;                 // ~26 m di penalità per radiante
+      /* Senso unico preso contromano: costa 15 m (18/09/2026, Variney). E' una
+         penalita' e non un'esclusione, perche' il verso lo stima la direzione del GPS
+         e un fix storto non deve buttare fuori la strada giusta. Misurato sul bivio di
+         Variney senza percorso: agganci alle rampe da 50 a 37, note fantasma da 12 a 7,
+         nessun peggioramento con il percorso. */
+      if(e.ow && dir!==e.ow) score += 15;
+      // strade allineate entro 15 m: li' l'aggancio e' una scommessa (vedi agganciIncerto)
+      if(pr.d<=15 && Math.min(dv,db)<=0.35) allineati++;
     }
     /* Isteresi: resta sulla strada corrente — ma NON quando l'hai già finita.
        L'isteresi serve a non saltellare fra due strade vicine e parallele; se la
@@ -7732,6 +7758,7 @@ function matchRoad(x,y,hd){
     score += e.rank>=RANGO.minore ? 9 : -(RANGO.cima-e.rank)*1.5;
     if(!best||score<best.score) best={e,i:pr.i,t:pr.t,d:pr.d,dir,score};
   }
+  if(best) best.ambiguo = allineati>=2;
   return best;
 }
 function distAlong(e,i,t){                          // metri veri dall'inizio dell'arco
@@ -7752,7 +7779,12 @@ function nextEdge(e,dir){
   const jn = dir>0?e.j1:e.j0;
   const list=JUN.get(jn); if(!list||list.length<2) return null;
   const exitH = dir>0 ? segHeading(e,e.np-2) : segHeading(e,0)+Math.PI;
-  let best=null;
+  /* SENSO UNICO (18/09/2026, incrocio di Variney). Prima la prosecuzione piu' dritta
+     poteva essere una rampa a senso unico presa contromano: a un bivio fra rampe
+     parallele la voce chiamava le curve di una strada in cui non si puo' entrare.
+     Vince la migliore percorribile; solo se non ce n'e' nessuna (dato sbagliato,
+     vicolo) si torna alla piu' dritta come prima, per non fermare il lookahead. */
+  let best=null, bestAny=null;
   for(const id of list){
     if(id===e.id) continue;
     const o=E[id];
@@ -7763,9 +7795,10 @@ function nextEdge(e,dir){
     const turn=Math.abs(angDiff(oh,exitH));
     if(turn>2.0) continue;                          // inversione a U: no
     const sc = turn + Math.abs(o.rank-e.rank)*0.14;
-    if(!best||sc<best.sc) best={e:o,dir:odir,sc};
+    if(!bestAny||sc<bestAny.sc) bestAny={e:o,dir:odir,sc};
+    if(percorribile(o,jn) && (!best||sc<best.sc)) best={e:o,dir:odir,sc};
   }
-  return best;
+  return best || bestAny;
 }
 
 /* Prosecuzione da una giunzione: se c'è un percorso, è lui a saperlo. Agli incroci
@@ -7850,7 +7883,7 @@ function curvaSpezzata(prec, e, dir, c, dist){
   return (destra ? -svolta : svolta) >= -SPEZZATA_CONTRO;
 }
 function buildAhead(){
-  S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[]; S.aheadRot=null;
+  S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[]; S.aheadRot=null; S.aheadSvolte=new Set();
   const sn=S.snap; if(!sn){ S.pend=0; S.quota=null; return }
   const HORIZON = Math.max(420, Math.min(1100, S.v*11 + 260));
   let e=sn.e, dir=sn.dir, d0=distAlong(e,sn.i,sn.t), acc=0, hops=0;
@@ -7864,6 +7897,9 @@ function buildAhead(){
      la strada giusta. Se il percorso si stacca (siamo fuori, o l'arco non
      combacia) si torna al comportamento normale. */
   let kk = (S.nav && S.nav.archi[S.nav.k] && S.nav.archi[S.nav.k].e.id===e.id) ? S.nav.k : -1;
+  /* La svolta appena fatta conta ancora: la curva d'uscita comincia sull'arco sotto le
+     ruote, e senza questa riga tornerebbe a parlare un attimo dopo aver girato. */
+  if(kk>0) segnaSvolta(S.nav.archi[kk-1].e, S.nav.archi[kk-1].verso, e, dir);
   while(acc<HORIZON && hops<9){
     /* Prima rotatoria davanti: all'inizio dell'iterazione `acc` e' la distanza
        all'IMBOCCO dell'arco corrente (per hops>0), quindi e' gia' la distanza
@@ -7928,8 +7964,12 @@ function buildAhead(){
         prec.len += (dist - prec.fine) + lc;
         prec.fine = fine; prec.rin = rin;
         (prec.pezzi = prec.pezzi || [prec.key]).push(e.id+':'+c.d0+':'+dir);
+        // fusa attraverso un incrocio vero: quell'incrocio e' suo
+        const jf = dir>0 ? e.j0 : e.j1;
+        prec.gj = prec.gj.concat(giunzioniVicine(e, c), incrocioVero(jf) ? [jf] : []);
       } else {
-        S.ahead.push({e, c, dir, dist, inside, key:e.id+':'+c.d0+':'+dir, len:lc, fine});
+        S.ahead.push({e, c, dir, dist, inside, key:e.id+':'+c.d0+':'+dir, len:lc, fine,
+                      gj:giunzioniVicine(e, c)});
       }
       const i0=idxAt(e,Math.min(c.d0,c.d1)), i1=Math.min(e.np-1, idxAt(e,Math.max(c.d0,c.d1))+1);
       S.aheadSegs.push({e,i0,i1});
@@ -7940,7 +7980,7 @@ function buildAhead(){
       const nb=S.nav.archi[kk+1], jn = dir>0?e.j1:e.j0;
       // l'arco successivo del percorso deve attaccarsi davvero alla giunzione da
       // cui stiamo uscendo, e nel verso in cui il percorso lo attraversa
-      if((nb.verso>0 ? nb.e.j0 : nb.e.j1) === jn){ nx={e:nb.e, dir:nb.verso}; kk++ }
+      if((nb.verso>0 ? nb.e.j0 : nb.e.j1) === jn){ nx={e:nb.e, dir:nb.verso}; kk++; segnaSvolta(e, dir, nb.e, nb.verso) }
       else kk=-1;
     } else kk=-1;
     if(!nx) nx=nextEdge(e,dir);
@@ -8708,9 +8748,11 @@ function chiaviCurva(a, conMarcia){
   return ch;
 }
 
-/* In autostrada le note di curva sono rumore: si tace. Il campo `cls` dell'arco
-   vale 0 normale, 1 rampa, 2 autostrada, e arriva dai dataset `meta.v >= 3`.
-   Lettura difensiva: sui dataset vecchi vale 0 e il comportamento non cambia.
+/* In autostrada le note di curva sono rumore: si tace. La classe dell'arco sta in
+   `CLSARCO` (0 normale, 1 rampa, 2 autostrada) e arriva dai dataset `meta.v >= 3`.
+   Fino al 18/09/2026 qui si leggeva `a.e.cls`, un campo che l'oggetto arco non ha mai
+   avuto: il silenzio in autostrada non e' mai scattato (trovato sull'incrocio di
+   Variney). Sui dataset vecchi la mappa e' vuota e il comportamento non cambia.
    Sulle RAMPE invece la voce serve eccome — in Vallonia le rampe (6.367) sono più
    numerose degli archi di autostrada (4.122), e a Bruxelles il rapporto è 4 a 1. */
 /* Tre motivi per tacere una nota di curva, tutti e tre «di luogo» (30/08, Tiago):
@@ -8723,9 +8765,43 @@ function chiaviCurva(a, conMarcia){
      d'uomo e' rumore. SOLO le curve: dossi e autovelox hanno canali separati e
      continuano — a 30 la multa fa male uguale. `ms` 0 vuol dire «non so», e nel
      dubbio si parla: tace solo chi ha un 30 scritto nei dati. */
-const mutoQui = a => !!a.e && ((a.e.cls|0) === 2
+/* AGLI INCROCI SI TACE (18/09/2026). Tiago: «agli incroci la voce [...] e' inutile,
+   solo rumore di sottofondo». Regola scelta da lui fra quattro, dopo la misura di
+   prove/prova-voce-incroci.js (Valle d'Aosta, Lombardia, Lazio, Vallonia, 200 km l'una):
+   - SULLA SVOLTA DEL PERCORSO la curva tace. Li' parla il navigatore («gira a
+     sinistra»), e la curva che si sentiva era la piega della strada in arrivo: il
+     25-35% delle svolte veniva annunciato come curva, e in quasi meta' dei casi col
+     lato opposto alla svolta. Svolta = oltre 50° fra i due archi del percorso;
+   - IN PAESE (limite 50 o meno, scritto o dedotto) tace ogni curva che comincia o
+     finisce entro 25 m da un incrocio vero, cioe' una giunzione con 3 o piu' archi.
+     Fuori paese no: li' sono quasi tutte curve vere della statale con una laterale
+     che si innesta, e in montagna erano 143 note su 1.113 guidando senza percorso.
+   Autovelox, dossi e frasi del navigatore hanno canali loro e non cambiano. */
+const INCROCIO_M = 25;
+const SVOLTA_NAV = 0.87;        // rad, 50°
+const incrocioVero = j => (JUN.get(j)||[]).length >= 3;
+function giunzioniVicine(e, c){
+  const out=[];
+  if(c.d0 <= INCROCIO_M && incrocioVero(e.j0)) out.push(e.j0);
+  if(e.len - c.d1 <= INCROCIO_M && incrocioVero(e.j1)) out.push(e.j1);
+  return out;
+}
+function segnaSvolta(ea, da, eb, db){
+  const jn = da>0 ? ea.j1 : ea.j0;
+  const uscita  = da>0 ? segHeading(ea, ea.np-2) : segHeading(ea,0)+Math.PI;
+  const entrata = db>0 ? segHeading(eb,0) : segHeading(eb, eb.np-2)+Math.PI;
+  if(Math.abs(angDiff(entrata, uscita)) > SVOLTA_NAV) S.aheadSvolte.add(jn);
+}
+const inPaese = e => e.ms !== 0 && Math.abs(e.ms) <= 50;
+function allIncrocio(a){
+  const gj = a.gj; if(!gj || !gj.length) return false;
+  if(S.aheadSvolte && gj.some(j => S.aheadSvolte.has(j))) return true;
+  return inPaese(a.e);
+}
+const mutoQui = a => !!a.e && ((CLSARCO.get(a.e.id)|0) === 2
                                || ROTONDA.has(a.e.id)
-                               || (a.e.ms > 0 && a.e.ms <= 30));
+                               || (a.e.ms > 0 && a.e.ms <= 30)
+                               || allIncrocio(a));
 
 /* Una curva che si passa senza togliere gas non si chiama: nei pacenote veri quella
    nota non esiste. Il filtro usa `curveKmh`, cioè la STESSA velocità di riferimento
@@ -8856,6 +8932,14 @@ function phrase(a){
    inseguendo si annuncia come sempre, perche' li' la striscia e' a schermo e la voce
    va con lei. */
 const V_ESPLORA_MUTO = 2.5;
+/* AGGANCIO INCERTO (18/09/2026, incrocio di Variney). Fra rampe parallele a 0-10 m
+   l'aggancio salta da una strada all'altra, e ogni salto portava con se' le curve
+   della strada sbagliata: «destra uno chiude», un tornante su una stradina accanto.
+   Se attorno a te ci sono 2 o piu' strade allineate entro 15 m e l'aggancio e' appena
+   cambiato, la nota aspetta un fix: se al giro dopo l'aggancio regge, parla; se era un
+   salto, non ha detto niente. Costa al massimo un secondo di ritardo, e solo li'.
+   Una nota mancata si perdona, una nota falsa no (stessa regola del buco GPS). */
+const agganciIncerto = () => !!S.snap && !!S.snap.ambiguo && (S.snapFix|0) < 2;
 function updateNote(){
   const t0=tr();
   /* ESPLORANDO LA MAPPA LA VOCE CONTINUA, LA STRISCIA NO — se ti stai muovendo.
@@ -9090,7 +9174,7 @@ function updateNote(){
      serve piu' come guardia — `catenaNota()` filtra gia' gli `inside` — ma resta scritto
      perche' costa niente e perche' se un domani quel filtro cambia, qui non si torna a
      parlare di una curva gia' presa senza che nessuno se ne accorga. */
-  const dicibile = !!av && !av.inside && !S.said.has(av.key) && !S.gpsBuco
+  const dicibile = !!av && !av.inside && !S.said.has(av.key) && !S.gpsBuco && !agganciIncerto()
                    && !mutoQui(av) && !piatta(av) && !troppoAmpia(av) && !sottoSoglia(av);
   /* Un secondo di strada PRIMA del punto in cui si parlera', si chiede alla musica di
      abbassarsi: `S.v` e' in m/s, quindi `S.v` metri sono esattamente un secondo a
@@ -9377,7 +9461,7 @@ function tickNav(){
        anello, 4 in Vallonia — e lì la frase giusta è quella della rotatoria. Con
        «se rampa allora svincolo» si sbaglierebbero proprio quelli, cioè i punti dove
        sbagliare la frase ti fa uscire dalla parte storta. */
-    const clsArco = (mn.e && mn.e.cls|0) || 0;
+    const clsArco = (mn.e && CLSARCO.get(mn.e.id)) || 0;   // prima `mn.e.cls`, che non esiste
     let ch;
     if(mn.rot && mn.uscita>=1) ch=['n.rot','n.usc.'+Math.min(mn.uscita,6)];
     else if(mn.rot)            ch=['n.rot', 'n.'+mn.tipo];
@@ -9435,6 +9519,9 @@ function feed(x,y,hd,v,acc){
   lastFix=[x,y];
   const m=matchRoad(x,y,S.hd);
   S.snap = (m && m.d<70) ? m : null;
+  // da quanti fix di fila l'aggancio sta sullo stesso arco (vedi agganciIncerto)
+  if(S.snap) S.snapFix = (S.snapId===S.snap.e.id) ? (S.snapFix|0)+1 : 1;
+  S.snapId = S.snap ? S.snap.e.id : null;
   S.local = !S.snap && distToGrey(x,y,45) < 45;    // strada locale, fuori dalla rete annotata
   /* SONDA «mi è sparita la strada» (2026-08-19). Tiago l'ha vista guidando, e in
      103,8 km simulati non si riproduce: `S.snap.d` non supera mai 29 m su strade
