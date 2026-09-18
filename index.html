@@ -971,7 +971,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '272';
+const APPVER = '273';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -3693,7 +3693,11 @@ function profiloDecodifica(s){
       return (x!=='' && Number.isFinite(v) && v>=lo && v<=hi) ? v : null };
     const nm = c[1].replace(/_/g,' ').replace(/[^A-Za-z0-9 -]/g,'').replace(/\s+/g,' ').trim().slice(0,32);
     const tz = c[4], fl = c[12];
-    const cv=num(c[2],40,1500), kg=num(c[3],500,3500), n=num(c[5],1,10),
+    /* Il minimo dei CV era 40, e scartava auto vere: il 18/09 la Fiat Cinquecento 899
+       del 1997 di un tester (39 CV) — il link intero buttato, e lui «non mette la
+       macchina». 10 copre anche le d'epoca che si guidano ancora: la 500 storica ha
+       13-18 CV, la 126 23, la 2CV da 9 in su. Kg e ref restano com'erano. */
+    const cv=num(c[2],10,1500), kg=num(c[3],500,3500), n=num(c[5],1,10),
           gr=num(c[6],60,130),  cd=num(c[7],30,120),   cr=num(c[8],5,25),
           bo=num(c[9],1,5000),  rl=num(c[10],3000,12000), rf=num(c[11],15,85),
           cs=num(c[13],0,1500), an=num(c[14],0,2030);
@@ -3703,7 +3707,9 @@ function profiloDecodifica(s){
     if(tz!=='a' && tz!=='p' && tz!=='i') return null;
     if(!/^[a-z-]{1,6}$/.test(fl)) return null;
     if(rl <= bo) return null;
-    if(an!==0 && (an<1980 || an>2030)) return null;
+    /* Anno: era dal 1980 in su, e da solo avrebbe tenuto fuori le d'epoca anche col
+       minimo dei CV abbassato. Serve solo all'etichetta dell'auto (`p.sub`). */
+    if(an!==0 && (an<1900 || an>2030)) return null;
     const ha = k => fl.indexOf(k) >= 0;
     const mila = (v,sep) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, sep);
     const cvS = (cs && Math.abs(cs-cv) > 3) ? cs : 0;
