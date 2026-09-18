@@ -647,8 +647,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
        in Informazioni, perche' Informazioni nella vista del tester e' nascosto e l'ODbL
        vuole l'attribuzione dove l'utente la vede. Senza il nome dell'autore, per ora. -->
   <p class="lic" data-lang="it">Dati mappa © collaboratori <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sotto licenza <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Anche curve, limiti, dossi, autovelox e sfondo ne sono elaborazioni e restano sotto la stessa licenza.</p>
+  <p class="lic" data-lang="it">Quote e pendenze: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved.</p>
   <p class="lic" data-lang="en">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Corners, limits, bumps, speed cameras and background are derived from it and stay under the same licence.</p>
+  <p class="lic" data-lang="en">Elevation and gradients: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved.</p>
   <p class="lic" data-lang="fr">Données cartographiques © contributeurs <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sous licence <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Virages, limites, dos-d’âne, radars et fond de carte en sont dérivés et restent sous la même licence.</p>
+  <p class="lic" data-lang="fr">Altitudes et pentes : <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1 : NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved.</p>
 </div></div>
 
 <!-- pannello auto -->
@@ -989,7 +992,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '275';
+const APPVER = '276';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1583,6 +1586,10 @@ const RANGO = {
    venendo da una strada vera costa una penalità secca in più. È il trucco di Google:
    non è che non te le fa fare, è che ci arriva e basta. */
 const PEN_MINORE = 3.5, ENTRO_MINORE = 40, PEN_INVERSIONE = 60;
+/* Ricalcolo dopo un'uscita dal percorso: tornare al punto dove si e' sbagliato si
+   sceglie solo se fa risparmiare almeno tanti secondi rispetto a proseguire (i vicoli
+   ciechi tornano comunque). Tiago, 19/09: «farei 3 o al massimo 4 minuti». */
+const SOGLIA_RIENTRO = 180;
 /* TEMPO VERO DI PERCORRENZA, in secondi, tenendo conto DELLE CURVE.
    Prima era `len/limite`: cioè si assumeva di tenere il limite ovunque. Su una
    strada di montagna con la tabella a 90 significa calcolarla a 90, quando in
@@ -1769,7 +1776,13 @@ function statiPronti(n){
   AGEN=new Int32Array(serve); ACHIU=new Int32Array(serve);
   agen=0;
 }
-function calcolaRotta(jDa, jA, limite=900000){
+/* `da` (facoltativo, solo dal ricalcolo): l'arco su cui si sta arrivando a `jDa`, come
+   {id, wid, pen, jDietro}. `jDietro` e' la giunzione da cui si e' entrati in quell'arco,
+   cioe' il punto dove si e' sbagliato. Tornarci, per qualunque strada (inversione a U
+   o giro dell'isolato), costa `pen` secondi: si torna indietro solo se fa risparmiare
+   almeno tanto rispetto a proseguire. Prima il ricalcolo non sapeva da dove venivi e
+   tornare indietro costava zero: il «riporta sempre indietro» (18/09, Tiago). */
+function calcolaRotta(jDa, jA, limite=900000, da=null){
   const meta = posGiun(jA); if(!meta) return null;
   if(jDa===jA) return {archi:[], metri:0, secondi:0, visti:0};
   const orig = posGiun(jDa);
@@ -1788,8 +1801,9 @@ function calcolaRotta(jDa, jA, limite=900000){
   for(const id of (JUN.get(jDa)||[])){
     const e=E[id];
     if(!percorribile(e,jDa)) continue;
+    if(da && svoltaVietata(jDa, da.wid, e.wid)) continue;
     const s = id*2 + (e.j0===jDa ? 0 : 1);
-    const c = costo(e);
+    const c = costo(e) + (da && (e.j0===jDa ? e.j1 : e.j0)===da.jDietro ? da.pen : 0);
     if(c < gGet(s)){ gSet(s,c); APREV[s]=-1; q.push(s, c+h(testa(s))*PESO_H) }
   }
   let visti=0, fine=-1;
@@ -1815,7 +1829,7 @@ function calcolaRotta(jDa, jA, limite=900000){
       // venendo da una strada vera si paga una volta sola, non a ogni suo tratto
       const pen = (id===e.id ? PEN_INVERSIONE : 0)
                 + (o.rank>=RANGO.minore && e.rank<RANGO.minore ? ENTRO_MINORE : 0);
-      const ng = gc + costo(o) + pen;
+      const ng = gc + costo(o) + pen + (da && (o.j0===jn ? o.j1 : o.j0)===da.jDietro ? da.pen : 0);
       if(ng < gGet(t)){ gSet(t,ng); APREV[t]=s; q.push(t, ng+h(testa(t))*PESO_H) }
     }
   }
@@ -1896,7 +1910,12 @@ function raggiunge(j, verso, soglia=300){
    il percorso non esiste lo stesso. È successo davvero — Eupen falliva in zero
    millisecondi e Visé→Charleroi bruciava un secondo e mezzo per finire in niente,
    perché la destinazione si poteva solo lasciare, mai raggiungere. */
-function giunzioneVicina(x,y,rad=1500,verso=0){
+/* `hd` (facoltativo, solo dal ricalcolo): la direzione di marcia. Se c'e', una
+   giunzione oltre 25 m che sta DIETRO (piu' di 100° dalla direzione) non vale: senza
+   aggancio il ricalcolo ripartiva dalla giunzione piu' vicina, che dopo una svolta
+   sbagliata e' quasi sempre quella dove hai sbagliato, e il percorso ti riportava li'
+   (misurato il 18/09: 15 casi su 15 in montagna, 10 su 20 in extraurbana). */
+function giunzioneVicina(x,y,rad=1500,verso=0,hd=null){
   let best=null;
   for(const id of nearEdges(x,y,rad)){
     const e=E[id];
@@ -1904,28 +1923,37 @@ function giunzioneVicina(x,y,rad=1500,verso=0){
       const p=posGiun(j); if(!p) continue;
       const d=Math.hypot(p[0]-x,p[1]-y);
       if(d>rad || (best && d>=best.d)) continue;
+      if(hd!=null && d>25 && Math.abs(angDiff(hd, Math.atan2(p[1]-y,p[0]-x)))>1.75) continue;
       if(!componenteGrande(j)) continue;
       if(verso && !raggiunge(j, verso)) continue;
       best={j,d};
     }
   }
-  if(!best && rad<12000) return giunzioneVicina(x,y,rad*3,verso);  // in montagna 1,5 km non bastano
+  if(!best && rad<12000) return giunzioneVicina(x,y,rad*3,verso,hd);  // in montagna 1,5 km non bastano
   return best ? best.j : null;
 }
 /* Si parte dalla giunzione che si ha DAVANTI sulla strada dove si sta viaggiando,
    non dalla più vicina in assoluto: quella dietro le spalle farebbe nascere il
    percorso con un'inversione che nessuno ha chiesto. */
-function giunzionePartenza(){
-  if(S.snap){
-    const e=S.snap.e, da = S.snap.dir>0 ? e.j0 : e.j1, j = S.snap.dir>0 ? e.j1 : e.j0;
+function giunzionePartenza(ricalcolo=false){
+  /* Nel ricalcolo, senza aggancio (GPS che salta, fix oltre 70 m dalla strada), si
+     prova ad agganciarsi qui con posizione e direzione: cosi' si sa su che strada sei
+     e in che verso, e il ritorno indietro paga SOGLIA_RIENTRO come nel caso normale. */
+  const sn = S.snap || (ricalcolo && S.pos && S.hd!=null ? matchRoad(S.pos[0], S.pos[1], S.hd) : null);
+  if(sn){
+    const e=sn.e, da = sn.dir>0 ? e.j0 : e.j1, j = sn.dir>0 ? e.j1 : e.j0;
     /* Se la strada non si può percorrere nel verso in cui siamo messi — senso unico,
        oppure direzione dedotta male da fermo, che capita — non si può nemmeno
        partire di lì: il percorso comincerebbe con un tratto contromano. Si ricade
        sulla giunzione più vicina. */
-    if(percorribile(e,da) && componenteGrande(j)) return {j, e, verso:S.snap.dir};
+    if(percorribile(e,da) && componenteGrande(j)) return {j, e, verso:sn.dir};
   }
   const p=S.pos||[S.cx,S.cy];
-  const j=giunzioneVicina(p[0],p[1],1500,+1);      // da qui si deve poter uscire
+  /* Nel ricalcolo si sta guidando: la giunzione buona e' davanti (vedi `hd` in
+     giunzioneVicina). Se davanti non ce n'e', si torna alla piu' vicina come prima. */
+  const hd = (ricalcolo && S.pos && S.hd!=null) ? S.hd : null;
+  const j=(hd!=null ? giunzioneVicina(p[0],p[1],1500,+1,hd) : null)
+        ?? giunzioneVicina(p[0],p[1],1500,+1);      // da qui si deve poter uscire
   return j==null ? null : {j, e:null, verso:0};
 }
 
@@ -2921,6 +2949,13 @@ function buildEdges(rid, map){
   let zpos = 0;                  // avanza su OGNI arco del file, anche su quelli scartati
   for (let k=0;k<RAW.edges.length;k++){
     const arr = RAW.edges[k];
+    /* Si stacca dall'albero APPENA letto (18/09/2026): cosi' il collettore puo'
+       liberare stringa della polilinea e curve appiattite mentre il ciclo va avanti,
+       invece di tenere l'albero intero vivo accanto agli archi nuovi. Misurato sulla
+       Lombardia: il picco del caricamento stava qui, 582 MB contro 403 a regime
+       (copilota-WORKER-MISURA.md). La LUNGHEZZA resta: prepara* e il boot leggono
+       solo `RAW.edges.length`, e i `runs` restano vivi perche' li tiene l'arco. */
+    RAW.edges[k] = null;
     const [poly, runs, cflat, rank, len, j0, j1, ms, wid, ow, nomeIdx] = arr;
     /* PRIMA di qualunque `continue`: il profilo è indicizzato sul file, non sugli
        archi tenuti. Un arco scartato al confine consuma comunque il suo posto. */
@@ -6029,6 +6064,7 @@ function tracciaRete(Pf, xy, a, b, zs){
 }
 /* Tutta la rete inquadrata, proiettata e divisa per classe di curva e fascia. */
 function tracciati3d(c0,c1,r0,r1){
+  const foco3=focoRotta();                   // foco sul percorso, vedi RETTO
   const paths=[], pmin=[], grey=fasceVuote();
   for(let k=0;k<CLS.length;k++){
     paths.push(fasceVuote());
@@ -6074,8 +6110,9 @@ function tracciati3d(c0,c1,r0,r1){
       const banda = e.rank>=RANGO.grigio ? 0 : e.rank>=RANGO.sfuma ? 2 : 1;
       const zq = quoteArco(e);
       let a=0;
+      const fuori = foco3 && !foco3.has(e.id);     // foco sul percorso, vedi RETTO
       for(let n=0;n<e.runs.length;n+=2){
-        const cl=e.runs[n+1];
+        const cl=fuori ? RETTO : e.runs[n+1];
         tracciaRete(banda===0 ? grey : banda===2 ? pmin[cl] : paths[cl], xy, a, e.runs[n], zq);
         /* UN SEGMENTO DI SOVRAPPOSIZIONE anche fra CLASSI, per la stessa ragione dei
            confini di fascia: ogni classe e' un Path2D suo, stroked a parte, e con
@@ -6189,14 +6226,26 @@ function morbido(P, xy, a, b){
   P.lineTo(xy[2*b],xy[2*b+1]);
 }
 
+/* FOCO SUL PERCORSO (18/09/2026, ordine di Tiago su uno spunto di un tester): con un
+   percorso attivo si colorano SOLO le curve degli archi del percorso. Le altre strade
+   restano disegnate, ma col grigio del rettilineo: chi guida con le note non deve
+   leggere le curve delle laterali che si immettono. Senza percorso non cambia niente.
+   `S.nav.idx` e' la Map arco -> posizioni della rotta, rifatta a ogni `installaRotta`
+   (anche al ricalcolo), e `S.nav.sn` cambia con lei: e' la chiave della cache. */
+const RETTO = CLS.length-1;
+function focoRotta(){ return S.nav ? S.nav.idx : null }
 /* cache di Path2D per cella */
 const PCACHE=new Map();
-function cellPaths(kk){
+function cellPaths(kk0){
+  /* Una chiave per percorso invece di un PCACHE.clear(): lo svuotamento totale da'
+     lo scatto descritto piu' sotto. Le celle del percorso vecchio escono da sole con
+     le piu' vecchie. */
+  const foco=focoRotta(), kk = foco ? kk0+'|'+S.nav.sn : kk0;
   let c=PCACHE.get(kk);
   // rimetterla in fondo la rende l'ultima a essere buttata: le celle che si stanno
   // guardando adesso sopravvivono, quelle lasciate indietro no
   if(c){ PCACHE.delete(kk); PCACHE.set(kk,c); return c }
-  const ids=GRID.get(kk), gids=GGRID.get(kk);
+  const ids=GRID.get(kk0), gids=GGRID.get(kk0);
   if(!ids && !gids) return null;
   const paths=CLS.map(()=>new Path2D());
   /* Seconda banda: i ranghi 3-4. Non è una divisione estetica ma il perno del LOD —
@@ -6216,8 +6265,9 @@ function cellPaths(kk){
     const e=E[id], xy=e.xy, runs=e.runs;
     const banda = e.rank>=RANGO.grigio ? 0 : e.rank>=RANGO.sfuma ? 2 : 1;  // 0 grigia, 1 ossatura, 2 minori
     let a=0;
+    const fuori = foco && !foco.has(id);
     for(let m=0;m<runs.length;m+=2){
-      const b=runs[m], cl=runs[m+1];
+      const b=runs[m], cl=fuori ? RETTO : runs[m+1];
       const P = banda===0 ? grigia() : banda===2 ? pmin[cl] : paths[cl];
       morbido(P, xy, a, b);
       a=b;
@@ -6238,21 +6288,22 @@ function cellPaths(kk){
   PCACHE.set(kk,c);
   return c;
 }
-let BACKBONE=null;
+let BACKBONE=null, BACKBONE_SN=-1;
 function backbone(){
-  if(BACKBONE) return BACKBONE;
+  const foco=focoRotta(), sn = foco ? S.nav.sn : 0;   // foco sul percorso, vedi RETTO
+  if(BACKBONE && BACKBONE_SN===sn) return BACKBONE;
   const paths=CLS.map(()=>new Path2D());
   for(const e of E){
     if(e.rank>RANGO.backbone) continue;
-    const xy=e.xy, runs=e.runs; let a=0;
+    const xy=e.xy, runs=e.runs, fuori = foco && !foco.has(e.id); let a=0;
     for(let m=0;m<runs.length;m+=2){
-      const b=runs[m], cl=runs[m+1], P=paths[cl];
+      const b=runs[m], cl=fuori ? RETTO : runs[m+1], P=paths[cl];
       P.moveTo(xy[2*a],xy[2*a+1]);
       for(let i=a+1;i<=b;i++) P.lineTo(xy[2*i],xy[2*i+1]);
       a=b;
     }
   }
-  BACKBONE=paths; return paths;
+  BACKBONE=paths; BACKBONE_SN=sn; return paths;
 }
 function draw(){
   camAggiorna();
@@ -7916,9 +7967,19 @@ function buildAhead(){
       }
     }
     const from = dir>0?d0:0, to = dir>0?e.len:d0;
+    /* FINE DEL PERCORSO (19/09/2026, scelta di Tiago). Dopo l'ultimo arco il lookahead
+       proseguiva sulla strada piu' dritta e la voce chiamava curve DOPO la destinazione:
+       2-4 note su 2.300 in 25 percorsi in Valle d'Aosta, ed erano le uniche fuori
+       percorso. Sull'ultimo arco si taglia al punto d'arrivo, e oltre non si va.
+       Se esci dal percorso (`kk` = -1) non cambia niente: la voce segue la strada su
+       cui sei finche' il navigatore non ricalcola. */
+    const ultimo = kk>=0 && S.nav && kk===S.nav.archi.length-1;
+    let arrivo = null;
+    if(ultimo && S.nav.dest){ const pd=projectOn(e, S.nav.dest.x, S.nav.dest.y); arrivo=distAlong(e, pd.i, pd.t) }
     const list = dir>0 ? e.curves : [...e.curves].reverse();
     for(const c of list){
       const cs = dir>0?c.d0:c.d1, ce = dir>0?c.d1:c.d0;
+      if(arrivo!=null && (dir>0 ? cs>arrivo : cs<arrivo)) break;   // curva dopo l'arrivo
       const ahead = dir>0 ? cs-d0 : d0-cs;
       /* `inside` VALE SOLO SULL'ARCO SOTTO LE RUOTE (`hops===0`), ed e' il difetto che
          Tiago segnalava da giorni con «alcune curve non me le segna».
@@ -7983,6 +8044,7 @@ function buildAhead(){
       if((nb.verso>0 ? nb.e.j0 : nb.e.j1) === jn){ nx={e:nb.e, dir:nb.verso}; kk++; segnaSvolta(e, dir, nb.e, nb.verso) }
       else kk=-1;
     } else kk=-1;
+    if(ultimo) break;                    // oltre la destinazione non si guarda
     if(!nx) nx=nextEdge(e,dir);
     if(!nx) break;
     e=nx.e; dir=nx.dir; d0 = dir>0?0:e.len; hops++;
@@ -8939,6 +9001,17 @@ const V_ESPLORA_MUTO = 2.5;
    cambiato, la nota aspetta un fix: se al giro dopo l'aggancio regge, parla; se era un
    salto, non ha detto niente. Costa al massimo un secondo di ritardo, e solo li'.
    Una nota mancata si perdona, una nota falsa no (stessa regola del buco GPS). */
+/* APPENA ARRIVATO (19/09/2026, stessa scelta di Tiago dello stop all'arrivo). Chiuso il
+   percorso la voce torna alla guida libera, e nello stesso istante di «sei arrivato»
+   annunciava la curva DOPO la destinazione: erano tutte e sole le note fuori percorso
+   nella prova dei 25 percorsi (web/prova-rotta.js). Entro 300 m dal punto d'arrivo le
+   curve tacciono; se riparti e ti allontani, o avvii un percorso nuovo, tornano. */
+const ARRIVO_MUTO_M = 300;
+function appenaArrivato(){
+  if(!S.arrivo) return false;
+  if(S.nav || !S.pos || Math.hypot(S.pos[0]-S.arrivo.x, S.pos[1]-S.arrivo.y) > ARRIVO_MUTO_M){ S.arrivo = null; return false }
+  return true;
+}
 const agganciIncerto = () => !!S.snap && !!S.snap.ambiguo && (S.snapFix|0) < 2;
 function updateNote(){
   const t0=tr();
@@ -9174,7 +9247,7 @@ function updateNote(){
      serve piu' come guardia — `catenaNota()` filtra gia' gli `inside` — ma resta scritto
      perche' costa niente e perche' se un domani quel filtro cambia, qui non si torna a
      parlare di una curva gia' presa senza che nessuno se ne accorga. */
-  const dicibile = !!av && !av.inside && !S.said.has(av.key) && !S.gpsBuco && !agganciIncerto()
+  const dicibile = !!av && !av.inside && !S.said.has(av.key) && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()
                    && !mutoQui(av) && !piatta(av) && !troppoAmpia(av) && !sottoSoglia(av);
   /* Un secondo di strada PRIMA del punto in cui si parlera', si chiede alla musica di
      abbassarsi: `S.v` e' in m/s, quindi `S.v` metri sono esattamente un secondo a
@@ -9345,8 +9418,13 @@ function avviaNav(x,y,nome){
 }
 function ricalcolaNav(){
   const nv=S.nav; if(!nv) return;
-  const part=giunzionePartenza(); if(!part) return;
-  const r=calcolaRotta(part.j, nv.jA);
+  const part=giunzionePartenza(true); if(!part) return;
+  /* Il ricalcolo sa da dove arrivi: tornare indietro sulla strada presa costa
+     SOGLIA_RIENTRO secondi, cioe' si torna solo se fa risparmiare almeno tanto
+     rispetto a proseguire (vedi `da` in calcolaRotta). */
+  const da = part.e ? {id:part.e.id, wid:part.e.wid, pen:SOGLIA_RIENTRO,
+                       jDietro: part.verso>0 ? part.e.j0 : part.e.j1} : null;
+  const r=calcolaRotta(part.j, nv.jA, undefined, da);
   if(!r || !r.archi.length){ fermaNav(tr().navNone); return }
   const dest=nv.dest, jA=nv.jA;
   installaRotta(part, r, dest, jA);
@@ -9415,6 +9493,7 @@ function tickNav(){
      Orvieto è su strade che nella rete annotata non ci sono — quindi si controlla
      anche la distanza dal punto vero. */
   if(pr.restano<70 || (S.pos && Math.hypot(S.pos[0]-nv.dest.x, S.pos[1]-nv.dest.y)<70)){
+    S.arrivo = {x:nv.dest.x, y:nv.dest.y};     // vedi appenaArrivato
     dilo(['n.arr'], true); fermaNav(t0.navArr); return;
   }
 
