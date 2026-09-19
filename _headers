@@ -27,6 +27,23 @@
   X-Frame-Options: DENY
   Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://docs.google.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://docs.google.com; object-src 'none'; frame-ancestors 'none'
 
+# IL PROFILO PUBBLICO DEI TESTER (/p/<codice>.json, 20/09/2026, condizioni di
+# «CD · Legale e mercato» approvate da Tiago; legale/informativa-riga-profilo-pubblico.md).
+# Qui sta il garage di UNA persona, a un indirizzo con un codice a caso di 22 caratteri.
+# Dentro non c'e' nome, email, zona ne' il codice tester: solo le auto. Le tre cose che
+# questo file deve garantire, e che la riga dell'informativa promette:
+# - i motori di ricerca non lo indicizzano e non lo seguono;
+# - nessuno lo tiene in cache condivisa: la copia e' di quel telefono, non del bordo;
+# - niente registri ne' analisi su questo percorso (quella parte NON sta qui: va tenuta
+#   spenta nel pannello Cloudflare, e ricontrollata a ogni rilascio).
+# Gli indirizzi sbagliati devono dare 404 e la cartella non deve avere un elenco: su
+# Pages e' cosi' di suo, perche' non esiste nessun indice e i file assenti non ci sono.
+/p/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: private, max-age=300, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+
 # Le clip vocali sono l'eccezione: 3,5 MB che non cambiano mai senza cambiare
 # nome, e su rete mobile riscaricarle a ogni giro sarebbe un danno vero.
 /voce-it.m4a
