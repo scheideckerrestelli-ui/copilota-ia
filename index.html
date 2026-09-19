@@ -992,7 +992,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '276';
+const APPVER = '277';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4258,6 +4258,7 @@ const T = {
     coda:n=>(n===1?'1 giro':n+' giri')+' della beta non '+(n===1?'è ancora partito':'sono ancora partiti')+' dal telefono. '+(n===1?'Parte':'Partono')+' da solo appena c\'è campo, oppure adesso:',
     ver:(v,pwa)=>'Versione '+v+(pwa?' · app installata':' · dal browser')+'. Se qui il numero non sale dopo un aggiornamento, la copia vecchia e\' rimasta in cache: chiudi del tutto l\'app dal selettore e riaprila.',
     gpsPwa:'L\'app aggiunta alla schermata Home ha permessi PROPRI, separati da Safari, e NON compare fra le app in Impostazioni → Localizzazione: non cercarla li\'. L\'unico modo e\' rifarle chiedere il permesso: tieni premuta l\'icona → Rimuovi, riapri il sito in Safari, Condividi → Aggiungi a schermata Home, e alla prima richiesta tocca Consenti.',
+    gpsAndroid:'Posizione non concessa. Su Android: 1) accendi la Localizzazione (tendina in alto, icona Posizione); 2) Impostazioni → App → Chrome → Autorizzazioni → Posizione → Consenti solo mentre l\'app è in uso, con «Usa posizione precisa» attivo; 3) apri codriver.pages.dev in Chrome, tocca l\'icona a sinistra dell\'indirizzo → Autorizzazioni → Posizione → Consenti. Vale anche per l\'app sulla schermata Home. Poi riapri l\'app.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
     dlFail:'Scaricamento fallito: ',
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
@@ -4265,7 +4266,7 @@ const T = {
     applicaDopo:'Si caricano quando tocchi Fatto.',
     logTit:'Cosa è andato storto (resta qui, non ti interrompe in guida):',
     logSfratto:'le mappe scaricate NON sono protette: il telefono può cancellarle quando ha bisogno di spazio',
-    tooMuch:mb=>'Molte mappe attive (~'+mb+' MB): l\'app può chiudersi mentre guidi. Tieni attive solo quelle dove vai: spegnerle non le cancella.',
+    tooMuch:mb=>'Molte mappe accese: con tante regioni l\'app può chiudersi da sola mentre guidi. Tieni accese solo quelle dove vai: spegnerle non le cancella, restano sul telefono.',
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
@@ -4343,6 +4344,7 @@ const T = {
     coda:n=>(n===1?'1 beta drive has':n+' beta drives have')+' not left the phone yet. '+(n===1?'It goes':'They go')+' by itself as soon as there is signal, or right now:',
     ver:(v,pwa)=>'Version '+v+(pwa?' · installed app':' · from the browser')+'. If this number does not go up after an update, the old copy is still cached: close the app from the switcher and reopen it.',
     gpsPwa:'The app added to your Home Screen has its OWN permissions, separate from Safari, and does NOT appear among the apps in Settings → Location Services: do not look for it there. The only way is to make it ask again: hold the icon → Remove, reopen the site in Safari, Share → Add to Home Screen, and tap Allow the first time it asks.',
+    gpsAndroid:'Location not allowed. On Android: 1) turn Location on (pull down from the top, Location icon); 2) Settings → Apps → Chrome → Permissions → Location → Allow only while using the app, with "Use precise location" on; 3) open codriver.pages.dev in Chrome, tap the icon left of the address → Permissions → Location → Allow. This also covers the app on your Home screen. Then reopen the app.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
     dlFail:'Download failed: ',
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
@@ -4350,7 +4352,7 @@ const T = {
     applicaDopo:'They load when you tap Done.',
     logTit:'What went wrong (it stays here, it will not interrupt you while driving):',
     logSfratto:'downloaded maps are NOT protected: the phone may delete them when it needs space',
-    tooMuch:mb=>'Many active maps (~'+mb+' MB): the app may close while you drive. Keep only the ones you are heading to — switching off does not delete them.',
+    tooMuch:mb=>'Many maps switched on: with lots of regions the app can close by itself while you drive. Keep on only the ones you are heading to: switching them off does not delete them, they stay on the phone.',
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
@@ -4425,6 +4427,7 @@ const T = {
     coda:n=>(n===1?'1 trajet':n+' trajets')+' de la bêta '+(n===1?'n\'est pas encore parti':'ne sont pas encore partis')+' du téléphone. '+(n===1?'Il part':'Ils partent')+' tout seul dès qu\'il y a du réseau, ou tout de suite :',
     ver:(v,pwa)=>'Version '+v+(pwa?' · application installée':' · depuis le navigateur')+'. Si ce numéro n\'augmente pas après une mise à jour, l\'ancienne copie est restée en cache : ferme complètement l\'app depuis le sélecteur et rouvre-la.',
     gpsPwa:'L\'application ajoutée à l\'écran d\'accueil a SES PROPRES permissions, séparées de Safari, et n\'apparaît PAS parmi les apps dans Réglages → Position : ne la cherche pas là. La seule solution est de lui faire redemander la permission : maintiens l\'icône → Supprimer, rouvre le site dans Safari, Partager → Sur l\'écran d\'accueil, et appuie sur Autoriser à la première demande.',
+    gpsAndroid:'Position non autorisée. Sur Android : 1) active la Localisation (volet du haut, icône Position) ; 2) Paramètres → Applications → Chrome → Autorisations → Position → Autoriser seulement si l\'appli est en cours d\'utilisation, avec « Utiliser la position exacte » activé ; 3) ouvre codriver.pages.dev dans Chrome, touche l\'icône à gauche de l\'adresse → Autorisations → Position → Autoriser. Cela vaut aussi pour l\'appli sur l\'écran d\'accueil. Puis rouvre l\'appli.',
     onDevice:'cartes sur le téléphone', onDevice1:'carte sur le téléphone', freeSpace:'espace disponible', delMap:'Supprimer',
     dlFail:'Échec du téléchargement : ',
     hereDl:n=>'Tu es à '+n+' : télécharge la carte depuis le panneau Cartes.',
@@ -4432,7 +4435,7 @@ const T = {
     applicaDopo:'Elles se chargent quand tu appuies sur Terminé.',
     logTit:'Ce qui a mal tourné (reste ici, ça ne t\'interrompt pas en conduisant) :',
     logSfratto:'les cartes téléchargées ne sont PAS protégées : le téléphone peut les supprimer s\'il a besoin d\'espace',
-    tooMuch:mb=>'Beaucoup de cartes actives (~'+mb+' MB) : l\'app peut se fermer pendant que tu conduis. Ne garde actives que celles où tu vas — les désactiver ne les supprime pas.',
+    tooMuch:mb=>'Beaucoup de cartes allumées : avec beaucoup de régions, l\'app peut se fermer toute seule pendant que tu conduis. N\'allume que celles où tu vas : les éteindre ne les supprime pas, elles restent sur le téléphone.',
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
@@ -9775,6 +9778,9 @@ async function gpsWhy(){
   // Su iOS la app aggiunta alla schermata Home ha permessi PROPRI, separati da
   // quelli di Safari: aver dato "Consenti" al sito non vale per l'icona. Mandare
   // qui l'utente nelle impostazioni di Safari e' mandarlo nel posto sbagliato.
+  // Su Android l'app installata usa i permessi di Chrome (non ha permessi suoi come
+  // su iOS): il testo per iPhone mandava a cercare Safari su un Samsung (19/09).
+  if(/Android/i.test(navigator.userAgent)) return tr().gpsAndroid;
   if(INSTALLATA) return tr().gpsPwa;
   try{
     const p = await navigator.permissions.query({name:'geolocation'});
@@ -10423,7 +10429,11 @@ function renderMaps(){
   }
 
   const att=RSTATE.att.map(rById).filter(Boolean);
-  /* Avviso di memoria. Misurato: 40 MB di dati diventano ~260 MB di heap una volta
+  /* Niente blocco, solo l'avviso (Tiago, 19/09, sulla proposta del tetto alle mappe):
+     il 17/08 il suo iPhone ha retto Lombardia + Belgio, ben sopra questa soglia, e il
+     limite vero del telefono non e' misurato. Il testo non mostra piu' la stima in MB di
+     heap, che a un tester non diceva niente.
+     Avviso di memoria. Misurato: 40 MB di dati diventano ~260 MB di heap una volta
      costruiti gli indici, cioè circa 6,5 volte. Oltre una certa soglia il telefono
      chiude la scheda — e se succede mentre guidi è il guasto peggiore possibile,
      quindi meglio dirlo prima che scoprirlo in curva. */
