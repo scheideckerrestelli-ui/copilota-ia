@@ -1079,7 +1079,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '279';
+const APPVER = '280';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -5494,6 +5494,10 @@ function anomaliaDi(msg){
 function snAvvia(){
   window.SN.avvia({build: APPVER, paese: paeseAttivo(), veicolo: nomeVeicolo(),
                    regione: regioneAttiva()});
+  /* Una mappa che all'avvio non si e' caricata succede PRIMA di qualunque giro: il
+     segno lasciato li' diventa qui un `dati-ko` del primo giro (bug #25). */
+  try{ if(localStorage.getItem('copilota-datiko-avvio')){
+    localStorage.removeItem('copilota-datiko-avvio'); window.SN.anomalia('dati-ko') } }catch(e){}
   /* La voce puo' essere gia' accesa da una sessione precedente — si salva fra i
      riavvii — e in quel caso il bottone non lo tocca nessuno: senza questa riga un
      giro intero fatto parlando risulterebbe a voce spenta. */
@@ -11799,12 +11803,19 @@ async function boot(){
          Mappe per rimediare. Ora si spegne la regione che non parte, si toglie lo
          splash e si apre il pannello, così l'app resta usabile e si può riscaricare. */
       RSTATE.att = RSTATE.att.filter(x=>x!==r.id); rsave();
+      /* Il motivo non si vedeva da nessuna parte (bug #25, Sicilia, 19/09): l'avviso
+         diceva solo «riscaricala», e a quest'ora non c'e' nessun giro aperto, quindi la
+         scatola nera non poteva contarlo. Si scrive nel registro e si lascia un segno
+         che `snAvvia` trasforma in `dati-ko` al primo giro. */
+      const perche = (err && err.message) || String(err);
+      nota(r.nm+' non caricata all\'avvio: '+perche);
+      try{ localStorage.setItem('copilota-datiko-avvio', '1') }catch(e){}
       M = M || {lat0:43, lon0:12, span:0}; if(!KX||KX===1) KX = 111320*Math.cos(43*Math.PI/180);
       applyLang(); renderLegend(); renderMaps(); showStore(); setBrandSub();
       splash.classList.add('hide'); loop(); openSheet('maps');
       toast((L==='it' ? r.nm+' non si è caricata: riscaricala.'
              : L==='fr' ? r.nm+' n\'a pas pu être chargée : retélécharge-la.'
-                      : r.nm+' failed to load: download it again.'), 9000);
+                      : r.nm+' failed to load: download it again.')+' ('+perche+')', 9000);
       return;
     }
     done += r.bytes;
