@@ -918,6 +918,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>Con l'audio attivo le curve vengono <b>annunciate</b> circa 4 secondi prima, alla tua
       velocità, con la <b>marcia</b> giusta per l'auto che hai scelto: più vai forte, più l'annuncio anticipa.</li>
     <li>La voce è <b>generata con intelligenza artificiale</b>: non è una voce umana.</li>
+    <li>La voce parla <b>solo con la suoneria attiva</b>: se il telefono è in silenzioso o in
+      vibrazione non la senti. Su iPhone guarda l'interruttore laterale (o il tasto Azione).</li>
     <li>La mappa si <b>corica a due dita</b>: appoggiane due e falle scorrere su e giù, come su
       Google Maps. Ruotandole giri la mappa; la <b>bussola</b> rimette nord in alto e la mappa a
       piombo in un tocco. Da molto lontano la vista torna piatta da sola — inclinata non
@@ -937,6 +939,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>With audio on, corners are <b>called</b> about 4 seconds ahead at your current speed, with
       the right <b>gear</b> for the car you picked: the faster you go, the earlier the call.</li>
     <li>The voice is <b>AI-generated</b>: it is not a human voice.</li>
+    <li>The voice only speaks <b>with the ringer on</b>: if your phone is on silent or vibrate
+      you won't hear it. On iPhone, check the side switch (or the Action button).</li>
     <li>Tilt the map with <b>two fingers</b>: put two down and slide them up or down, the way
       Google Maps does it. Twist them to rotate; the <b>compass</b> puts north back up and the map
       back flat in one tap. Zoomed far out the view flattens on its own — tilted it would show
@@ -956,6 +960,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
       vitesse actuelle, avec la <b>vitesse</b> qu'il faut pour la voiture choisie : plus tu vas vite,
       plus tôt vient l'annonce.</li>
     <li>La voix est <b>générée par intelligence artificielle</b> : ce n'est pas une voix humaine.</li>
+    <li>La voix ne parle <b>qu'avec la sonnerie activée</b> : si le téléphone est en silencieux
+      ou en vibreur, tu ne l'entends pas. Sur iPhone, regarde le bouton latéral (ou le bouton Action).</li>
     <li>La carte <b>s'incline à deux doigts</b> : pose-les et fais-les glisser de haut en bas, comme
       sur Google Maps. En les tournant, tu tournes la carte ; la <b>boussole</b> remet le nord en
       haut et la carte à plat en un geste. Vue de très loin, la carte redevient plate toute seule —
@@ -1082,7 +1088,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '282';
+const APPVER = '283';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4441,6 +4447,7 @@ const T = {
     tooMuch:mb=>'Molte mappe accese: con tante regioni l\'app può chiudersi da sola mentre guidi. Tieni accese solo quelle dove vai: spegnerle non le cancella, restano sul telefono.',
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
+    voceSilenzio:'Non senti la voce? Controlla che il telefono non sia in silenzioso o in vibrazione.',
     garNuova:n=>'🏁 La tua '+(n||'auto')+' è entrata nel garage',
     garRipiego:n=>'Questa ('+n+') è un\'auto di partenza simile alla tua: il link è arrivato tagliato. Chiedi di nuovo il tuo link in DM, oppure incollalo intero in «Ho un link nuovo», nel pannello dell\'auto.',
     garTogli:'Togli un\'auto', garTogliSub:'dal tuo garage', garFine:'Fatto', garFineSub:'non togliere niente',
@@ -4531,6 +4538,7 @@ const T = {
     tooMuch:mb=>'Many maps switched on: with lots of regions the app can close by itself while you drive. Keep on only the ones you are heading to: switching them off does not delete them, they stay on the phone.',
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
+    voceSilenzio:'Can\'t hear the voice? Make sure your phone is not on silent or vibrate.',
     garNuova:n=>'🏁 Your '+(n||'car')+' is now in your garage',
     garRipiego:n=>'This ('+n+') is a starter car similar to yours: your link arrived cut short. Ask for your link again by DM, or paste it whole in “I have a new link”, in the car panel.',
     garTogli:'Remove a car', garTogliSub:'from your garage', garFine:'Done', garFineSub:'remove nothing',
@@ -4618,6 +4626,7 @@ const T = {
     tooMuch:mb=>'Beaucoup de cartes allumées : avec beaucoup de régions, l\'app peut se fermer toute seule pendant que tu conduis. N\'allume que celles où tu vas : les éteindre ne les supprime pas, elles restent sur le téléphone.',
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
+    voceSilenzio:'Tu n\'entends pas la voix ? Vérifie que le téléphone n\'est pas en silencieux ou en vibreur.',
     garNuova:n=>'🏁 Ta '+(n||'voiture')+' est entrée dans ton garage',
     garRipiego:n=>'Celle-ci ('+n+') est une voiture de départ proche de la tienne : ton lien est arrivé coupé. Redemande ton lien en DM, ou colle-le en entier dans « J\'ai un nouveau lien », dans le panneau de la voiture.',
     garTogli:'Retirer une voiture', garTogliSub:'de ton garage', garFine:'Terminé', garFineSub:'ne rien retirer',
@@ -10343,6 +10352,10 @@ bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
        sua, `x.attivo`. La sintesi resta solo se lo sprite non si è caricato — cioè
        niente rete al primo avvio e cache vuota. */
     caricaVoce(L).then(ok => ok ? dilo(['x.attivo'], true) : sayUI(tr().voiceOn));
+    /* Tiago, 19/09: in silenzioso o in vibrazione iOS zittisce l'audio della pagina
+       senza che l'app se ne accorga (il contesto resta `running`), e la gente pensa che
+       la voce non funzioni. Lo si ricorda la prima volta che la si accende, per avvio. */
+    if(!window.__silenzioDetto){ window.__silenzioDetto = true; toast(tr().voceSilenzio, 6000) }
   }
   save() };
 const bLang=document.getElementById('bLang');
