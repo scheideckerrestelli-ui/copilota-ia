@@ -472,7 +472,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* la figurina che dice DOVE sta la regione: il paese in grigio, lei accesa */
   .rrow .mm{flex:none;width:38px;height:29px;display:block}
   .rrow .mm .mm-a{fill:var(--ink2);opacity:.22}
-  .rrow .mm .mm-on{fill:var(--accent);opacity:1;stroke:var(--fondo);stroke-width:.5}
+  .rrow .mm .mm-on{fill:var(--accent);opacity:1;stroke:var(--bg);stroke-width:.5}
   .rrow .mm .mm-lontana{fill:none;stroke:var(--accent);stroke-width:1.1;stroke-dasharray:2 1.4}
   .rrow .rbt{flex:none;border:1px solid var(--bordo2);border-radius:9px;padding:8px 12px;
     font:inherit;font-size:12.5px;background:var(--fondo2);color:var(--ink);cursor:pointer;
@@ -511,6 +511,89 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .gcap:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
   .gbox .rrow:last-of-type{border-bottom:0}
   @media (prefers-reduced-motion:reduce){ .gcap .gfre{transition:none} }
+
+  /* ======== ERGONOMIA · priorita' 1 (19/09/2026, analisi in proposte/ergonomia/ANALISI.md,
+     approvata da Tiago). Un blocco solo, in fondo, che ritocca senza riscrivere. ======== */
+  /* Il primo avvio apre Informazioni come benvenuto: al tester si toglie la parte da
+     sviluppatore (fotogrammi, versione, registro «cosa e' andato storto»). Resta la coda
+     dei giri da inviare, che riguarda anche lui. */
+  :root[data-vista="tester"] #infoPerf,:root[data-vista="tester"] #infoVer,
+  :root[data-vista="tester"] #infoLog{display:none !important}
+  /* STATO PREMUTO. Prima al tocco non succedeva niente di visibile (niente :active, e
+     l'evidenziazione del tocco spenta): in auto non sapevi se il bottone l'avevi preso.
+     I bottoni tondi e i chip si abbassano un poco, le righe si schiariscono. Solo
+     transform, opacita' e colore di fondo: non muove niente intorno. */
+  .rbtn,.compass,.chip,.btn,.qgo,.rrow .rbt,.rrow .rdel,.nav .x,.c3d,.setrow .setval{
+    transition:transform .16s cubic-bezier(.2,.9,.3,1.2),opacity .16s,background-color .16s}
+  .rbtn:active,.compass:active,.chip:active,.btn:active,.qgo:active,.rrow .rbt:active,
+  .rrow .rdel:active,.nav .x:active,.c3d:active,.setrow .setval:active{
+    transform:scale(.93);opacity:.82;transition-duration:.06s}
+  .setnav,.gcap,.results button{transition:background-color .16s}
+  .setnav:active,.gcap:active,.results button:active{background-color:var(--fondo3)}
+  /* BERSAGLI da almeno 44 px (la misura di Apple), a cominciare dalla X che ferma la
+     navigazione, che si tocca guidando ed era 32. */
+  .nav .x{width:44px;height:44px;border-radius:12px}
+  .chip{min-height:44px}
+  .gsel .chip{min-height:44px}
+  .rrow .rbt{min-height:44px}
+  .rrow .rdel{width:44px;height:44px}
+  .btn{min-height:46px}
+  .setrow .setval{min-height:44px;min-width:56px}
+  .search input{min-height:44px}
+  /* LETTURA: la velocita' era il numero di guida piu' piccolo (23 px contro i 31-36 di nota
+     e distanza), e alcune etichette scendevano a 8,5 px. */
+  .tile .v{font-size:29px}
+  .tile small{font-size:11px}
+  .note .gear small,.note .dist small{font-size:10.5px}
+  .nav .eta small,.results .k,.brand .sub{font-size:11px}
+
+  /* ======== ERGONOMIA · priorita' 3: rifiniture (19/09/2026) ======== */
+  /* Il banner del navigatore tagliava la frase («avvia il GPS per avere le i…»): ora va a
+     capo su due righe al massimo. */
+  .nav .via{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.25}
+  /* La tendina dei risultati passava sotto la colonna dei bottoni e sotto il banner. */
+  .top{z-index:8}
+  /* In orizzontale i bottoni finivano sotto la tacca dell'iPhone: mancavano i margini
+     sicuri di sinistra e destra. */
+  .top{left:max(8px,env(safe-area-inset-left))}
+  .rightcol{right:max(8px,env(safe-area-inset-right))}
+  .hud{left:max(8px,env(safe-area-inset-left))}
+  .nav{left:max(8px,env(safe-area-inset-left))}
+  /* Schede delle auto: due per riga invece di tre, con piu' aria per leggere. */
+  #carChips .chip{min-width:calc(50% - 4px)}
+  /* Velocita' oltre il limite: colori per tema, perche' l'arancione su bianco al sole
+     non si leggeva. */
+  :root{--vsopra:#ff8a1e;--vfuori:#ff4438}
+  :root[data-tema="chiaro"]{--vsopra:#b85400;--vfuori:#c62828}
+
+  /* ======== ERGONOMIA · priorita' 2: movimento in stile iOS (19/09/2026) ========
+     Regola di casa: solo transform e opacity, niente altezze o posizioni che si
+     muovono, niente blur. Non pesano sulla memoria e non fanno scattare la mappa. */
+  @keyframes cdSu{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @keyframes cdGiu{from{transform:translateY(0)}to{transform:translateY(105%)}}
+  @keyframes cdAppare{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  @keyframes cdToast{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+  @keyframes cdFade{from{opacity:0}to{opacity:1}}
+  /* I pannelli salgono con la curva a molla dei fogli di iOS e scendono piu' in fretta. */
+  .sheet.show{animation:cdSu .38s cubic-bezier(.32,.72,0,1)}
+  .sheet.esce{animation:cdGiu .22s cubic-bezier(.4,0,1,1) forwards}
+  /* Dietro un pannello aperto la mappa si scurisce appena: dice che il pannello e' sopra
+     e che toccando fuori si chiude. Non intercetta i tocchi. */
+  .velo-foglio{position:fixed;inset:0;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;
+    transition:opacity .3s ease;z-index:19}
+  .velo-foglio.on{opacity:1}
+  .nav.show{animation:cdAppare .22s ease-out}
+  .results.show{animation:cdAppare .16s ease-out}
+  .toast.show{animation:cdToast .24s cubic-bezier(.2,.9,.3,1)}
+  /* La nota della curva e' informazione di guida: niente movimento e quasi niente attesa. */
+  .note.show{animation:cdFade .09s linear}
+  /* Cambio di tema (anche da solo alle 7:00 e alle 19:30): i pannelli sfumano. */
+  .sheet,.nav,.tile,.toast,.top,.search input{transition:background-color .3s,border-color .3s,color .3s}
+  /* Chi ha chiesto meno movimento nelle impostazioni del telefono non ha animazioni. */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+      transition-duration:.01ms !important}
+  }
 </style>
 
 <canvas id="map"></canvas>
@@ -958,7 +1041,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 </div></div>
 
 <div class="sheet" id="sheetMaps"><div class="inner">
-  <div class="grab"></div>
+  <div class="grip"></div>
   <h2><span data-lang="it">Mappe</span><span data-lang="en">Maps</span><span data-lang="fr">Cartes</span></h2>
   <p data-lang="it">Scarica le regioni che ti servono: restano sul telefono e funzionano
     <b>senza rete</b>. Quelle <b>attive</b> vengono caricate all'avvio — tienine poche,
@@ -996,7 +1079,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '278';
+const APPVER = '279';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -2005,6 +2088,11 @@ function contaUscite(archi, kDa, kA){
     const a=archi[k], jn = a.verso>0 ? a.e.j1 : a.e.j0;
     for(const id of (JUN.get(jn)||[])){
       if(anello.has(id)) continue;
+      /* Un altro arco marcato rotatoria, su un anello marcato, e' ancora la rotatoria:
+         una corsia parallela o un ramo doppio dell'anello, non una strada che esce.
+         Contato come uscita, a Piazzale Gorini (Milano) la seconda diventava la terza
+         (19/09/2026, bug #21). */
+      if(ROTONDA.has(id) && ROTONDA.has(a.e.id)) continue;
       if(!percorribile(E[id], jn)) continue;      // di lì non si esce: non è un'uscita
       n++; break;
     }
@@ -2181,6 +2269,39 @@ function costruisciManovre(archi){
     }
     man.push(x);
     if(!x.silente) iu=man.length-1;
+  }
+  /* ROTATORIE MARCATE: UN GIRO, UNA FRASE (19/09/2026, bug #21, un tester in Lombardia:
+     «le rotonde me le legge al contrario»). La fusione qui sopra misura i 45 m dalla
+     PRIMA manovra del gruppo, e su un anello grande le giunzioni dopo stanno oltre: su
+     20 rotatorie grandi della Lombardia (fino a 678 m di giro), entrando e prendendo
+     dalla 1ª alla 6ª uscita, solo 1 percorso su 98 dava una frase sola col numero
+     giusto. Gli altri si spezzavano («alla rotatoria la prima uscita», poi sull'anello
+     «la seconda uscita» quando era la terza) o uscivano come «tieni la destra».
+     Dove OSM marca l'anello (`ROTONDA`) non serve indovinare: ogni passaggio su archi
+     marcati diventa UNA manovra, all'ingresso, con la direzione netta fra la strada da
+     cui entri e quella in cui esci e l'uscita contata sull'anello (`contaUscite`).
+     Le manovre in mezzo spariscono (erano pezzi dello stesso gesto), le silenti restano
+     come sono. Gli anelli non marcati restano alla fusione di sopra.
+     Banco: co-driver-beta/proposte/rotonde-21/prova-uscite.js. */
+  for(let k=1; k<archi.length; k++){
+    if(!ROTONDA.has(archi[k].e.id) || ROTONDA.has(archi[k-1].e.id)) continue;
+    const kIn=k; let kOut=k;
+    while(kOut<archi.length && ROTONDA.has(archi[kOut].e.id)) kOut++;
+    k=kOut;
+    if(kOut>=archi.length) continue;          // il percorso finisce sull'anello: nessuna uscita
+    const pezzi = man.filter(x => !x.silente && x.k>=kIn && x.k<=kOut);
+    let u = pezzi[0];
+    if(!u){
+      u = {k:kIn, cum:c0[kIn], ang:0, tipo:null, via:'', silente:false};
+      let pos = man.findIndex(x => x.cum > u.cum); if(pos<0) pos = man.length;
+      man.splice(pos, 0, u);
+    }
+    for(const x of pezzi.slice(1)) man.splice(man.indexOf(x), 1);
+    u.ang = angDiff(hdIngresso(archi[kOut]), hdUscita(archi[kIn-1]));
+    u.tipo = tipoDaAngolo(u.ang);
+    u.rot = true; u.rampa = false; u.rotIn = kIn; u.k = kOut;
+    u.via = archi[kOut].e.via || u.via;
+    u.uscita = contaUscite(archi, kIn, kOut);
   }
   return {man, c0, tot:cum};
 }
@@ -4060,16 +4181,27 @@ function vTop(slope){
             lontano annunciare. Piu' bassa = si frena piu' dolce = si annuncia PRIMA.
    I due sono legati allo stile e non alla modalita' pacenote: la lunghezza della
    frase entra gia' da sola nel conto, tramite `parlato`. */
+/* MODALITA' ECO (19/09/2026, decisa da Tiago su proposta di un tester). Prende il posto
+   di «Tranquillo»: stessi margini in curva, nota 1 s prima per lasciar andare l'auto
+   senza frenare, e col cambio manuale la voce dice la marcia che conviene («in quinta»,
+   vedi `tickEco`). La chiave resta `calmo`, cosi' chi l'aveva scelto passa a Eco da solo.
+   SPENTA finche' Tiago non la annuncia col suo video: con `false` l'app e' identica a
+   prima, stile «Tranquillo» compreso. Per accenderla basta `true` e una build. */
+const ECO_ON = false;
 const STYLES = {
-  calmo:  {a:2.0, reaz:3.2, dec:2.2,
+  calmo:  {a:2.0, reaz:ECO_ON ? 4.2 : 3.2, dec:2.2,
            moto:{lean:20, reaz:3.6, dec:2.0,
              d_it:"Bagnato, buio, strada che non conosci, o semplicemente niente fretta: 20° di piega, un'andatura da passeggio. La voce arriva molto prima: in moto in piega non si frena, quindi la nota deve lasciarti il tempo di rallentare da dritto.",
              d_en:"Wet, dark, a road you do not know, or simply no hurry: 20° of lean, a strolling pace. The voice comes much earlier: on a bike you do not brake while leaned over, so the call must leave you time to slow down upright.",
              d_fr:"Mouillé, nuit, route inconnue, ou simplement pas pressé : 20° d'angle, une allure de balade. La voix arrive bien plus tôt : à moto on ne freine pas sur l'angle, donc l'annonce doit te laisser le temps de ralentir droit."},
-           nm_it:'Tranquillo', nm_en:'Calm', nm_fr:'Tranquille',
+           nm_it:ECO_ON ? 'Eco' : 'Tranquillo', nm_en:ECO_ON ? 'Eco' : 'Calm', nm_fr:ECO_ON ? 'Éco' : 'Tranquille',
            d_it:'Passeggeri a bordo, bagnato, buio, strada che non conosci. I numeri restano bassi apposta, e la voce avvisa prima.',
            d_en:'Passengers aboard, wet, dark, a road you do not know. The figures stay low on purpose, and the voice warns earlier.',
-           d_fr:'Passagers à bord, mouillé, nuit, route inconnue. Les chiffres restent bas exprès, et la voix prévient plus tôt.'},
+           d_fr:'Passagers à bord, mouillé, nuit, route inconnue. Les chiffres restent bas exprès, et la voix prévient plus tôt.',
+           ...(ECO_ON ? {
+           d_it:'Per consumare meno: margini larghi in curva, la nota arriva prima per lasciar andare l\'auto senza frenare e, col cambio manuale, la voce ti dice la marcia che conviene.',
+           d_en:'To use less fuel: wide margins in corners, the call comes earlier so you can coast instead of braking and, with a manual gearbox, the voice tells you the gear that pays.',
+           d_fr:'Pour consommer moins : marges larges en virage, l\'annonce arrive plus tôt pour laisser rouler la voiture sans freiner et, en boîte manuelle, la voix te dit le rapport qui convient.'} : {})},
   strada: {a:2.6, reaz:2.6, dec:3.0,
            moto:{lean:25, reaz:3.0, dec:2.6,
              d_it:"Andatura fluida da strada aperta: 25° di piega, margine per ghiaia, traffico e curve cieche. È il modo di tutti i giorni — e i numeri sono già quelli di un'auto in Race. Non è un invito: è come funziona una moto.",
@@ -5477,6 +5609,69 @@ function marciaDaDire(vRif){
   const vTuo = S.v*3.6;
   if(!(vTuo > GEAR_V_MIN)) return true;   // nessun passo da leggere: si dice, come sempre
   return vTuo >= vRif*GEAR_MUTO;
+}
+/* ============ LA MARCIA ECO (19/09/2026) ============
+   Scelte di Tiago, domanda strutturata: «in quinta», detto quando cambia la marcia
+   giusta ad andatura stabile, regimi profilo per profilo, curve come Tranquillo.
+   L'APP NON SA CHE MARCIA HAI INSERITO: sa la velocita'. Quindi non dice «cambia adesso»,
+   dice la marcia che conviene per l'andatura che tieni, e solo quando quella cambia.
+   IL MOTORE dal profilo, senza un campo apposta: un limitatore sotto i 5.300 giri e' un
+   diesel; una fascia di coppia che parte entro 2.600 e' un turbo benzina; il resto e'
+   un aspirato (o un turbo grosso che spinge tardi, che per il consumo si comporta cosi').
+   `min` e' il regime sotto cui il motore si trascina, `cambio` quello a cui conviene
+   salire di marcia.
+   L'ISTERESI e' tutta nei due numeri: si sale solo quando nella marcia di adesso passi
+   `cambio` e in quella dopo resti sopra `min`; si scende solo quando cadi sotto `min`.
+   Fra i due la raccomandazione non si muove, quindi non ripete a ogni oscillazione.
+   IN SALITA il minimo sale di 150 giri per punto di pendenza (al massimo +900): la
+   stessa marcia che in piano va bene, al 6% trascina. `S.pend` c'e' gia' dai sidecar.
+   QUANDO PARLA: andatura stabile da 3 s, mai in frenata, mai sotto 20 km/h, al massimo
+   una volta ogni 20 s, mai a 3 s da un'altra frase e mai se una nota di curva sta per
+   arrivare (le curve hanno la precedenza: `tickEco` gira DOPO `updateNote`). Niente
+   con l'automatico (`isAuto`), in moto (spenta) o fuori dallo stile Eco. */
+const ECO_V_MIN   = 20;      // km/h
+const ECO_OGNI_MS = 20000;
+const ECO_CURVA_S = 12;      // secondi di strada liberi da note di curva prima di parlare
+const ecoAttiva = () => ECO_ON && S.style==='calmo' && !isAuto() && !isMoto();
+function motoreEco(){
+  if(rpmLimOf() <= 5300) return {min:1300, cambio:2000};   // diesel
+  if(boostOf() <= 2600)  return {min:1400, cambio:2200};   // turbo benzina
+  return {min:1600, cambio:2500};                         // aspirato
+}
+function marciaEco(kmh, da){
+  const m = motoreEco(), n = gearKmh().length;
+  const min = m.min + Math.min(900, Math.max(0, (S.pend||0)*100)*150);
+  let g = (da>=1 && da<=n) ? da : null;
+  if(g==null){                                       // prima volta: la piu' lunga sopra il minimo
+    for(g=n; g>1 && rpmAt(kmh,g) < min; g--);
+    return g;
+  }
+  while(g>1 && rpmAt(kmh,g) < min) g--;
+  while(g<n && rpmAt(kmh,g) >= m.cambio && rpmAt(kmh,g+1) >= min) g++;
+  return g;
+}
+function tickEco(){
+  if(!ecoAttiva() || !S.audio || S.gpsBuco || !S.snap){ S.ecoG = S.ecoCand = null; S.ecoStoria = []; return }
+  const kmh = S.v*3.6, now = performance.now();
+  const st = S.ecoStoria || (S.ecoStoria = []);
+  st.push(S.v); if(st.length > 4) st.shift();
+  if(kmh < ECO_V_MIN){ S.ecoG = S.ecoCand = null; return }
+  const g = marciaEco(kmh, S.ecoG);
+  S.ecoG = g;
+  if(g !== S.ecoCand){ S.ecoCand = g; S.ecoCandN = 1 } else S.ecoCandN++;
+  // stabile: 3 s nella stessa marcia, niente frenata, velocita' ferma entro 3 m/s
+  const stabile = st.length >= 4 && S.ecoCandN >= 3 && (st[3]-st[0]) > -1.5
+                  && Math.max(...st) - Math.min(...st) <= 3;
+  if(!stabile || g === S.ecoDetta) return;
+  if(now - (S.ecoT||-1e9) < ECO_OGNI_MS || now - (S.lastSaid||-1e9) < 3000) return;
+  const a0 = S.ahead && S.ahead[0];
+  if(a0 && a0.inside) return;                         // in curva non si parla di marce
+  const av = S.ahead && S.ahead.find(z => !z.inside && !S.said.has(z.key) && !mutoQui(z)
+                                         && !piatta(z) && !troppoAmpia(z) && !sottoSoglia(z));
+  if(av && av.dist < S.v*ECO_CURVA_S + 100) return;   // la curva ha la precedenza
+  const ch = [L==='fr' ? 'e.passeen' : 'k.in', 'g.'+g];
+  if(!(VOCE.idx[L] && ch.every(k => VOCE.idx[L][k]))) return;   // clip mancante: si tace
+  if(dilo(ch, false) > 0){ S.ecoDetta = g; S.ecoT = now; S.lastSaid = now }
 }
 /* ============ L'ACCELEROMETRO ============
    Fino al 4/09/2026 la tenuta laterale era una COSTANTE INDOVINATA: 2,0 / 2,6 / 3,2 / 4,6
@@ -9662,17 +9857,17 @@ function feed(x,y,hd,v,acc){
     limSign.style.opacity=lim.sure?1:0.72;
     limSign.style.borderStyle=lim.sure?'solid':'dashed';   // inferito = bordo tratteggiato
     // soglie stile TomTom/Waze: arancione fino a +5, rosso oltre
-    speedV.style.color = kmhNow>lim.v+5 ? '#ff4438' : kmhNow>lim.v ? '#ff8a1e' : '';
+    speedV.style.color = kmhNow>lim.v+5 ? 'var(--vfuori)' : kmhNow>lim.v ? 'var(--vsopra)' : '';
   } else if(S.local){
     // strada locale: in Italia dentro il centro abitato sono 50, sempre dedotto
     limSign.textContent='~50'; limSign.style.opacity=0.72; limSign.style.borderStyle='dashed';
-    speedV.style.color = kmhNow>55 ? '#ff4438' : kmhNow>50 ? '#ff8a1e' : '';
+    speedV.style.color = kmhNow>55 ? 'var(--vfuori)' : kmhNow>50 ? 'var(--vsopra)' : '';
   } else { limSign.textContent='—'; limSign.style.opacity=0.5; speedV.style.color=''; }
   /* La targhetta con la classe della strada («Provinciale») e' stata tolta su
      richiesta di Tiago: diceva a chi guida qualcosa che ha gia' sotto gli occhi
      dal finestrino, e rubava la riga sopra i numeri che invece contano. Le voci
      tr().roads/roadLocal/roadOff restano: le usa la legenda. */
-  updateNote(); S.need=true;
+  updateNote(); tickEco(); S.need=true;
 }
 /* Velocità che la curva davanti regge, con l'auto e lo stile scelti ADESSO.
 
@@ -10124,8 +10319,12 @@ const sheets={set:document.getElementById('sheetSet'),car:document.getElementByI
 const sheetMaps=document.getElementById('sheetMaps'); if(sheetMaps) sheets.maps=sheetMaps;
 const bMaps=document.getElementById('bMaps');
 if(bMaps && sheetMaps){ bMaps.hidden=false; bMaps.onclick=()=>openSheet('maps'); }
+/* iOS Safari accende :active solo se qualcuno ascolta touchstart (ERGONOMIA, 19/09). */
+document.addEventListener('touchstart', ()=>{}, {passive:true});
+const veloFoglio = document.body.appendChild(Object.assign(document.createElement('div'),{className:'velo-foglio'}));
 function openSheet(k){
-  for(const n in sheets) sheets[n].classList.toggle('show',n===k);
+  for(const n in sheets){ sheets[n].classList.remove('esce'); sheets[n].classList.toggle('show',n===k); }
+  veloFoglio.classList.toggle('on', !!sheets[k]);
   if(k==='info') mostraPerf();
 }
 /* Aggiorna il dato mentre il pannello è aperto: da fermi il sistema rallenta i
@@ -10165,13 +10364,22 @@ function mostraRegistro(){
   el.hidden = !righe.length;
   el.textContent = righe.length ? tr().logTit+'\n'+righe.join('\n') : '';
 }
-function closeSheets(){
+function closeSheets(subito){
   /* Chiudere il pannello Mappe è anche il momento in cui si APPLICA quello che si è
      scelto dentro: vedi `applicaMappe()`. Va fatto qui e non sul solo bottone Fatto,
      perché da un foglio si esce in tre modi — bottone, tocco fuori, Esc — e uscire
      dalla porta di servizio non deve lasciare l'app con mappe accese a metà. */
   const eraMappe = sheets.maps && sheets.maps.classList.contains('show');
-  for(const n in sheets) sheets[n].classList.remove('show');
+  /* Il pannello scende invece di sparire (ERGONOMIA, 19/09). `subito`: quando la
+     discesa l'ha gia' fatta il dito (trascinamento), o con il movimento ridotto. */
+  const ridotto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for(const n in sheets){
+    const el=sheets[n]; if(!el.classList.contains('show')) continue;
+    if(subito || ridotto){ el.classList.remove('show','esce'); continue }
+    el.classList.add('esce');
+    setTimeout(()=>{ if(el.classList.contains('esce')) el.classList.remove('show','esce') }, 220);
+  }
+  veloFoglio.classList.remove('on');
   if(eraMappe) applicaMappe();
 }
 /* su iOS Safari `position:fixed;bottom:0` finisce sotto la barra del browser: riservo lo
@@ -10231,7 +10439,7 @@ addEventListener('keydown',e=>{
     el.style.transition='transform .22s ease-out';
     if(via){
       el.style.transform='translateY('+(h+40)+'px)';
-      setTimeout(()=>{ closeSheets(); rilascia(el) }, 220);
+      setTimeout(()=>{ closeSheets(true); rilascia(el) }, 220);
     } else {
       el.style.transform='translateY(0)';
       setTimeout(()=>rilascia(el), 230);

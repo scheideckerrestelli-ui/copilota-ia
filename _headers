@@ -10,8 +10,22 @@
 # `must-revalidate` costa un 304 per richiesta e vale il prezzo: qui si pubblica
 # per cambiare quello che la gente legge, e una pubblicazione che arriva fra
 # sette giorni non e' una pubblicazione.
+# Intestazioni di sicurezza (19/09/2026, chieste da «CD · Legale e mercato», si' di
+# Tiago; dettagli in co-driver-beta/legale/sicurezza-e-conformita.md):
+# - posizione solo a noi, fotocamera e microfono spenti (l'app non li usa);
+# - nessun sito puo' mettere l'app o il modulo dentro un suo riquadro. Va in una
+#   intestazione BLOCCANTE a parte, perche' in Report-Only frame-ancestors e' ignorato;
+# - la politica completa per ora SEGNALA soltanto (console del browser), non blocca:
+#   l'app ha molto codice in linea. Diventa bloccante solo con la console pulita su
+#   app, modulo, installazione dalla Home, invio del rapporto e download delle mappe.
 /*
   Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=()
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Frame-Options: DENY
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' data: blob:; connect-src 'self' https://docs.google.com; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self' https://docs.google.com; object-src 'none'; frame-ancestors 'none'
 
 # Le clip vocali sono l'eccezione: 3,5 MB che non cambiano mai senza cambiare
 # nome, e su rete mobile riscaricarle a ogni giro sarebbe un danno vero.
