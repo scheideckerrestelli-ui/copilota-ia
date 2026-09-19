@@ -409,6 +409,26 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .legend .lrow b{min-width:70px;color:var(--ink);font-weight:600}
   .legend .lrow span{color:var(--ink2)}
 
+  /* SEGNALAZIONI DALLA BUSSOLA (ordine di Tiago, 19/09). Bersagli grandi: si toccano
+     da fermi, ma anche col telefono sul supporto, quindi 76 px e due per riga. */
+  .segn-testa{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .segn-testa h2{margin:0}
+  .segn-nord{width:auto;height:40px;padding:0 14px;font-size:13px;white-space:nowrap}
+  .segn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 10px}
+  .segn-b{min-height:76px;border-radius:14px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);font-family:var(--font-b);font-size:15px;
+    font-weight:600;line-height:1.25;padding:10px;cursor:pointer;
+    transition:transform .12s ease,filter .12s ease}
+  .segn-b:active{transform:scale(.97);filter:brightness(1.25)}
+  .segn-b:disabled{opacity:.4;cursor:default}
+  .segn-b[hidden]{display:none}
+  /* Numero dispari di voci (oggi tre, quando la voce autovelox non si puo' mostrare):
+     l'ultima prende tutta la riga invece di restare mezza vuota. Vale anche il giorno in
+     cui le voci diventano cinque. */
+  .segn-grid.dispari .segn-b:last-of-type{grid-column:1/-1}
+  .segn-stato{color:var(--ink2);font-size:13px;margin-top:6px}
+  .segn-nota a{color:var(--accent)}
+  @media (prefers-reduced-motion:reduce){ .segn-b{transition:none} .segn-b:active{transform:none} }
   .toast{position:fixed;left:50%;top:max(62px,calc(var(--alto) + 54px));
     transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);
     border-radius:10px;padding:9px 14px;font-size:12.5px;width:max-content;max-width:88vw;display:none;z-index:30;
@@ -896,6 +916,25 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <button class="btn" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span><span data-lang="fr">Fermer</span></button>
 </div></div>
 
+<!-- segnalazioni dalla bussola · il foglio esce solo con SEGNALA_ON -->
+<div class="sheet" id="sheetSegna"><div class="inner">
+  <div class="grip"></div>
+  <div class="segn-testa">
+    <h2><span data-lang="it">Segnala qui</span><span data-lang="en">Report here</span><span data-lang="fr">Signale ici</span></h2>
+    <button class="rbtn segn-nord" id="segnNord" type="button"><span data-lang="it">Nord in alto</span><span data-lang="en">North up</span><span data-lang="fr">Nord en haut</span></button>
+  </div>
+  <p class="segn-stato" id="segnStato" hidden></p>
+  <div class="segn-grid">
+    <button class="segn-b" type="button" data-cosa="autovelox" id="segnVelox"><span data-lang="it">Autovelox fisso</span><span data-lang="en">Fixed speed camera</span><span data-lang="fr">Radar fixe</span></button>
+    <button class="segn-b" type="button" data-cosa="dosso"><span data-lang="it">Dosso</span><span data-lang="en">Speed bump</span><span data-lang="fr">Dos-d’âne</span></button>
+    <button class="segn-b" type="button" data-cosa="dissestata"><span data-lang="it">Strada dissestata</span><span data-lang="en">Damaged road</span><span data-lang="fr">Route dégradée</span></button>
+    <button class="segn-b" type="button" data-cosa="altro"><span data-lang="it">Altro</span><span data-lang="en">Other</span><span data-lang="fr">Autre</span></button>
+  </div>
+  <p class="disc segn-nota"><span data-lang="it">Parte il punto, con direzione, velocità arrotondata, ora e il tuo codice tester.</span><span data-lang="en">Sends the point, with direction, rounded speed, time and your tester code.</span><span data-lang="fr">Envoie le point, avec direction, vitesse arrondie, heure et ton code testeur.</span>
+    <a href="https://codriver.pages.dev/beta#privacy" target="_blank" rel="noopener"><span data-lang="it">Informativa</span><span data-lang="en">Privacy</span><span data-lang="fr">Confidentialité</span></a></p>
+  <button class="btn" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span><span data-lang="fr">Fermer</span></button>
+</div></div>
+
 <!-- info -->
 <div class="sheet" id="sheetInfo"><div class="inner">
   <div class="grip"></div>
@@ -921,8 +960,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>La voce parla <b>solo con la suoneria attiva</b>: se il telefono è in silenzioso o in
       vibrazione non la senti. Su iPhone guarda l'interruttore laterale (o il tasto Azione).</li>
     <li>La mappa si <b>corica a due dita</b>: appoggiane due e falle scorrere su e giù, come su
-      Google Maps. Ruotandole giri la mappa; la <b>bussola</b> rimette nord in alto e la mappa a
-      piombo in un tocco. Da molto lontano la vista torna piatta da sola — inclinata non
+      Google Maps. Ruotandole giri la mappa; la <b>bussola</b> apre le segnalazioni, e lì dentro
+      c'è <b>Nord in alto</b>, che rimette la mappa dritta e a piombo in un tocco. Da molto lontano la vista torna piatta da sola — inclinata non
       servirebbe a niente e costerebbe soltanto.</li>
     <li class="solo3d">Il bottone <b>3D</b> corica la mappa, e in guida regola anche lo zoom da solo. Non segue la
       velocità come fanno i navigatori: comanda la <b>curva che arriva</b>. Sul veloce si corica e
@@ -942,8 +981,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>The voice only speaks <b>with the ringer on</b>: if your phone is on silent or vibrate
       you won't hear it. On iPhone, check the side switch (or the Action button).</li>
     <li>Tilt the map with <b>two fingers</b>: put two down and slide them up or down, the way
-      Google Maps does it. Twist them to rotate; the <b>compass</b> puts north back up and the map
-      back flat in one tap. Zoomed far out the view flattens on its own — tilted it would show
+      Google Maps does it. Twist them to rotate; the <b>compass</b> opens the reports, and inside it there is
+      <b>North up</b>, which puts north back up and the map back flat in one tap. Zoomed far out the view flattens on its own — tilted it would show
       nothing and cost plenty.</li>
     <li class="solo3d">The <b>3D</b> button tilts the map, and while driving it sets the zoom too. It does not
       follow speed the way satnavs do: the <b>corner ahead</b> is what rules. Fast and open, it
@@ -963,8 +1002,8 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     <li>La voix ne parle <b>qu'avec la sonnerie activée</b> : si le téléphone est en silencieux
       ou en vibreur, tu ne l'entends pas. Sur iPhone, regarde le bouton latéral (ou le bouton Action).</li>
     <li>La carte <b>s'incline à deux doigts</b> : pose-les et fais-les glisser de haut en bas, comme
-      sur Google Maps. En les tournant, tu tournes la carte ; la <b>boussole</b> remet le nord en
-      haut et la carte à plat en un geste. Vue de très loin, la carte redevient plate toute seule —
+      sur Google Maps. En les tournant, tu tournes la carte ; la <b>boussole</b> ouvre les signalements, et
+      dedans il y a <b>Nord en haut</b>, qui remet le nord en haut et la carte à plat en un geste. Vue de très loin, la carte redevient plate toute seule —
       inclinée elle ne servirait à rien et coûterait pour rien.</li>
     <li class="solo3d">Le bouton <b>3D</b> incline la carte, et en conduite il règle aussi le zoom tout seul. Il ne
       suit pas la vitesse comme le font les GPS : c'est le <b>virage à venir</b> qui commande. En
@@ -1072,7 +1111,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      esattamente il caso in cui divergere non e' un fastidio ma un problema. -->
 <div class="termini" id="termini" hidden>
   <div class="tbox">
-    <div class="ttesto" id="tTesto"><h1>Termini e condizioni della beta di Co-Driver — v4, 16 settembre 2026</h1><ol><li><b>Che cos'è.</b> Co-Driver è un'applicazione web in versione <b>beta</b>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li><li><b>Ausilio informativo. Non un dispositivo di sicurezza, non un navigatore.</b> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <b>informazioni di supporto</b>, non istruzioni di guida né valutazioni della velocità sicura, e non sostituiscono la tua attenzione né il tuo giudizio: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. <b>Gli occhi restano sulla strada</b>, non sullo schermo: tutto quello che serve arriva a voce proprio perché guardare non serva. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada. Gli annunci sono <b>stime generate da un calcolatore</b>: possono essere sbagliati, arrivare <b>in ritardo o in anticipo</b>, oppure <b>non arrivare affatto</b>. Guidare contando sul fatto che la voce parlerà è un uso improprio: la curva va guardata comunque.</li><li><b>Guidi tu: assunzione di rischio.</b> L'uso dell'app avviene <b>a tuo esclusivo rischio</b>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <b>prevalgono sempre</b> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata. <b>Co-Driver non va usata per gareggiare, per cronometrarsi o per inseguire prestazioni su strada aperta</b>, in nessuna forma e con nessuno strumento. Serve a sapere prima cosa ti aspetta, così da rallentare in tempo: l'app non assegna primati, non tiene classifiche e non premia la velocità, e usarla per quello è una violazione di questi termini oltre che, quasi sempre, del codice della strada.</li><li><b>Obblighi di legge.</b> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <b>fissato a un supporto</b> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li><li><b>Dati non garantiti.</b> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li><li><b>Limitazione di responsabilità.</b> <b>Nella misura massima consentita dalla legge applicabile</b>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li><li><b>Dove si usa.</b> L'uso previsto è <b>in auto, in Italia, in Belgio e in Bretagna (Francia)</b>. In Francia gli avvisi autovelox sono vietati dalla legge: per la Bretagna l'app <b>non contiene alcun dato autovelox</b>, di proposito. Fuori da questi territori l'app non va usata: in particolare gli avvisi autovelox sono vietati anche in Germania e in Svizzera.</li><li><b>I tuoi feedback.</b> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <b>solo con il tuo permesso esplicito</b>, caso per caso.</li><li><b>Statistiche d'uso.</b> A fine sessione l'app invia automaticamente un rapporto con misure d'uso (durata, minuti di voce, chilometri, numero di annunci, codici di malfunzionamento, versione dell'app e del sistema, dimensioni dello schermo) e il tuo identificativo di tester. <b>Non viene inviata la posizione</b>, in nessuna forma. Il dettaglio sta nell'informativa sulla pagina beta.</li><li><b>Gratis ora, a pagamento poi.</b> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li><li><b>Durata e modifiche.</b> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li></ol><p><b>In una riga: sapere prima serve a frenare prima.</b></p><p><b>Privacy in una riga</b> (informativa completa sulla pagina beta): i dati del modulo servono solo a gestire la beta, l'app manda statistiche d'uso a fine sessione e <b>la posizione GPS resta sul telefono</b> — quella non la invia a nessun server.</p></div>
+    <div class="ttesto" id="tTesto"><h1>Termini e condizioni della beta di Co-Driver — v5, 20 settembre 2026</h1><ol><li><b>Che cos'è.</b> Co-Driver è un'applicazione web in versione <b>beta</b>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li><li><b>Ausilio informativo. Non un dispositivo di sicurezza, non un navigatore.</b> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <b>informazioni di supporto</b>, non istruzioni di guida né valutazioni della velocità sicura, e non sostituiscono la tua attenzione né il tuo giudizio: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. <b>Gli occhi restano sulla strada</b>, non sullo schermo: tutto quello che serve arriva a voce proprio perché guardare non serva. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada. Gli annunci sono <b>stime generate da un calcolatore</b>: possono essere sbagliati, arrivare <b>in ritardo o in anticipo</b>, oppure <b>non arrivare affatto</b>. Guidare contando sul fatto che la voce parlerà è un uso improprio: la curva va guardata comunque.</li><li><b>Guidi tu: assunzione di rischio.</b> L'uso dell'app avviene <b>a tuo esclusivo rischio</b>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <b>prevalgono sempre</b> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata. <b>Co-Driver non va usata per gareggiare, per cronometrarsi o per inseguire prestazioni su strada aperta</b>, in nessuna forma e con nessuno strumento. Serve a sapere prima cosa ti aspetta, così da rallentare in tempo: l'app non assegna primati, non tiene classifiche e non premia la velocità, e usarla per quello è una violazione di questi termini oltre che, quasi sempre, del codice della strada.</li><li><b>Obblighi di legge.</b> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <b>fissato a un supporto</b> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li><li><b>Dati non garantiti.</b> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li><li><b>Limitazione di responsabilità.</b> <b>Nella misura massima consentita dalla legge applicabile</b>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li><li><b>Dove si usa.</b> L'uso previsto è in auto. Le mappe disponibili coprono <b>Italia, Francia, Spagna, Belgio e Gran Bretagna</b>: dentro l'app vedi l'elenco esatto delle regioni scaricabili, che è l'unico elenco che conta. Fuori da questi territori l'app non va usata. Gli avvisi di autovelox seguono la legge del paese, e non sono una tua impostazione dove la legge non lo permette: · Italia, Spagna e Belgio: gli avvisi ci sono. Puoi spegnerli quando vuoi. · Francia: gli avvisi di posizione degli autovelox sono vietati (art. R413-15 del code de la route). Le mappe francesi non contengono alcun dato autovelox, di proposito, e non è possibile attivarli. · Gran Bretagna: gli avvisi sarebbero leciti, ma oggi le mappe britanniche non contengono dati autovelox. Non contarci. L'app non è destinata all'uso in Germania e in Svizzera, dove i dispositivi che avvisano dei controlli di velocità sono vietati (§23 Abs. 1c StVO in Germania, art. 98a LCStr in Svizzera): lì il divieto riguarda la funzione in sé, non il fatto di sentirla. Se guidi in quei paesi, non usare Co-Driver.</li><li><b>I tuoi feedback.</b> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <b>solo con il tuo permesso esplicito</b>, caso per caso.</li><li><b>Statistiche d'uso.</b> A fine sessione l'app invia automaticamente un rapporto con misure d'uso (durata, minuti di voce, chilometri, numero di annunci, codici di malfunzionamento, versione dell'app e del sistema, dimensioni dello schermo) e il tuo identificativo di tester. Nei rapporti d'uso <b>non viene inviata la posizione</b>, in nessuna forma. La posizione parte solo quando mandi tu una segnalazione dalla bussola. Il dettaglio sta nell'informativa sulla pagina beta.</li><li><b>Gratis ora, a pagamento poi.</b> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li><li><b>Durata e modifiche.</b> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li></ol><p><b>In una riga: sapere prima serve a frenare prima.</b></p><p><b>Privacy in una riga</b> (informativa completa sulla pagina beta): i dati del modulo servono solo a gestire la beta, l'app manda statistiche d'uso a fine sessione e <b>la posizione GPS resta sul telefono</b>: parte solo quando mandi tu una segnalazione dalla bussola.</p></div>
     <button class="btn" id="tOk">Ho letto e accetto</button>
   </div>
 </div>
@@ -1088,7 +1127,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '283';
+const APPVER = '284';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -1217,6 +1256,11 @@ const altUrl = r => scUrl(r, SIDECAR[2]);
    semplicemente non ci sono, cioe' com'era prima. */
 const dosUrl = r => scUrl(r, SIDECAR[3]);
 const camsUrl = r => scUrl(r, SIDECAR[4]);
+/* Ottavo sidecar (19/09/2026): stp-<reg>.json porta gli STOP e i DARE PRECEDENZA, con
+   lo scostamento sull'arco e il verso di marcia a cui valgono. Lo calcola `stop.py`,
+   stessa guardia sha+firma dei dossi. Si cerca per nome e non per posizione: la riga
+   di `case`, riaccesa, cadrebbe prima e sposterebbe l'indice. */
+const stpUrl = r => scUrl(r, SIDECAR.find(s => s.url === 'stp'));
 /* Sesto sidecar: bas-<reg>.json e' lo SFONDO — acqua, verde, aree urbane. Serve a
    togliere il nero ai lati della strada, che non e' una questione di bellezza:
    senza niente attorno non si distingue un lago da un bosco da un paese, e la
@@ -1266,6 +1310,7 @@ const SIDECAR = [
   {url:'dos',  ver:'dv',  peso:'db',  ok:j=>!!j.d},
   {url:'cams', ver:'csv', peso:'csb', ok:j=>Array.isArray(j.c)},
   {url:'bas',  ver:'bsv', peso:'bsb', ok:j=>!!(j.a||j.v||j.u)},
+  {url:'stp',  ver:'spv', peso:'spb', ok:j=>typeof j.s === 'string'},
   /* `case` sta fuori dalla tavola finche' `CASE_ON` e' false: e' il sidecar piu'
      grosso di tutti e scaricarlo per non usarlo sarebbe 168 MB di banda per niente.
      Riaccendendolo va rimessa QUESTA riga insieme a `CASE_ON`. */
@@ -2683,6 +2728,34 @@ function preparaDos(j, r){
   console.log('dossi', r.id+':', tot, 'su', m.size, 'archi');
   return m;
 }
+/* ============ stop e dare precedenza (19/09/2026) ============
+   Stesso flusso dei dossi, ma ogni cartello porta DUE numeri: lo scostamento e un
+   codice = tipo*3 + verso, con tipo 0 stop / 1 precedenza e verso 0 entrambi /
+   1 chi va da j0 a j1 / 2 chi va da j1 a j0. Il verso e' tutto il senso del dato: lo
+   stop sulla via minore vale per chi arriva all'incrocio, non per chi ne esce.
+   Per arco: Int32Array [scostamento, codice, scostamento, codice, ...]. */
+let RSTP = null;
+function preparaStp(j, r){
+  if(!j || typeof j.s !== 'string' || !j.meta) return null;
+  if(j.meta.sha && r.v && j.meta.sha !== r.v){
+    console.warn('stop scartati: sidecar di un altro dataset', j.meta.sha, '≠', r.v); return null }
+  const f = j.meta.firma, mio = [RAW.edges.length, RAW.meta.nJn, RAW.meta.nCurve, RAW.meta.gen];
+  if(!f || f.length!==mio.length || f.some((v,i)=>v!==mio[i])){
+    console.warn('stop scartati: dataset di un\'altra generazione', f, '≠', mio); return null }
+  const v = decodeInts(j.s), m = new Map();
+  let i=0, arco=-1, tot=0;
+  while(i < v.length){
+    arco += v[i++];
+    const k = v[i++];
+    if(!(k>0) || i+2*k > v.length) break;
+    const a = new Int32Array(2*k);
+    let o = 0;
+    for(let q=0;q<k;q++){ o += v[i++]; a[2*q] = o; a[2*q+1] = v[i++] }
+    m.set(arco, a); tot += k;
+  }
+  console.log('stop', r.id+':', tot, 'su', m.size, 'archi');
+  return m;
+}
 /* ============ autovelox staccati ============
    Stesso motivo dei dossi e delle quote: gli autovelox invecchiano in SETTIMANE,
    il resto della regione in anni, e finche' stanno dentro `data-<reg>.json` un
@@ -3101,6 +3174,7 @@ function buildEdges(rid, map){
     /* I dossi si agganciano per INDICE DI ARCO scritto nel flusso, non per
        posizione: un arco saltato qui sopra non sposta niente. */
     const dosArr = RDOS ? (RDOS.get(k) || null) : null;
+    const stpArr = RSTP ? (RSTP.get(k) || null) : null;     // stop e precedenze, stessa regola
     const rifIdx     = arr.length>11 ? arr[11] : -1;
     const rotondaTag = arr.length>12 ? arr[12] : 0;
     /* 13 = andamento: quali curve SI STRINGONO e di quanto. Coppie appiattite
@@ -3160,7 +3234,7 @@ function buildEdges(rid, map){
        vuol dire «non ancora calcolate», `null` «questo arco non ha quota»: due stati
        diversi, se no si riproverebbe a ogni fotogramma sugli archi in galleria. */
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
-               zb:RALT?RALT.z:null, zo, zn, zs:undefined, dos:dosArr,
+               zb:RALT?RALT.z:null, zo, zn, zs:undefined, dos:dosArr, stp:stpArr,
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                // il nome sta nel dizionario della sua regione, non in un campo per arco
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : '',
@@ -4447,6 +4521,9 @@ const T = {
     tooMuch:mb=>'Molte mappe accese: con tante regioni l\'app può chiudersi da sola mentre guidi. Tieni accese solo quelle dove vai: spegnerle non le cancella, restano sul telefono.',
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
+    segnNoGps:'Serve la posizione: accendi il GPS e aspetta l\'aggancio.',
+    segnFatto:'✓ Segnalato, grazie! · Tocca per annullare',
+    segnAnnullata:'Segnalazione annullata.',
     voceSilenzio:'Non senti la voce? Controlla che il telefono non sia in silenzioso o in vibrazione.',
     garNuova:n=>'🏁 La tua '+(n||'auto')+' è entrata nel garage',
     garRipiego:n=>'Questa ('+n+') è un\'auto di partenza simile alla tua: il link è arrivato tagliato. Chiedi di nuovo il tuo link in DM, oppure incollalo intero in «Ho un link nuovo», nel pannello dell\'auto.',
@@ -4538,6 +4615,9 @@ const T = {
     tooMuch:mb=>'Many maps switched on: with lots of regions the app can close by itself while you drive. Keep on only the ones you are heading to: switching them off does not delete them, they stay on the phone.',
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
+    segnNoGps:'Position needed: turn the GPS on and wait for a fix.',
+    segnFatto:'✓ Reported, thanks! · Tap to undo',
+    segnAnnullata:'Report cancelled.',
     voceSilenzio:'Can\'t hear the voice? Make sure your phone is not on silent or vibrate.',
     garNuova:n=>'🏁 Your '+(n||'car')+' is now in your garage',
     garRipiego:n=>'This ('+n+') is a starter car similar to yours: your link arrived cut short. Ask for your link again by DM, or paste it whole in “I have a new link”, in the car panel.',
@@ -4626,6 +4706,9 @@ const T = {
     tooMuch:mb=>'Beaucoup de cartes allumées : avec beaucoup de régions, l\'app peut se fermer toute seule pendant que tu conduis. N\'allume que celles où tu vas : les éteindre ne les supprime pas, elles restent sur le téléphone.',
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
+    segnNoGps:'La position est nécessaire : active le GPS et attends le point.',
+    segnFatto:'✓ Signalé, merci ! · Touche pour annuler',
+    segnAnnullata:'Signalement annulé.',
     voceSilenzio:'Tu n\'entends pas la voix ? Vérifie que le téléphone n\'est pas en silencieux ou en vibreur.',
     garNuova:n=>'🏁 Ta '+(n||'voiture')+' est entrée dans ton garage',
     garRipiego:n=>'Celle-ci ('+n+') est une voiture de départ proche de la tienne : ton lien est arrivé coupé. Redemande ton lien en DM, ou colle-le en entier dans « J\'ai un nouveau lien », dans le panneau de la voiture.',
@@ -8199,7 +8282,7 @@ function curvaSpezzata(prec, e, dir, c, dist){
   return (destra ? -svolta : svolta) >= -SPEZZATA_CONTRO;
 }
 function buildAhead(){
-  S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[]; S.aheadRot=null; S.aheadSvolte=new Set();
+  S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[]; S.aheadRot=null; S.aheadSvolte=new Set(); S.aheadStop=[];
   const sn=S.snap; if(!sn){ S.pend=0; S.quota=null; return }
   const HORIZON = Math.max(420, Math.min(1100, S.v*11 + 260));
   let e=sn.e, dir=sn.dir, d0=distAlong(e,sn.i,sn.t), acc=0, hops=0;
@@ -8241,6 +8324,32 @@ function buildAhead(){
     const ultimo = kk>=0 && S.nav && kk===S.nav.archi.length-1;
     let arrivo = null;
     if(ultimo && S.nav.dest){ const pd=projectOn(e, S.nav.dest.x, S.nav.dest.y); arrivo=distAlong(e, pd.i, pd.t) }
+    /* Stop e precedenze davanti, solo quelli che valgono nel NOSTRO verso (vedi
+       `preparaStp`). In rotatoria si tace (scelta di Tiago, 19/09): li' parla il
+       navigatore, e senza percorso alla rotatoria c'e' silenzio dal 17/09. Rotatoria
+       = il cartello sta sull'anello, o l'incrocio a cui porta ha un arco d'anello. */
+    if(e.stp){
+      const jv = dir>0 ? e.j1 : e.j0;
+      const rot = ROTONDA.has(e.id) || (JUN.get(jv)||[]).some(id => ROTONDA.has(id));
+      for(let q=0; !rot && q<e.stp.length; q+=2){
+        const o = e.stp[q], cod = e.stp[q+1], vs = cod%3;
+        if(vs===1 ? dir<0 : vs===2 ? dir>0 : false) continue;
+        if(arrivo!=null && (dir>0 ? o>arrivo : o<arrivo)) continue;
+        const ahead = dir>0 ? o-d0 : d0-o;
+        if(ahead < 0) continue;
+        const dist = acc + ahead;
+        if(dist <= HORIZON) S.aheadStop.push({dist, tipo:(cod/3)|0, key:'stp'+e.id+':'+o});
+      }
+    }
+    /* Precedenza DEDOTTA in fondo a quest'arco (vedi `precedenzaDedotta`): si mette solo
+       se li' non c'e' gia' un cartello vero, che vale di piu' e dice anche quale dei due e'. */
+    {
+      const jv = dir>0 ? e.j1 : e.j0, fine = acc + (dir>0 ? e.len-d0 : d0);
+      if(fine>=0 && fine<=HORIZON && arrivo==null && !ROTONDA.has(e.id)
+         && !S.aheadStop.some(z => Math.abs(z.dist-fine) <= STOP_VICINO_M)
+         && precedenzaDedotta(e, dir, jv))
+        S.aheadStop.push({dist:fine, tipo:2, key:'ded'+e.id+':'+jv});
+    }
     const list = dir>0 ? e.curves : [...e.curves].reverse();
     for(const c of list){
       const cs = dir>0?c.d0:c.d1, ce = dir>0?c.d1:c.d0;
@@ -8316,6 +8425,21 @@ function buildAhead(){
   }
   S.ahead.sort((a,b)=>(a.inside?-1:0)-(b.inside?-1:0) || a.dist-b.dist);
   S.aheadCams.sort((a,b)=>a.dist-b.dist);
+  S.aheadStop.sort((a,b)=>a.dist-b.dist);
+  /* DOPO UNO STOP LE CURVE LARGHE TACCIONO (scelta di Tiago, 19/09): ripartendo da
+     fermo una classe 4 non e' una curva, e' la strada. Si segnano per CHIAVE mentre lo
+     stop e' ancora davanti, cosi' restano mute anche dopo averlo passato, quando il
+     cartello non e' piu' nel lookahead. Solo lo stop: col dare precedenza non ci si
+     ferma per forza. E solo se la voce SA dire «stop»: senza la clip (prima di
+     generarla) le curve tacerebbero senza che nessuno abbia detto perche'. */
+  const saStop = !!(VOCE.idx[L] && VOCE.idx[L]['h.stop']);
+  for(const st of S.aheadStop){
+    if(st.tipo !== 0 || !saStop) continue;
+    for(const a of S.ahead)
+      if(!a.inside && a.c.c >= STOP_MUTO_CLS && a.dist >= st.dist-5 && a.dist-st.dist <= STOP_MUTO_M)
+        (S.stopMuti || (S.stopMuti = new Set())).add(a.key);
+  }
+  if(S.stopMuti && S.stopMuti.size > 200){ let n=100; for(const k of S.stopMuti){ if(n--<=0) break; S.stopMuti.delete(k) } }
 }
 
 /* ============ nota + voce ============ */
@@ -9139,6 +9263,39 @@ function chiaviCurva(a, conMarcia){
      che si innesta, e in montagna erano 143 note su 1.113 guidando senza percorso.
    Autovelox, dossi e frasi del navigatore hanno canali loro e non cambiano. */
 const INCROCIO_M = 25;
+/* Stop e precedenze (19/09/2026, scelte di Tiago; dati da `stop.py`, sidecar `stp-`):
+   - la parola va IN TESTA alla nota della curva dopo («stop, poi destra tre») se quella
+     comincia entro STOP_LEGA_M dal cartello, se no da sola con la distanza («cento
+     metri stop»), allo stesso anticipo di una curva in cui si scende a zero;
+   - entro STOP_MUTO_M dopo uno stop le curve dalla classe 4 in su tacciono;
+   - solo dove il cartello c'e'; in rotatoria mai (li' parla il navigatore). */
+const STOP_MUTO_M = 60, STOP_MUTO_CLS = 4, STOP_LEGA_M = 120, STOP_VICINO_M = 40;
+const dopoStop = a => !!(S.stopMuti && S.stopMuti.has(a.key));
+/* PRECEDENZE DEDOTTE (19/09/2026 notte, ordine di Tiago: «anche dedotti, non solo quelli
+   col cartello»). Dove OSM non ha il cartello si guarda la rete: entrando in una strada di
+   classe piu' alta della propria, la precedenza non e' tua. Non si sa se sia uno stop o un
+   dare precedenza (dove il cartello c'e', sono due su tre e uno su tre), quindi la parola
+   e' «incrocio» e non promette nessuno dei due — scelta di Tiago fra tre.
+   Le tre condizioni, misurate su 4 regioni e 203.000 km di rete con i 93.000 cartelli veri
+   come prova (prove/deduci-precedenze.py), negli incroci gia' mappati:
+   - si entra in una strada di classe TERZIARIA o meglio: il cartello c'e' davvero nell'89-95%
+     dei casi; includendo le strade senza classe si scende al 59%, e Tiago le ha escluse;
+   - IN PAESE (limite 50 o meno) si tace: li' la deduzione parlerebbe una volta e mezza al
+     chilometro, cioe' il rumore di fondo che lui ha fatto togliere agli incroci. In paese
+     restano i cartelli veri;
+   - mai in rotatoria (li' parla il navigatore) e mai dove il cartello vero c'e' gia'. */
+const DEDOTTA_CLS = 3;
+function precedenzaDedotta(e, dir, jn){
+  if(inPaese(e)) return false;
+  const mia = e.rank|0; if(mia <= DEDOTTA_CLS) return false;
+  let min = 9;
+  for(const id of (JUN.get(jn)||[])){
+    const o = E[id]; if(!o || o.id === e.id || o.wid === e.wid) continue;
+    if(ROTONDA.has(o.id)) return false;
+    if((o.rank|0) < min) min = o.rank|0;
+  }
+  return min <= DEDOTTA_CLS && min < mia;
+}
 const SVOLTA_NAV = 0.87;        // rad, 50°
 const incrocioVero = j => (JUN.get(j)||[]).length >= 3;
 function giunzioniVicine(e, c){
@@ -9162,6 +9319,7 @@ function allIncrocio(a){
 const mutoQui = a => !!a.e && ((CLSARCO.get(a.e.id)|0) === 2
                                || ROTONDA.has(a.e.id)
                                || (a.e.ms > 0 && a.e.ms <= 30)
+                               || dopoStop(a)
                                || allIncrocio(a));
 
 /* Una curva che si passa senza togliere gas non si chiama: nei pacenote veri quella
@@ -9391,6 +9549,52 @@ function updateNote(){
       }
     }
   }
+  /* ---- stop e dare precedenza (19/09/2026, scelte di Tiago) ----
+     Vedi STOP_LEGA_M. L'anticipo e' quello di una curva, con la frenata fino a ZERO:
+     frase + reazione dello stile + spazio per fermarsi con la decelerazione dello stile.
+     A 50 all'ora in stile Comfort sono ~100 m, cioe' proprio «cento metri stop».
+     Clip mancante (prima di generarle): silenzio, nessun errore, come l'eco.
+     Sta PRIMA delle uscite anticipate qui sotto (autovelox a schermo, nessuna curva
+     davanti): nella prima stesura stava in fondo, e uno stop in fondo a un rettilineo
+     senza curve non veniva mai detto (9 cartelli su 63 in Valle d'Aosta). */
+  let stopDetto = false;
+  const st0 = S.aheadStop && S.aheadStop.find(z => !S.said.has(z.key));
+  const parolaStop = st0 ? (st0.tipo===2 ? 'h.incrocio' : st0.tipo ? 'h.precedenza' : 'h.stop') : null;
+  const ixV = VOCE.idx[L];
+  if(st0 && ixV && ixV[parolaStop] && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()){
+    if(st0.dist < 15) S.said.add(st0.key);          // gia' li': detto adesso sarebbe tardi
+    else if(!(S.ahead.find(z => !z.inside && z.dist < st0.dist-5 && !S.said.has(z.key)
+                && !mutoQui(z) && !piatta(z) && !troppoAmpia(z) && !sottoSoglia(z)) && st0.dist > 25)){
+      /* UNA CURVA CHE VIENE PRIMA DELLO STOP PARLA PRIMA. Senza questa riga lo stop,
+         che ha un anticipo piu' lungo, scavalcava la curva in mezzo e quella spariva:
+         «sinistra tre poi destra tre» diventava «dai la precedenza poi destra tre»
+         (misurato in Lombardia). Sotto i 25 m non si aspetta piu': e' l'ultimo momento. */
+      const dopo = S.ahead.find(z => !z.inside && z.dist >= st0.dist-5 && z.dist-st0.dist <= STOP_LEGA_M
+                     && !S.said.has(z.key) && !mutoQui(z) && !piatta(z) && !troppoAmpia(z) && !sottoSoglia(z));
+      let chS = [parolaStop];
+      if(dopo) chS = chS.concat(['k.poi'], chiaviCurva(dopo, false));
+      else {
+        /* la distanza con le stesse regole delle curve (`clipDist`): il valore tondo
+           piu' vicino fra quelli registrati, niente sotto i 40 m o se sbaglia troppo.
+           Prima stesura: multipli di 50, e a 73 m diceva «cinquanta». */
+        const dk = clipDist(st0.dist);
+        if(dk && ixV['d.metri']) chS = [dk, 'd.metri', parolaStop];
+      }
+      const stS = stileAttivo(), reazS = Math.max(0.6, stS.reaz + (S.antic||0));   // come `reaz` piu' sotto
+      const leadS = Math.max(S.v*2.2, S.v*(durataFrase(chS) + reazS) + S.v*S.v/(2*stS.dec));
+      if(st0.dist <= leadS + S.v) musicaPreavvisa(st0.key);
+      const now = performance.now();
+      if(st0.dist <= leadS && now-S.lastSaid > 900 && dilo(chS, false) > 0){
+        S.said.add(st0.key);
+        /* Allo stesso incrocio ci sono spesso due cartelli (i due bracci di una via
+           doppia, o stop piu' precedenza): sono UNA cosa sola per chi guida. Senza
+           questa riga in Lombardia uscivano tre frasi in tre secondi. */
+        for(const z of S.aheadStop) if(z.dist - st0.dist <= STOP_VICINO_M) S.said.add(z.key);
+        if(dopo){ S.said.add(dopo.key); if(dopo.pezzi) dopo.pezzi.forEach(k => S.said.add(k)) }
+        S.lastSaid = now; stopDetto = true;
+      }
+    }
+  }
   // il banner mostra l'autovelox quando è la cosa più vicina davanti
   if(cam0 && cam0.dist<Math.max(650,S.v*16) && (!a || (!a.inside && cam0.dist<a.dist))){
     mostra('show');
@@ -9552,7 +9756,7 @@ function updateNote(){
      abbassarsi: `S.v` e' in m/s, quindi `S.v` metri sono esattamente un secondo a
      qualunque velocita'. Non anticipa la voce, anticipa solo la richiesta al sistema. */
   if(dicibile && av.dist <= lead + S.v) musicaPreavvisa(av.key);
-  if(dicibile && av.dist<=lead){
+  if(dicibile && av.dist<=lead && !stopDetto){
     const now=performance.now();
     if(now-S.lastSaid>900){
       /* Si segna il gia'-detto SOLO se la voce ha parlato davvero. `dilo` RIFIUTA una
@@ -10171,6 +10375,17 @@ function startGps(){
     ricordaDove(p.coords.latitude, p.coords.longitude);
     suggestRegion(p.coords.latitude, p.coords.longitude);
     feed(x,y,hd,p.coords.speed||0,p.coords.accuracy||0);
+    /* SEGNALAZIONI: l'unica copia della posizione in gradi, in memoria e solo con
+       l'interruttore acceso. La direzione viene dal GPS quando c'e'; da fermi non
+       c'e', e allora resta nulla invece di inventarne una (il Database la tratta
+       come «da vedere»). */
+    if(SEGNALA_ON) ULTIMA_FIX = {
+      lat: p.coords.latitude, lon: p.coords.longitude,
+      hdg: (p.coords.heading!=null && !isNaN(p.coords.heading) && (p.coords.speed||0)>1)
+             ? p.coords.heading
+             : (S.hd!=null && S.v>1.2 ? (90 - S.hd*180/Math.PI) : null),
+      kmh: (p.coords.speed||0)*3.6, acc: p.coords.accuracy||0, t: Date.now()
+    };
   },err=>{
     /* Prima, QUALUNQUE errore faceva `setMode('free')` — anche un semplice timeout
        di 15 secondi. Cioè una galleria, un garage, una parete di roccia ti buttavano
@@ -10405,11 +10620,144 @@ bGps.hidden = (S.mode==='follow');   // stato iniziale: al boot non si insegue n
 /* La bussola rimette nord in alto E la mappa a piombo, in un tocco solo: è quello
    che fa quella di Google Maps, ed è l'unica via d'uscita ovvia se ti sei ritrovato
    la mappa storta o coricata senza volerlo. */
-document.getElementById('compass').onclick=()=>{
+function nordInAlto(){
   if(S.mode==='free'){ S.pitchLibero=false; vaiA({rot:0, pitch:0}, 320) }
   else S.rot=0;
   sync3dBtn(); S.need=true;
-};
+}
+document.getElementById('compass').onclick=()=>{ SEGNALA_ON ? apriSegnala() : nordInAlto() };
+
+/* ============ SEGNALAZIONI DALLA BUSSOLA ============
+   Ordine di Tiago del 19/09: «toccando la bussola si apre una tendina sulla quale si
+   puo' toccare per aggiungere velox, strada dissestata o altro nella posizione in cui
+   sei». Piano: proposte/segnala-strada/PIANO-BUSSOLA.md. Vincoli di legge e testi:
+   legale/parere-segnalazioni-posizione.md e legale/testi-segnalazioni-v5.md.
+
+   L'INTERRUTTORE E' ACCESO dal 20/09, insieme alla v5 dei termini (TERMINI_VER 'v5')
+   e all'informativa v6, che dicono che la posizione esce dal telefono quando la mandi
+   tu. Le due cose vanno insieme: chi spegnesse i testi lasciando acceso questo, o
+   viceversa, romperebbe la promessa. Passi in proposte/segnala-strada/USCITA-V5.md. */
+const SEGNALA_ON = true;
+
+/* L'ultima fix, in gradi, viva solo in memoria: e' l'eccezione dichiarata alla regola
+   della scatola nera («le coordinate entrano e non escono»). Non si persiste mai, e
+   si scrive solo con l'interruttore acceso. */
+let ULTIMA_FIX = null;
+let SEGN_PUNTO = null;          // il punto congelato all'apertura del foglio
+
+/* La fascia di confine: celle di circa 1,1 km dove, entro 2 km, passa una strada di un
+   paese in cui avvisare degli autovelox e' vietato. Costruita dai dati che abbiamo,
+   cioe' Svizzera e Francia; al confine con Austria, Slovenia, Germania e Olanda non
+   abbiamo dati, quindi li' la fascia non c'e': buco noto, scelta di Tiago del 19/09
+   notte. Formato: «riga:colonna+lunghezza,...;riga:...». */
+const SEGN_FASCIA = '4233:142+4,175+1;4234:141+1,144+1,171,174;4235:139+3,144,171+1,177,189+1;4236:139+1,144,171+7,189+2;4237:144,171,173,175+1,191+2;4238:191+2,197+2,201+1;4239:136+1,197+1,201+1;4240:135+4,162+1,198+4,224+1;4241:134+6,162,199+1,204+1,225+1;4242:132+8,161+1,199+1,204+1,215+1,225+1;4243:131+1,134+5,204+1,216+1,225+1;4244:134+6,143,204,217+1;4245:131+13,203+1,218;4246:131+2,138,140+4,204+3;4247:140+3,204,209+1;4248:140+3,210;4249:140+3;4270:14;4271:14;4272:14;4273:-38,13;4274:-38+1,13;4275:-38+1,49;4276:-38+1,-29+1,45+4;4277:-38+1,-30,-28+1,46+3;4278:-39+2,-30+2,48+1;4279:-40+2,-30+1,49;4280:-40,-38+1,-30;4281:-41,-37;4282:50+4;4283:-47+1,51+2;4284:-48+1,52;4285:-49,52;4292:-62+1;4293:-72,-62+2;4294:-73+1,-61+2;4295:-73,-58;4296:-73+1,-57+2;4297:-72+1,-55;4298:-71;4299:-71;4300:-95,-85+1,-71+1;4301:-108+3,-101,-95,-86+1,-78,-70+1;4302:-105,-101,-97+5,-88,-83+1,-80+2;4303:-106+1,-102+1,-98+3,-88,-85+3;4304:-106+1,-101,-99+1,-95,-90+7;4305:-105+2,-98,-95+1,-91+4;4306:-104+2,-94,-89+1;4307:-95+1;4308:-107,-95+2;4309:-105,-95+3;4310:-93+2;4311:-106+2,-95+4;4312:-107+2,-95+1,-92+1;4313:-107,-105+2,-101+1;4314:-101+1;4315:-104+1,-101+3;4316:-104,-99;4317:-104+7;4318:-104+6;4319:-104,-101;4320:-104+1;4321:-119,-116+1,-107+4;4322:-119+4,-113,-109+5;4323:-119+6,-109+4;4324:-119+4,-112+3,-106;4325:-119,-117+1,-112+2,-107+1,-100+1;4326:-121+1,-116+1,-113+3,-108+1,-103+1,-99+1;4327:-126+1,-123+5,-112+5,-103+2;4328:-125,-123+8,-112+1,-109+3,-101;4329:-127+4,-121+3,-115+1,-112+1,-108+1;4330:-132+2,-128+4,-121+1,-114;4331:-132+7,-121+1;4332:-132+8,-121;4333:-132+7;4334:-132+6;4335:-131+3;4336:-131+3;4337:-130+1;4338:-130+2;4339:-129+1;4377:535+1;4378:535+5;4379:535+6;4380:535+1,539+2;4381:534+1,539;4382:534,538;4384:539;4386:537+3;4387:536+4;4388:534+4,540;4389:534+4;4390:536+2;4391:537+1;4400:550+2;4401:550+1;4402:549+2;4403:549+2;4404:551;4412:540;4413:516+1,540;4414:540;4415:540;4416:539+1;4417:539+1;4418:510+1,539+1,542;4419:508+3;4420:506+2,510+1;4421:509+1;4422:507+2;4423:507+1;4424:507+1;4425:508;4426:508+1;4439:494+2;4440:493+1;4441:491+2;4442:491+1;4443:490+1;4444:489+1;4445:489;4465:498+1;4466:499;4467:498+1;4468:498;4469:495+3;4470:494+1;4471:494;4484:486;4485:485+1;4486:484+1;4487:484;4493:480+6;4494:482+4;4495:483+3;4496:484+2;4497:485;4500:475+1;4501:474+1;4502:474+1;4503:475;4504:475+1;4505:474+3;4506:473+1,477+4;4507:477+4;4508:477+4;4509:477,479+1;4510:477+1,480+1;4511:477+1,481+1,486+1;4512:478,482+1,485+3;4513:477,483+2,488;4514:477;4515:477;4516:477,499+3;4517:499+2;4518:497+4;4519:497+4;4520:497+3;4521:496+1;4522:497;4523:496+1;4566:490;4567:490+1;4568:491+1;4569:492+1;4570:493+2;4571:493+2;4579:640+7;4580:634+13;4581:495+2,510+4,634+14;4582:497,510+4,634+14;4583:512+1,634+16;4584:494,511+1,634+16;4585:510+1,634+12,648+2;4586:510+2,634+8,644+1,647+3;4587:511+2,635+5,644+1,647+1,650;4588:491,513,634+2,639+1,645+2;4589:513,634+2,638+1,644+3;4590:490,633+5,643+3;4591:633+5,643+4,649;4592:634+4,645+4;4593:631+7,640+1,647+2;4594:629+9,640+2,645+4;4595:629+14,645+1;4596:625+4,631+13,647;4597:624+4,631+5,639+8;4598:624+12,638+1,641,644+3;4599:624+8,639,644+3;4600:624+8,640+3,647;4601:624+8,642+2;4602:625+3,630+1,644+2;4603:626+1,629,642,646;4604:628+1,642;4605:630,642+1;4606:627+2,642+2;4607:620+1,623,627+2,643+1,646,649;4608:620,622+1,625,629,646+1;4609:620+1,623+1,629+2,647;4610:620+1,624+2,631;4611:620+2,626+1,644+2;4612:610,620+2,644+2;4613:610+2,622;4614:611+4;4615:614+1;4616:614+1;4617:721+4;4618:581,721+5;4619:580+3,721+6;4620:583+3,612,721+7;4621:584+2,723+5;4622:586,724+5;4623:607+2,723+1,726+3;4624:722+2,726+1,729;4625:724,729;4626:724,728+1;4627:723+1;4628:724;4630:701;4631:698+3;4632:675+3;4633:676+5,724+2;4634:680+1,724;4640:600+1;4641:600+1,659,717;4642:599+2,659,717+1;4643:599,717+1;4644:718;4645:666+1,669,718;4646:667,718+3;4647:597+7,667+1,677,721;4648:599+1,604,666+2,674+3,721;4649:666,676;4650:666,676,741+1;4651:666,674+1,736,741+2;4652:666,674,734+2,743,746;4653:732+2,743+7;4654:732+2,744+1,749+1;4655:732,745,750+1;4656:745;4658:726;4659:726;4660:726;4661:726+1,745+1;4662:727+1,745+1;4663:728,746+1;4664:733,745+3;4665:727,731+2,744+1,747+2;4666:744,747,749+1;4686:750;4945:399;4946:399;4947:391,399,401+1;4948:390+4,399+2;4949:388+9,399+3;4950:388+4,394,397+1,400+2;4951:385+8,396+7,407+1,410+1,416+1;4952:387+5,396+7,406+10;4953:389+7,398+10,410+7;4954:386+21,410+8;4955:387,389+3,394+25;4956:387+5,399+12,413+6;4957:388+4,400+17;4958:381,384+1,388+4,401,403,405,408+7;4959:377+4,384+1,387+4;4960:378+4,384+3,389+2;4961:377+13;4962:376+1,379+5,386+3;4963:380+2,387;4964:381+3;4965:375,377,380+4;4966:375+5,383;4967:367+2,372,377+6;4968:367+2,372,377+6;4969:365+1,368+4,375+8;4970:363+3,369+12;4971:364+13;4972:365+12;4973:365+1,369;4974:363+3,369;4975:352,359+5,366+2;4976:344,348,350+3,360+7;4977:344+1,348+1,351+2,358+5,366+1;4978:345+1,348+1,351+12,367+1;4979:345,347,349+5,357+6;4980:345,347+4,354+4,360+3;4981:345+6,356+3,361+2;4982:347+3,354+4;4983:348+3,353+3;4984:348+3,353+3;4985:344+1,347+3;4986:345+5;4987:344+8;4988:344+2,348+4;4989:338,348+4;4990:314,339+1,349+3;4991:314,316,318+1,340,345+1,349+3;4992:299,304+3,309,315,317+4,323,341,346+1,350+1,353;4993:293,300+2,305+1,309+1,313+11,341,343+1,348,350+3;4994:296+3,301+2,305+5,313+12,341+1,344+2,348+5;4995:296,298+5,305+1,309+4,315+9,326,342,344+9;4996:296,299+6,309+3,314,316+5,323+1,328+1,332,340,344,349+4;4997:294+12,309+11,322+3,330+4,341,345,348+2;4998:294+5,301+2,305,307+4,313+1,316+2,322+2,331+5,341+1,345+2;4999:293+16,322+2,331+5,342,344+2;5000:294+3,299+1,305+3,320,322,324,332+1,335+1,342+2,346+2;5001:295+5,320,322+2,326,329+3,335+2,342+6;5002:294+6,322+4,330+6,346+2;5003:294+8,331,333+1,346+2;5004:294+10,332+1,337,345+1;5005:295+9,332+1,337,344+1,348;5006:296+8,332+1,337,345+4;5007:298+6,331+3,336+2,345+1,348+1;5008:299+5,331+7,344+2,348+3;5009:297+7,331+9,344+7;5010:294+2,298+6,333+7,344,346,348+4;5011:294+1,297+4,303+1,333+8,344+8;5012:294+7,303+1,333+8,346+6;5013:293+4,299+4,335+15;5014:293+9,336+3,341+5,350+1;5015:293+1,297+5,337+9,349+3;5016:293+7,339+9;5017:293+7,340+5,347+1;5018:295,297+3,340,342,344+4;5019:295+5,342+4;5020:294+7;5021:294,296+3,301+1;5022:294,296+7;5023:294+9;5024:295+9;5025:292+12;5026:291+13;5027:285,292+1,295+9;5028:263+3,285+1,291+8,301,303+1;5029:262+5,279,286+13,301,303;5030:261+8,277+3,288+13;5031:261+6,276+5,288+12;5032:261+30,293+5;5033:260+36;5034:260+1,263+20,286+7;5035:260+19,281+12;5036:259+32;5037:259+24,286+3;5038:259+13,283+6;5039:260+5,285+4;5040:258,260+4;5041:258+6;5042:259+5;5043:259+5;5044:258+6;5045:258+1,262+2;5046:241+1,248,250,254+1,257+3,262+2;5047:240+3,248+14;5048:236,238+18,259+3;5049:233,235+27;5050:233+27;5051:233+5,241+19;5052:232+7,241+19;5053:232+12,246+1,249+4;5054:232+21;5055:232+6,244+8;5056:232+6;5057:231+7;5058:233+5;5059:232+5;5060:231+6;5061:230+7;5062:230+7;5063:229+7;5064:229+6;5065:229+6;5066:206+1,229+7;5067:205+4,229+7;5068:203+6,228+8;5069:200+10,228+8;5070:198+13,227+9;5071:197+14,226+9;5072:197+15,226+9;5073:196+9,207+7,225+9;5074:195+22,225+6;5075:194+8,206,208+14,224+7;5076:194+7,207+23;5077:193+8,208+21;5078:193+7,209+20;5079:187+12,210+18;5080:186+13,212+15;5081:186+12,216+11;5082:186+11;5083:184+13;5084:184+13;5085:184+11;5086:184+6;5087:184+6;5088:184+6;5089:184+5;5090:182+7;5091:183+7;5092:183+7;5093:183+7;5094:184+6;5095:185+5;5096:184+6;5097:184+5;5098:182+7;5099:182+7;5100:182+7;5101:182+7;5102:181,183+6;5103:182+2,186;5104:180+7;5105:180+7;5106:180+7;5107:180+7;5108:181+1,184+3;5109:183+3;5110:184';
+let fasciaSet = null;
+const SEGN_CL = 0.01, SEGN_CO = 0.014;
+function inFascia(la, lo){
+  if(!fasciaSet){
+    fasciaSet = new Set();
+    for(const r of SEGN_FASCIA.split(';')){
+      const i = r.indexOf(':'); if(i < 0) continue;
+      const a = r.slice(0, i);
+      for(const t of r.slice(i+1).split(',')){
+        const [x, n] = t.split('+');
+        const b0 = +x, len = +(n || 0);
+        for(let b = b0; b <= b0+len; b++) fasciaSet.add(a+','+b);
+      }
+    }
+  }
+  return fasciaSet.has(Math.floor(la/SEGN_CL)+','+Math.floor(lo/SEGN_CO));
+}
+/* Dove gli avvisi di autovelox sono leciti (parere di Legale del 19/09). Il paese si
+   prende dalla POSIZIONE, non dalle mappe accese: chi guida in Francia con la mappa
+   italiana accesa non deve vedere la voce. */
+const SEGN_PAESI_VELOX = new Set(['it','es','be','gb']);
+function veloxLecito(f){
+  if(!f || f.acc > 50) return false;
+  /* Agganciati a una strada nostra, e da vicino: i dati sono tagliati al confine, e a
+     Chiasso le strade svizzere cominciano a venti metri da quelle italiane. */
+  if(!S.snap || S.snap.d > 15) return false;
+  if(inFascia(f.lat, f.lon)) return false;
+  return REG.some(r => RSTATE.att.includes(r.id) && SEGN_PAESI_VELOX.has(r.paese)
+                    && inBox(r.bbox, f.lat, f.lon));
+}
+
+function apriSegnala(){
+  const fresca = ULTIMA_FIX && (Date.now() - ULTIMA_FIX.t) < 15000;
+  SEGN_PUNTO = fresca ? Object.assign({}, ULTIMA_FIX) : null;
+  const stato = document.getElementById('segnStato');
+  stato.hidden = !!SEGN_PUNTO;
+  stato.textContent = SEGN_PUNTO ? '' : tr().segnNoGps;
+  document.getElementById('segnVelox').hidden = !veloxLecito(SEGN_PUNTO);
+  /* Con un numero dispari di voci l'ultima prende tutta la riga, invece di lasciare
+     mezza riga vuota. Vale oggi con tre voci, e varrebbe con cinque. */
+  const viste = [...document.querySelectorAll('#sheetSegna .segn-b')].filter(b => !b.hidden).length;
+  document.querySelector('.segn-grid').classList.toggle('dispari', viste % 2 === 1);
+  document.querySelectorAll('#sheetSegna .segn-b').forEach(b => b.disabled = !SEGN_PUNTO);
+  openSheet('segna');
+}
+
+const SEGN_CODA = 'copilota-segnalazioni-v1';
+function segnLeggi(){ try{ const a = JSON.parse(localStorage.getItem(SEGN_CODA) || '[]');
+                           return Array.isArray(a) ? a : [] }catch(e){ return [] } }
+function segnScrivi(a){ try{ localStorage.setItem(SEGN_CODA, JSON.stringify(a.slice(-200))) }
+                        catch(e){ nota('segnalazione non salvata: '+e.message) } }
+function segnId(){
+  try{ if(crypto.randomUUID) return crypto.randomUUID() }catch(e){}
+  const b = new Uint8Array(16); (crypto.getRandomValues||(()=>{}))(b);
+  return Array.from(b, x => (x||Math.floor(Math.random()*256)).toString(16).padStart(2,'0')).join('');
+}
+function oraConFuso(t){
+  const d = new Date(t), p = n => String(n).padStart(2,'0'), o = -d.getTimezoneOffset();
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+
+         p(d.getMinutes())+':'+p(d.getSeconds())+(o<0?'-':'+')+
+         p(Math.floor(Math.abs(o)/60))+':'+p(Math.abs(o)%60);
+}
+/* Il formato della riga e' concordato con «CD · Database auto e link», che la verifica
+   prima che entri nelle mappe (proposte/segnala-strada/VERIFICA-DATABASE.md). */
+function segnala(cosa){
+  const f = SEGN_PUNTO; if(!f) return;
+  const riga = {
+    v:1, tipo:'segnalazione', cosa: cosa,
+    lat:+f.lat.toFixed(5), lon:+f.lon.toFixed(5),
+    dir: f.hdg == null ? null : ((Math.round(f.hdg) % 360) + 360) % 360,
+    kmh: Math.round((f.kmh || 0)/5)*5, acc: Math.round(f.acc || 0),
+    ora: oraConFuso(f.t), tester: TESTER || '?', build: APPVER, id: segnId()
+  };
+  /* La riga parte DOPO i cinque secondi dell'Annulla, non prima: cosi' non esistono
+     righe annullate da cancellare a valle. Se l'app si chiude in mezzo, resta in coda
+     e parte all'avvio dopo — chi ha annullato l'ha gia' tolta. */
+  const coda = segnLeggi(); coda.push({id: riga.id, dopo: Date.now()+5000, r: riga}); segnScrivi(coda);
+  closeSheets();
+  try{ if(navigator.vibrate) navigator.vibrate(30) }catch(e){}
+  toast(tr().segnFatto, 5000, () => segnAnnulla(riga.id));
+  setTimeout(svuotaSegn, 5200);
+}
+function segnAnnulla(id){
+  const coda = segnLeggi(), resta = coda.filter(x => x.id !== id);
+  if(resta.length === coda.length) return;      // gia' partita: non si richiama indietro
+  segnScrivi(resta); toast(tr().segnAnnullata, 2500);
+}
+let segnInCorso = false;
+async function svuotaSegn(){
+  if(!SEGNALA_ON || segnInCorso) return;
+  segnInCorso = true;
+  try{
+    let coda = segnLeggi();
+    for(const v of coda.slice()){
+      if(v.dopo > Date.now()) continue;
+      let ok = false;
+      try{ ok = await Promise.resolve(spedisciRapporto(TESTER || '?', JSON.stringify(v.r))) }catch(e){}
+      if(!ok) break;                            // niente rete: si riprova dopo
+      coda = segnLeggi().filter(x => x.id !== v.id); segnScrivi(coda);
+    }
+  } finally { segnInCorso = false }
+}
+addEventListener('online', svuotaSegn);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) svuotaSegn() });
+document.getElementById('segnNord').onclick = () => { nordInAlto(); closeSheets() };
+document.querySelectorAll('#sheetSegna .segn-b').forEach(b =>
+  b.onclick = () => segnala(b.dataset.cosa));
 
 /* pannelli */
 const sheets={set:document.getElementById('sheetSet'),car:document.getElementById('sheetCar'),
@@ -10417,6 +10765,7 @@ const sheets={set:document.getElementById('sheetSet'),car:document.getElementByI
               info:document.getElementById('sheetInfo')};
 /* pannello Mappe: lo aggiunge la sessione multi-regione. Bottone e voce si
    agganciano da soli quando #sheetMaps compare nel documento. */
+sheets.segna=document.getElementById('sheetSegna');
 const sheetMaps=document.getElementById('sheetMaps'); if(sheetMaps) sheets.maps=sheetMaps;
 const bMaps=document.getElementById('bMaps');
 if(bMaps && sheetMaps){ bMaps.hidden=false; bMaps.onclick=()=>openSheet('maps'); }
@@ -12003,6 +12352,10 @@ async function boot(){
     RDOS = null;
     try{ RDOS = preparaDos(await leggiFile(dosUrl(r), r.id), r) }
     catch(err){ console.warn('dossi non caricati:', err.message) }
+    /* Stop e precedenze: se manca o non torna, la voce agli incroci tace come prima. */
+    RSTP = null;
+    try{ RSTP = preparaStp(await leggiFile(stpUrl(r), r.id), r) }
+    catch(err){ console.warn('stop non caricati:', err.message) }
     /* Stessa regola: se il sidecar manca o non torna, RCAMS resta null e buildCams
        ripiega su RAW.cams — è il comportamento di sempre, non un guasto. */
     RCAMS = null;
@@ -12126,7 +12479,7 @@ async function boot(){
    accettato» senza «quando» non serve a niente il giorno in cui serve davvero.
    La chiave resta `copilota-*` come tutte le altre: non si vede, e cambiarla
    vorrebbe dire far riaccettare i termini a chi li ha gia' accettati. */
-const TERMINI_VER = 'v4';
+const TERMINI_VER = 'v5';
 const TERMINI_K = 'copilota-termini';
 function terminiAccettati(){
   try{ const d=JSON.parse(localStorage.getItem(TERMINI_K)||'null');
