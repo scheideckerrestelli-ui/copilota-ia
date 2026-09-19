@@ -359,7 +359,11 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .sheet .inner{flex:1 1 auto;min-height:0;width:100%;overflow-y:auto;overscroll-behavior:contain;
     -webkit-overflow-scrolling:touch}
   .sheet .btn[data-close]{position:sticky;bottom:0;z-index:2}
-  .sheet .grip{width:38px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 14px}
+  /* Il trattino e' una MANIGLIA vera (19/09, feedback di un tester): la zona di presa e'
+     alta 28 px e larga quanto il pannello, il segno grigio resta di 38x4 in mezzo. */
+  .sheet .grip{width:100%;height:28px;margin:-12px 0 4px;position:relative;touch-action:none;cursor:grab}
+  .sheet .grip::before{content:'';position:absolute;left:50%;top:12px;width:38px;height:4px;
+    margin-left:-19px;border-radius:2px;background:var(--line)}
   .sheet h2{font-family:var(--font-d);font-size:19px;letter-spacing:.05em;text-transform:uppercase;
     font-weight:600;margin-bottom:4px}
   /* l'accento si chiede, non si prende: `.sheet h2 span` colorava anche i wrapper
@@ -992,7 +996,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '277';
+const APPVER = '278';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -10192,6 +10196,50 @@ addEventListener('keydown',e=>{
   if(senzaMappe() && sheets.maps && sheets.maps.classList.contains('show')) return;
   closeSheets();
 });
+/* TRASCINARE GIU' PER CHIUDERE (19/09/2026, feedback di un tester: «un pannello che alzi e
+   abbassi, tipo quelli della Apple»). Si prende dal trattino o dalla fascia alta 44 px in
+   cima al pannello; il pannello segue il dito, e si chiude se lo si porta giu' di un terzo
+   della sua altezza (almeno 90 px) o con uno scatto veloce. Se no torna su. Verso l'alto
+   si muove poco, con resistenza, come su iPhone. Il pannello Mappe senza nessuna mappa
+   accesa non si chiude nemmeno cosi' (vedi `senzaMappe`). La chiusura passa da
+   `closeSheets`, quindi il pannello Mappe applica le scelte come con Fatto. */
+(function(){
+  let tr0=null;                  // {el, id, y0, t0, dy, v}
+  const rilascia = el => { el.style.transition=''; el.style.transform=''; };
+  addEventListener('pointerdown', e=>{
+    const el=e.target.closest('.sheet.show'); if(!el) return;
+    const r=el.getBoundingClientRect();
+    if(!e.target.closest('.grip') && e.clientY - r.top > 44) return;
+    if(e.target.closest('button,input,select,textarea,a,label')) return;
+    tr0={el, id:e.pointerId, y0:e.clientY, t0:e.timeStamp, dy:0, v:0, h:r.height};
+    try{ el.setPointerCapture(e.pointerId) }catch(_){}
+    el.style.transition='none';
+  }, true);
+  addEventListener('pointermove', e=>{
+    if(!tr0 || e.pointerId!==tr0.id) return;
+    const dy=e.clientY-tr0.y0, dt=Math.max(1, e.timeStamp-tr0.t0);
+    tr0.v = (dy-tr0.dy)/dt; tr0.dy=dy; tr0.t0=e.timeStamp;
+    const y = dy>0 ? dy : -Math.sqrt(-dy)*2;          // su: resistenza
+    tr0.el.style.transform='translateY('+y.toFixed(1)+'px)';
+    e.preventDefault();
+  }, {passive:false});
+  const fine = e=>{
+    if(!tr0 || e.pointerId!==tr0.id) return;
+    const {el, dy, v, h}=tr0; tr0=null;
+    const bloccato = el===sheets.maps && senzaMappe();
+    const via = !bloccato && (dy > Math.max(90, h/3) || (dy > 30 && v > 0.6));
+    el.style.transition='transform .22s ease-out';
+    if(via){
+      el.style.transform='translateY('+(h+40)+'px)';
+      setTimeout(()=>{ closeSheets(); rilascia(el) }, 220);
+    } else {
+      el.style.transform='translateY(0)';
+      setTimeout(()=>rilascia(el), 230);
+    }
+  };
+  addEventListener('pointerup', fine);
+  addEventListener('pointercancel', fine);
+})();
 
 /* ---- pannello Mappe ---- */
 /* Il sottotitolo del marchio dice quante regioni sono attive: va riscritto anche
