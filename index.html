@@ -411,7 +411,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 
   .toast{position:fixed;left:50%;top:max(62px,calc(var(--alto) + 54px));
     transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);
-    border-radius:10px;padding:9px 14px;font-size:12.5px;max-width:88vw;display:none;z-index:30;
+    border-radius:10px;padding:9px 14px;font-size:12.5px;width:max-content;max-width:88vw;display:none;z-index:30;
     text-align:center;line-height:1.45}
   .toast.show{display:block}
   .splash{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:60}
@@ -1082,7 +1082,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '281';
+const APPVER = '282';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4051,6 +4051,9 @@ try{
     if(prima.length && !stessaPersona) nota('link di un\'altra persona: garage ripartito da zero');
     const iLink = grezzi.findIndex(g => chiaveAuto(g) === chiaveAuto(profiliNelLink[0]));
     CHIAVE_LINK = chiaveMia(iLink >= 0 ? iLink : 0);
+    /* Un'auto che prima nel garage non c'era: all'avvio si dice, una volta sola. */
+    if(!prima.some(g => chiaveAuto(g) === chiaveAuto(profiliNelLink[0])))
+      localStorage.setItem('copilota-garage-nuova', (profiloDecodifica(profiliNelLink[0])||{}).nm || '');
     localStorage.setItem(PROF_CHIAVE, grezzi[0]);
     localStorage.setItem(PROF_EXTRA, JSON.stringify(grezzi.slice(1)));
     localStorage.setItem(PROF_VISTO, profiliNelLink.join('|'));
@@ -4438,6 +4441,8 @@ const T = {
     tooMuch:mb=>'Molte mappe accese: con tante regioni l\'app può chiudersi da sola mentre guidi. Tieni accese solo quelle dove vai: spegnerle non le cancella, restano sul telefono.',
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
+    garNuova:n=>'🏁 La tua '+(n||'auto')+' è entrata nel garage',
+    garRipiego:n=>'Questa ('+n+') è un\'auto di partenza simile alla tua: il link è arrivato tagliato. Chiedi di nuovo il tuo link in DM, oppure incollalo intero in «Ho un link nuovo», nel pannello dell\'auto.',
     garTogli:'Togli un\'auto', garTogliSub:'dal tuo garage', garFine:'Fatto', garFineSub:'non togliere niente',
     garConf:n=>'Togliere «'+n+'» dal tuo garage? Se ti serve di nuovo, riapri il link che te l\'ha data.',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
@@ -4526,6 +4531,8 @@ const T = {
     tooMuch:mb=>'Many maps switched on: with lots of regions the app can close by itself while you drive. Keep on only the ones you are heading to: switching them off does not delete them, they stay on the phone.',
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
+    garNuova:n=>'🏁 Your '+(n||'car')+' is now in your garage',
+    garRipiego:n=>'This ('+n+') is a starter car similar to yours: your link arrived cut short. Ask for your link again by DM, or paste it whole in “I have a new link”, in the car panel.',
     garTogli:'Remove a car', garTogliSub:'from your garage', garFine:'Done', garFineSub:'remove nothing',
     garConf:n=>'Remove «'+n+'» from your garage? If you need it again, reopen the link it came with.',
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
@@ -4611,6 +4618,8 @@ const T = {
     tooMuch:mb=>'Beaucoup de cartes allumées : avec beaucoup de régions, l\'app peut se fermer toute seule pendant que tu conduis. N\'allume que celles où tu vas : les éteindre ne les supprime pas, elles restent sur le téléphone.',
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
+    garNuova:n=>'🏁 Ta '+(n||'voiture')+' est entrée dans ton garage',
+    garRipiego:n=>'Celle-ci ('+n+') est une voiture de départ proche de la tienne : ton lien est arrivé coupé. Redemande ton lien en DM, ou colle-le en entier dans « J\'ai un nouveau lien », dans le panneau de la voiture.',
     garTogli:'Retirer une voiture', garTogliSub:'de ton garage', garFine:'Terminé', garFineSub:'ne rien retirer',
     garConf:n=>'Retirer «'+n+'» de ton garage ? Si tu en as de nouveau besoin, rouvre le lien qui te l\'a donnée.',
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
@@ -10926,6 +10935,7 @@ function montaInvito(){
         const stessa = !mt || !tPrima || mt[1] === tPrima;
         const garage = (stessa && prima.length) ? unisciGarage(prima, buoni) : buoni;
         const iLink = garage.findIndex(g => chiaveAuto(g) === chiaveAuto(buoni[0]));
+        if(!prima.some(g => chiaveAuto(g) === chiaveAuto(buoni[0]))) localStorage.setItem('copilota-garage-nuova', profs[0].nm);
         localStorage.setItem(PROF_CHIAVE, garage[0]);
         localStorage.setItem(PROF_EXTRA, JSON.stringify(garage.slice(1)));
         /* PROF_VISTO NON si tocca, apposta: e' l'indirizzo con cui l'icona riparte, e
@@ -11863,6 +11873,21 @@ cv.addEventListener('dblclick',e=>{
 
 /* ============ avvio ============ */
 const splash=document.getElementById('splash'), splashMsg=document.getElementById('splashMsg');
+/* Chiamata alla fine di boot() e anche dalla prima apertura senza mappe, che e' proprio
+   quella di chi ha appena ricevuto il link. Non dall'uscita per mappa rovinata: li' c'e'
+   gia' l'avviso dell'errore, e il segno resta per l'avvio dopo. */
+function avvisoGarage(){
+  /* Sotto il velo dei termini l'avviso scadrebbe senza che nessuno lo veda: aspetta il
+     «Ho letto e accetto», che lo richiama. */
+  if(document.getElementById('termini') && !terminiAccettati()) return;
+  /* E sotto lo splash, se si accetta mentre la mappa carica: allora ci pensa la fine di boot(). */
+  if(!splash.classList.contains('hide')) return;
+  try{
+    const nuova = localStorage.getItem('copilota-garage-nuova');
+    if(nuova !== null){ localStorage.removeItem('copilota-garage-nuova'); toast(tr().garNuova(nuova), 6000) }
+    else if(autoDalLink && !MIEI.length) toast(tr().garRipiego(CARS[autoDalLink] ? CARS[autoDalLink].nm : ''), 12000);
+  }catch(e){}
+}
 async function boot(){
   const t0=performance.now();
   applicaTema(S.tema);                 // prima di qualsiasi disegno: se no il primo fotogramma lampeggia
@@ -11902,7 +11927,7 @@ async function boot(){
     applyLang(); renderLegend(); renderMaps(); showStore();
     setBrandSub();
     splash.classList.add('hide');
-    loop(); openSheet('maps');
+    loop(); openSheet('maps'); avvisoGarage();
     return;
   }
 
@@ -12074,6 +12099,11 @@ async function boot(){
   startGps();
   let seen=false; try{seen=!!localStorage.getItem('copilota2seen')}catch(e){}
   if(!seen) openSheet('info');
+  /* «UNA COSA CARINA» (Tiago, 19/09): un link che aggiunge un'auto al garage lo dice,
+     una volta sola. E se dal link e' arrivata solo l'auto di ripiego (`?a=` senza il
+     profilo, di solito il `#p=` tagliato per strada da un'app di messaggi), lo si dice
+     invece di lasciar credere che quella sia l'auto del tester. */
+  avvisoGarage();
   console.log('boot in',Math.round(performance.now()-t0),'ms ·',E.length,'archi');
 }
 /* ============ TERMINI DELLA BETA ============
@@ -12106,6 +12136,7 @@ function mostraTermini(){
     catch(e){ nota('accettazione dei termini non salvata: '+e.message) }
     el.remove();
     primaScelta();
+    avvisoGarage();
   };
 }
 /* Chi arriva senza un'auto — nessun `?a=` nel link, niente di salvato — si trova
