@@ -547,6 +547,9 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .note .gear small,.note .dist small{font-size:10.5px}
   .nav .eta small,.results .k,.brand .sub{font-size:11px}
 
+  /* garage: la scheda che si toglie si riconosce (19/09) */
+  .chip.togli{border-color:var(--pericolo);color:var(--pericolo)}
+  .chip.togli b::before{content:'✕ '}
   /* ======== ERGONOMIA · priorita' 3: rifiniture (19/09/2026) ======== */
   /* Il banner del navigatore tagliava la frase («avvia il GPS per avere le i…»): ora va a
      capo su due righe al massimo. */
@@ -1079,7 +1082,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '280';
+const APPVER = '281';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4014,13 +4017,43 @@ const carPrima = (() => { try{ return (JSON.parse(localStorage.getItem('copilota
    e' sempre la prima auto (cosi' chi ha `car:'mio'` salvato resta dov'era), poi
    'mio2', 'mio3'. */
 const MIEI = [];
+/* IL GARAGE (19/09/2026, ordine di Tiago: «un profilo ha piu' auto»). Il link e' della
+   PERSONA (`t=`), e le sue auto stanno in un garage sul telefono. Un link nuovo della
+   stessa persona SOMMA le sue auto a quelle che ci sono: la stessa auto (stesso nome e
+   stesso anno) si aggiorna al suo posto, le altre restano dove sono, quelle nuove vanno
+   in fondo. Prima un link nuovo sostituiva tutto, e la seconda auto mandata con un link
+   suo cancellava la prima. Un `t=` diverso da quello salvato e' un'altra persona sullo
+   stesso telefono: il garage riparte da zero, non si mischiano. L'ordine resta stabile,
+   quindi `mio`, `mio2`... puntano sempre alla stessa auto e la taratura non si perde. */
+const chiaveAuto = g => { const c = String(g).split('.'); return (c[1]||'').toLowerCase() + '|' + (c[14]||'') };
+function unisciGarage(prima, nuovi){
+  const out = prima.slice();
+  for(const g of nuovi){
+    const i = out.findIndex(x => chiaveAuto(x) === chiaveAuto(g));
+    if(i >= 0) out[i] = g; else out.push(g);
+  }
+  return out.length > MAX_AUTO ? out.slice(out.length - MAX_AUTO) : out;
+}
+/* `testerDalLink` nasce piu' in basso nel file: qui si rilegge `t` da solo. */
+const tNelLink = (() => { try{
+  const h = location.hash || '';
+  const t = new URLSearchParams(location.search).get('t') || new URLSearchParams(h.charAt(0)==='#' ? h.slice(1) : h).get('t');
+  return (t && /^[a-z0-9-]{1,40}$/.test(t)) ? t : null } catch(e){ return null } })();
+let CHIAVE_LINK = null;          // la chiave in CARS della prima auto del link, dopo l'unione
 try{
   let grezzi = [];
   if(linkNuovo){
-    grezzi = profiliNelLink;
+    const tPrima = (() => { try{ return localStorage.getItem('codriver-tester') }catch(e){ return null } })();
+    const prima = (profiloPrima && profiloDecodifica(profiloPrima))
+      ? [profiloPrima].concat(extraPrima.filter(g => profiloDecodifica(g))) : [];
+    const stessaPersona = !tNelLink || !tPrima || tNelLink === tPrima;
+    grezzi = (stessaPersona && prima.length) ? unisciGarage(prima, profiliNelLink) : profiliNelLink.slice(0, MAX_AUTO);
+    if(prima.length && !stessaPersona) nota('link di un\'altra persona: garage ripartito da zero');
+    const iLink = grezzi.findIndex(g => chiaveAuto(g) === chiaveAuto(profiliNelLink[0]));
+    CHIAVE_LINK = chiaveMia(iLink >= 0 ? iLink : 0);
     localStorage.setItem(PROF_CHIAVE, grezzi[0]);
     localStorage.setItem(PROF_EXTRA, JSON.stringify(grezzi.slice(1)));
-    localStorage.setItem(PROF_VISTO, grezzi.join('|'));
+    localStorage.setItem(PROF_VISTO, profiliNelLink.join('|'));
   }else if(profiloPrima && profiloDecodifica(profiloPrima)){
     grezzi = [profiloPrima].concat(extraPrima.filter(g => profiloDecodifica(g))).slice(0, MAX_AUTO);
   }else{
@@ -4405,6 +4438,8 @@ const T = {
     tooMuch:mb=>'Molte mappe accese: con tante regioni l\'app può chiudersi da sola mentre guidi. Tieni accese solo quelle dove vai: spegnerle non le cancella, restano sul telefono.',
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
+    garTogli:'Togli un\'auto', garTogliSub:'dal tuo garage', garFine:'Fatto', garFineSub:'non togliere niente',
+    garConf:n=>'Togliere «'+n+'» dal tuo garage? Se ti serve di nuovo, riapri il link che te l\'ha data.',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
     cminTutteOpt:'Tutte le curve',
     cminTutte:'La voce chiama tutte le curve.',
@@ -4491,6 +4526,8 @@ const T = {
     tooMuch:mb=>'Many maps switched on: with lots of regions the app can close by itself while you drive. Keep on only the ones you are heading to: switching them off does not delete them, they stay on the phone.',
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
+    garTogli:'Remove a car', garTogliSub:'from your garage', garFine:'Done', garFineSub:'remove nothing',
+    garConf:n=>'Remove «'+n+'» from your garage? If you need it again, reopen the link it came with.',
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
     cminTutteOpt:'Every corner',
     cminTutte:'The voice calls every corner.',
@@ -4574,6 +4611,8 @@ const T = {
     tooMuch:mb=>'Beaucoup de cartes allumées : avec beaucoup de régions, l\'app peut se fermer toute seule pendant que tu conduis. N\'allume que celles où tu vas : les éteindre ne les supprime pas, elles restent sur le téléphone.',
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
+    garTogli:'Retirer une voiture', garTogliSub:'de ton garage', garFine:'Terminé', garFineSub:'ne rien retirer',
+    garConf:n=>'Retirer «'+n+'» de ton garage ? Si tu en as de nouveau besoin, rouvre le lien qui te l\'a donnée.',
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
     cminTutteOpt:'Tous les virages',
     cminTutte:'La voix annonce tous les virages.',
@@ -4718,7 +4757,7 @@ try{
      condizione, chi dopo sceglie un'altra auto se la vedrebbe cancellare al
      riavvio successivo. Nuovo vuol dire diverso da quello gia' salvato, che e'
      esattamente il caso «Tiago ha rimandato un invito corretto». */
-  if(profiloDalLink && profiloPrima !== profiloGrezzo) S.car = 'mio';
+  if(profiloDalLink && profiloPrima !== profiloGrezzo) S.car = CHIAVE_LINK || 'mio';
   /* L'auto salvata puo' essere una di quelle appena tolte come doppione: allora
      `CARS[st.car]` non esiste piu' e il ripristino qui sopra l'ha saltata, che
      lascerebbe l'auto di partenza (una MiTo) a chi guida una Fiesta. */
@@ -4750,7 +4789,9 @@ try{
    Solo se il link CAMBIA davvero veicolo. Se riconferma quello che c'e' gia'
    — stesso profilo, stessa auto — la taratura resta quella che il tester ha
    fatto col cursore guidando, che e' l'unica giusta e gli e' costata un giro. */
-const veicoloNuovoDalLink = profiloDalLink ? (profiloPrima !== profiloGrezzo)
+/* Col garage il confronto giusto e' con TUTTE le auto di prima: la prima del link puo'
+   essere gia' nel garage, identica, anche se non e' la prima. */
+const veicoloNuovoDalLink = profiloDalLink ? (profiloPrima !== profiloGrezzo && !extraPrima.includes(profiloGrezzo))
                           : (autoDalLink ? carPrima !== autoDalLink : false);
 if(veicoloNuovoDalLink){
   const v = profiloDalLink || CARS[autoDalLink];
@@ -4859,7 +4900,7 @@ if(autoDalLink || profiloDalLink) save();
   var SALTO_MAX_M = 400;
   var PRECISIONE_MAX_M = 50;     // oltre questa la fix non contribuisce ai km
   var TIPI_ANOMALIA = ['voce-interrotta', 'dati-ko', 'gps-perso',
-                       'sidecar-scartato', 'ripresa-a-freddo'];
+                       'sidecar-scartato', 'ripresa-a-freddo', 'voce-ripresa'];
   var CODA = 'codriver-bb-coda-v1';
   /* Il trasporto e' INIETTATO: il modulo non sa se dietro c'e' un Google Form, un
      Worker o altro. Cosi' la scelta resta di Tiago e qui non si riscrive niente.
@@ -8408,7 +8449,10 @@ async function caricaVoce(lang){
    copilota apre il contesto e lo tiene aperto. Senza questo la prima nota è muta. */
 function svegliaVoce(){
   creaCtx();
-  if(VOCE.ctx.state==='suspended'){
+  /* Anche `interrupted`: e' lo stato in cui iOS mette il contesto per una chiamata,
+     Siri o un cambio d'uscita (CarPlay, Bluetooth). Guardando solo `suspended` la
+     voce restava muta finche' non si riapriva l'app (bug #23 e #24, 19/09). */
+  if(VOCE.ctx.state==='suspended' || VOCE.ctx.state==='interrupted'){
     /* `resume()` FUORI da un gesto utente viene RIFIUTATO da iOS, e la promessa
        rifiutata senza `catch` non lascia traccia da nessuna parte: le note vengono
        poi programmate su un contesto sospeso e non si sente niente. Zero errori,
@@ -8426,6 +8470,34 @@ function svegliaVoce(){
    il 2026-08-19. Adesso lo sblocca QUALUNQUE tocco, che è ciò che fanno tutti i
    lettori audio sul web. Il passaggio è a vuoto quando il contesto è già acceso,
    quindi si può lasciare attaccato per sempre senza pesare. */
+/* LA VOCE CHE SI SPEGNE DA SOLA (bug #23, #24 e «a volte non va l'audio», 19/09).
+   Il contesto audio puo' uscire da `running` senza che l'app faccia niente: una
+   chiamata, Siri, CarPlay o una cuffia che si collega. Prima nessuno lo guardava e
+   la voce restava muta col bottone acceso. Qui: si prova subito a riprenderlo, e la
+   scatola nera conta ogni volta che la voce resta muta (`voce-interrotta`) e ogni
+   volta che torna (`voce-ripresa`). Si conta solo con la voce accesa e l'app davanti:
+   in secondo piano iOS sospende l'audio sempre, e contarlo sarebbe solo rumore.
+   Si chiama `SN.anomalia` direttamente e non tramite `nota`, perche' `nota` conta un
+   messaggio uguale una volta sola per sessione, e qui serve ogni episodio. */
+var VOCE_MUTA = '';                    // `var`: creaCtx puo' girare prima di questa riga
+                                       // stato in cui la voce si e' spenta, '' se parla
+function contaVoce(tipo){ try{ if(window.SN) window.SN.anomalia(tipo) }catch(e){} }
+function guardiaVoce(){
+  const c = VOCE.ctx; if(!c) return;
+  c.onstatechange = () => {
+    const st = c.state;
+    if(st === 'running'){
+      if(VOCE_MUTA){ nota('voce ripresa dopo lo stato '+VOCE_MUTA); contaVoce('voce-ripresa'); VOCE_MUTA = '' }
+      return;
+    }
+    if(st === 'closed' || !S.audio || document.hidden) return;
+    if(!VOCE_MUTA){ VOCE_MUTA = st; nota('voce muta: audio '+st+' dal sistema'); contaVoce('voce-interrotta') }
+    const p = c.resume(); if(p && p.catch) p.catch(()=>{});
+  };
+}
+document.addEventListener('visibilitychange', () => {
+  if(!document.hidden && S.audio && VOCE.ctx) svegliaVoce();
+});
 function sbloccaAudio(){
   if(!S.audio) return;
   if(VOCE.ctx && VOCE.ctx.state === 'running' && VOCE.buf[L]) return;
@@ -8652,6 +8724,7 @@ function creaCtx(){
     try{ if('audioSession' in navigator) navigator.audioSession.type = 'transient' }catch(e){}
     VOCE.ctx = new (window.AudioContext||window.webkitAudioContext)();
     try{ if('audioSession' in navigator) navigator.audioSession.type = 'auto' }catch(e){}
+    guardiaVoce();
     /* Se per qualche motivo la catena non si costruisce, `VOCE.testa` resta null e
        `dilo` collega dritto all'uscita: si torna esattamente a com'era, voce piu'
        piano ma viva. Un copilota muto sarebbe molto peggio di uno sottovoce. */
@@ -8794,7 +8867,9 @@ function dilo(chiavi, urgente){
   if(!S.audio) return 0;
   const buf=VOCE.buf[L], ix=VOCE.idx[L];
   if(!buf||!ix) return 0;
-  svegliaVoce();
+  if(!svegliaVoce() && !VOCE_MUTA && !document.hidden){
+    VOCE_MUTA = VOCE.ctx.state; nota('voce muta: nota su audio '+VOCE.ctx.state); contaVoce('voce-interrotta');
+  }
   /* Solo un annuncio urgente interrompe quello in corso. La curva severa batte la
      manovra: sbagliare strada si rimedia, una curva no. */
   /* Anche l'interruzione e' una giunzione: troncata a meta' onda fa lo stesso «tic». Si
@@ -10843,14 +10918,22 @@ function montaInvito(){
       const profs = buoni.map(profiloDecodifica);
       if(!profs.length){ es.textContent = tr().invNo; es.style.color = 'var(--pericolo)'; return; }
       try{
-        localStorage.setItem(PROF_CHIAVE, buoni[0]);
-        localStorage.setItem(PROF_EXTRA, JSON.stringify(buoni.slice(1)));
+        /* Il GARAGE anche qui: stessa persona, le auto si sommano (vedi unisciGarage). */
+        const tPrima = localStorage.getItem(TESTER_K);
+        const pp = localStorage.getItem(PROF_CHIAVE);
+        let ex = []; try{ ex = JSON.parse(localStorage.getItem(PROF_EXTRA) || '[]') }catch(_){}
+        const prima = (pp && profiloDecodifica(pp)) ? [pp].concat((Array.isArray(ex)?ex:[]).filter(g => profiloDecodifica(g))) : [];
+        const stessa = !mt || !tPrima || mt[1] === tPrima;
+        const garage = (stessa && prima.length) ? unisciGarage(prima, buoni) : buoni;
+        const iLink = garage.findIndex(g => chiaveAuto(g) === chiaveAuto(buoni[0]));
+        localStorage.setItem(PROF_CHIAVE, garage[0]);
+        localStorage.setItem(PROF_EXTRA, JSON.stringify(garage.slice(1)));
         /* PROF_VISTO NON si tocca, apposta: e' l'indirizzo con cui l'icona riparte, e
            deve restare riconosciuto come «gia' visto» — se no al prossimo avvio da
            freddo il vecchio link rivincerebbe su quello appena incollato. */
         if(mt) localStorage.setItem(TESTER_K, mt[1]);
         const st = JSON.parse(localStorage.getItem('copilota2') || '{}');
-        st.car = 'mio';
+        st.car = chiaveMia(iLink >= 0 ? iLink : 0);
         /* Stessa regola del link: veicolo nuovo, taratura da rifare. Lasciare quella
            di prima vuol dire i giri sbagliati a ogni annuncio di marcia. Ma se la prima
            auto e' la STESSA di prima — chi aggiunge una seconda auto — la sua taratura
@@ -10870,6 +10953,7 @@ function montaInvito(){
   }
 }
 
+let modoTogli = false;          // «togli un'auto» nel pannello (garage)
 function renderCar(){
   carChips.innerHTML=''; motoChips.innerHTML='';
   montaInvito();
@@ -10886,12 +10970,46 @@ function renderCar(){
     // vuol dire niente su una 5 marce, e tenerla ferma darebbe un numero assurdo.
     // Si svuota anche il gia'-detto: le note annunciate portano marcia e velocita'
     // del veicolo vecchio, e da auto a moto cambiano tutte e due.
+    if(modoTogli && MIEI.includes(k)){
+      b.className='chip togli';
+      b.onclick=()=>{
+        if(!confirm(tr().garConf(c.nm))) return;
+        try{
+          const i = MIEI.indexOf(k);
+          const pp = localStorage.getItem(PROF_CHIAVE);
+          let ex = []; try{ ex = JSON.parse(localStorage.getItem(PROF_EXTRA) || '[]') }catch(_){}
+          const garage = [pp].concat(Array.isArray(ex)?ex:[]).filter(g => g && profiloDecodifica(g));
+          garage.splice(i, 1);
+          localStorage.setItem(PROF_CHIAVE, garage[0]);
+          localStorage.setItem(PROF_EXTRA, JSON.stringify(garage.slice(1)));
+          const st = JSON.parse(localStorage.getItem('copilota2') || '{}');
+          const iu = MIEI.indexOf(S.car);
+          st.car = (iu === i || iu < 0) ? 'mio' : chiaveMia(iu > i ? iu - 1 : iu);
+          localStorage.setItem('copilota2', JSON.stringify(st));
+        }catch(e){ return }
+        location.reload();
+      };
+      (c.tipo==='moto' ? motoChips : carChips).appendChild(b);
+      continue;
+    }
+    if(modoTogli) continue;
     b.onclick=()=>{ricordaCal(); S.car=k; S.carScelto=true; carApertoTutto=false;
                    riprendiCal(k); S.said.clear(); applicaVeicolo();
                    // se il giro e' aperto, il cambio di mezzo si accoda al rapporto
                    try{ window.SN && window.SN.veicolo(nomeVeicolo()) }catch(e){}
                    renderCar(); save(); updateNote(); S.need=true};
     (c.tipo==='moto' ? motoChips : carChips).appendChild(b);
+  }
+  /* TOGLIERE UN'AUTO dal garage (19/09/2026). Solo fra le proprie, e solo se ce n'e' piu'
+     di una: l'ultima non si toglie, se no l'app resterebbe senza la tua auto. Si entra in
+     «togli» con una scheda, si tocca l'auto, si conferma; poi l'app si riapre, come dopo
+     un link nuovo, perche' le chiavi `mio`, `mio2`... si rinumerano. */
+  if(MIEI.length > 1){
+    const b=document.createElement('button');
+    b.className='chip'+(modoTogli?' on':'');
+    b.innerHTML='<b>'+(modoTogli ? tr().garFine : tr().garTogli)+'</b>'+(modoTogli ? tr().garFineSub : tr().garTogliSub);
+    b.onclick=()=>{ modoTogli=!modoTogli; renderCar() };
+    carChips.appendChild(b);
   }
   if(compatto){
     const b=document.createElement('button');
@@ -11802,7 +11920,14 @@ async function boot(){
       /* Prima si restava murati: lo splash copriva tutto e non c'era modo di aprire
          Mappe per rimediare. Ora si spegne la regione che non parte, si toglie lo
          splash e si apre il pannello, così l'app resta usabile e si può riscaricare. */
-      RSTATE.att = RSTATE.att.filter(x=>x!==r.id); rsave();
+      /* E la regione torna NON scaricata (scelta di Tiago del 19/09, bug #25): prima
+         restava «scaricata», il bottone diceva «Attiva ora» e riattivarla rileggeva la
+         stessa copia rovinata, cioe' lo stesso errore a ogni avvio. L'avviso diceva
+         «riscaricala» ma si poteva fare solo passando dal cestino. Ora la copia si
+         butta e il bottone torna su «Scarica». */
+      RSTATE.att  = RSTATE.att.filter(x=>x!==r.id);
+      RSTATE.inst = RSTATE.inst.filter(x=>x!==r.id); rsave();
+      caches.delete(cacheName(r.id)).catch(e=>nota('copia di '+r.nm+' non cancellata: '+e.message));
       /* Il motivo non si vedeva da nessuna parte (bug #25, Sicilia, 19/09): l'avviso
          diceva solo «riscaricala», e a quest'ora non c'e' nessun giro aperto, quindi la
          scatola nera non poteva contarlo. Si scrive nel registro e si lascia un segno
