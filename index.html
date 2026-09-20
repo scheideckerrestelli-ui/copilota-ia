@@ -566,6 +566,10 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   #aiutoLista .gbox p{margin:9px 0}
   #aiutoLista .gbox b{color:var(--ink)}
   #aiutoLista .gbox .attenzione{color:var(--pericolo);font-weight:600}
+  #aiutoLista .aiuto-azione{margin:2px 0 12px}
+  #aiutoLista .aiuto-azione .btn{margin:0;width:100%}
+  #aiutoLista .aiuto-azione .esito{display:block;margin-top:8px;font-size:12.5px;line-height:1.45}
+  #aiutoLista .aiuto-azione .esito:empty{display:none}
   @media (prefers-reduced-motion:reduce){ .gcap .gfre{transition:none} }
 
   /* ======== ERGONOMIA · priorita' 1 (19/09/2026, analisi in proposte/ergonomia/ANALISI.md,
@@ -795,6 +799,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <button class="setnav" id="bInfo">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.6v.4"></path></svg>
     <span data-lang="it">Informazioni</span><span data-lang="en">About</span><span data-lang="fr">À propos</span><i>›</i></button>
+  <!-- 20/09/2026: l'Aiuto anche qui, non solo in fondo a Informazioni. Chi ha un
+       problema apre le impostazioni, non «Informazioni»: e dentro l'Aiuto c'e' il tasto
+       che richiede il permesso di posizione, che e' il motivo per cui qualcuno lo cerca. -->
+  <button class="setnav" id="bAiutoSet">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.4M12 16.6v.4"></path></svg>
+    <span data-lang="it">Aiuto</span><span data-lang="en">Help</span><span data-lang="fr">Aide</span><i>›</i></button>
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
   <!-- LICENZE (18/09/2026, bozza legale 2-3, scelta di Tiago): in fondo al menu e non
        in Informazioni, perche' Informazioni nella vista del tester e' nascosto e l'ODbL
@@ -1152,7 +1162,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <p class="disc"><span data-lang="it">Le cose che ci chiedono più spesso. Se non trovi la tua, scrivici: <b>@co_driver_</b>.</span><span data-lang="en">The things people ask us most. If yours isn't here, write to us: <b>@co_driver_</b>.</span><span data-lang="fr">Ce qu'on nous demande le plus souvent. Si la tienne n'y est pas, écris-nous : <b>@co_driver_</b>.</span></p>
   <div id="aiutoLista">
   <button class="gcap" type="button" aria-expanded="false"><span class="gnm"><span data-lang="it">Il GPS non parte, o la mappa non mi segue</span><span data-lang="en">GPS won't start, or the map doesn't follow me</span><span data-lang="fr">Le GPS ne démarre pas, ou la carte ne me suit pas</span></span><i class="gfre"></i></button>
-  <div class="gbox" hidden><div data-lang="it"><p>Prima cosa, <b>chiudi l'app e riaprila</b>: le correzioni arrivano da sole e non c'è niente da installare.</p>
+  <div class="gbox" hidden><p class="aiuto-azione"><button class="btn" id="bChiediGps" type="button"></button><span class="esito" id="chiediGpsEsito"></span></p><div data-lang="it"><p>Prima cosa, <b>chiudi l'app e riaprila</b>: le correzioni arrivano da sole e non c'è niente da installare.</p>
 <p><b>Poi guarda iPhone, e guardalo prima di toccare l'icona.</b> Impostazioni, Privacy e sicurezza, Localizzazione: dev'essere accesa. Più in basso nella stessa schermata c'è <b>Safari</b>: dev'essere su «Mentre usi l'app». Se qui qualcosa è spento, l'app non può avere la posizione in nessun modo, e togliere l'icona non serve a niente.</p>
 <p><b>Solo se lì è tutto a posto:</b> l'icona nella schermata Home ha permessi suoi, separati da Safari, e <b>non compare</b> in quell'elenco. Non cercarla. Il permesso si chiede una volta sola: se hai toccato «Non consentire», o hai chiuso la domanda senza rispondere, l'unico modo di rifarla comparire è togliere l'icona e rimetterla.</p>
 <p class="attenzione">Attenzione: togliere l'icona cancella le mappe che hai scaricato. Fallo quando sei sotto wifi e hai tempo di riscaricarle, non prima di partire.</p>
@@ -1252,7 +1262,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '293';
+const APPVER = '294';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4806,6 +4816,12 @@ const T = {
     coda:n=>(n===1?'1 giro':n+' giri')+' della beta non '+(n===1?'è ancora partito':'sono ancora partiti')+' dal telefono. '+(n===1?'Parte':'Partono')+' da solo appena c\'è campo, oppure adesso:',
     ver:(v,pwa)=>'Versione '+v+(pwa?' · app installata':' · dal browser')+'. Se qui il numero non sale dopo un aggiornamento, la copia vecchia e\' rimasta in cache: chiudi del tutto l\'app dal selettore e riaprila.',
     gpsPwa:'Manca il permesso di posizione. PRIMA guarda iPhone: Impostazioni → Privacy e sicurezza → Localizzazione, dev\'essere accesa, e più in basso Safari su «Mentre usi l\'app». Solo se è già così serve togliere e rimettere l\'icona, e attenzione: quello cancella le mappe scaricate. Tocca qui per l\'Aiuto.',
+    gpsTastoChiedi:'Chiedi il permesso di posizione',
+    gpsTastoRiprova:'Il permesso è negato: cosa posso fare',
+    gpsTastoOk:'Il permesso c\'è già: riaggancia la posizione',
+    gpsEsitoNegato:'iPhone non mi lascia richiedertelo: il no è già registrato per questa app, e non compare in nessuna impostazione. Guarda i due punti qui sotto, in quest\'ordine.',
+    gpsEsitoChiesto:'Fatto: se compare la domanda, tocca Consenti.',
+    gpsEsitoGranted:'Il permesso c\'era già. Se la posizione non arriva lo stesso, non è un problema di permessi: guarda più in basso.',
     gpsAndroid:'Posizione non concessa. Su Android: 1) accendi la Localizzazione (tendina in alto, icona Posizione); 2) Impostazioni → App → Chrome → Autorizzazioni → Posizione → Consenti solo mentre l\'app è in uso, con «Usa posizione precisa» attivo; 3) apri codriver.pages.dev in Chrome, tocca l\'icona a sinistra dell\'indirizzo → Autorizzazioni → Posizione → Consenti. Vale anche per l\'app sulla schermata Home. Poi riapri l\'app.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
     dlFail:'Scaricamento fallito: ',
@@ -4901,6 +4917,12 @@ const T = {
     coda:n=>(n===1?'1 beta drive has':n+' beta drives have')+' not left the phone yet. '+(n===1?'It goes':'They go')+' by itself as soon as there is signal, or right now:',
     ver:(v,pwa)=>'Version '+v+(pwa?' · installed app':' · from the browser')+'. If this number does not go up after an update, the old copy is still cached: close the app from the switcher and reopen it.',
     gpsPwa:'Location permission is missing. FIRST check the iPhone: Settings → Privacy & Security → Location Services must be on, and further down Safari set to «While Using the App». Only if that is already right does removing and re-adding the icon help, and careful: that deletes your downloaded maps. Tap here for Help.',
+    gpsTastoChiedi:'Ask for location permission',
+    gpsTastoRiprova:'Permission is denied: what can I do',
+    gpsTastoOk:'Permission is already there: lock on again',
+    gpsEsitoNegato:'The iPhone won\'t let me ask again: the no is already recorded for this app, and it appears in no settings screen. Check the two points below, in that order.',
+    gpsEsitoChiesto:'Done: if the question appears, tap Allow.',
+    gpsEsitoGranted:'Permission was already granted. If the position still doesn\'t arrive, it isn\'t a permissions problem: read further down.',
     gpsAndroid:'Location not allowed. On Android: 1) turn Location on (pull down from the top, Location icon); 2) Settings → Apps → Chrome → Permissions → Location → Allow only while using the app, with "Use precise location" on; 3) open codriver.pages.dev in Chrome, tap the icon left of the address → Permissions → Location → Allow. This also covers the app on your Home screen. Then reopen the app.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
     dlFail:'Download failed: ',
@@ -4993,6 +5015,12 @@ const T = {
     coda:n=>(n===1?'1 trajet':n+' trajets')+' de la bêta '+(n===1?'n\'est pas encore parti':'ne sont pas encore partis')+' du téléphone. '+(n===1?'Il part':'Ils partent')+' tout seul dès qu\'il y a du réseau, ou tout de suite :',
     ver:(v,pwa)=>'Version '+v+(pwa?' · application installée':' · depuis le navigateur')+'. Si ce numéro n\'augmente pas après une mise à jour, l\'ancienne copie est restée en cache : ferme complètement l\'app depuis le sélecteur et rouvre-la.',
     gpsPwa:'L\'autorisation de position manque. D\'ABORD regarde l\'iPhone : Réglages → Confidentialité et sécurité → Service de localisation doit être activé, et plus bas Safari sur «Lorsque l\'app est active». Seulement si c\'est déjà le cas il faut retirer et remettre l\'icône, et attention : cela efface les cartes téléchargées. Touche ici pour l\'Aide.',
+    gpsTastoChiedi:'Demander l\'autorisation de position',
+    gpsTastoRiprova:'L\'autorisation est refusée : que faire',
+    gpsTastoOk:'L\'autorisation est déjà là : se raccrocher',
+    gpsEsitoNegato:'L\'iPhone ne me laisse pas redemander : le refus est déjà enregistré pour cette app, et il n\'apparaît dans aucun réglage. Regarde les deux points ci-dessous, dans cet ordre.',
+    gpsEsitoChiesto:'C\'est fait : si la question apparaît, touche Autoriser.',
+    gpsEsitoGranted:'L\'autorisation était déjà donnée. Si la position n\'arrive quand même pas, ce n\'est pas un problème d\'autorisation : lis plus bas.',
     gpsAndroid:'Position non autorisée. Sur Android : 1) active la Localisation (volet du haut, icône Position) ; 2) Paramètres → Applications → Chrome → Autorisations → Position → Autoriser seulement si l\'appli est en cours d\'utilisation, avec « Utiliser la position exacte » activé ; 3) ouvre codriver.pages.dev dans Chrome, touche l\'icône à gauche de l\'adresse → Autorisations → Position → Autoriser. Cela vaut aussi pour l\'appli sur l\'écran d\'accueil. Puis rouvre l\'appli.',
     onDevice:'cartes sur le téléphone', onDevice1:'carte sur le téléphone', freeSpace:'espace disponible', delMap:'Supprimer',
     dlFail:'Échec du téléchargement : ',
@@ -11233,6 +11261,7 @@ function openSheet(k){
   for(const n in sheets){ sheets[n].classList.remove('esce'); sheets[n].classList.toggle('show',n===k); }
   veloFoglio.classList.toggle('on', !!sheets[k]);
   if(k==='info') mostraPerf();
+  if(k==='aiuto' && typeof aggiornaTastoGps === 'function') aggiornaTastoGps();
 }
 /* Aggiorna il dato mentre il pannello è aperto: da fermi il sistema rallenta i
    fotogrammi apposta, quindi il numero che conta è quello che si legge muovendosi. */
@@ -11646,6 +11675,50 @@ document.getElementById('bCar').onclick=()=>openSheet('car');
 document.getElementById('bLegend').onclick=()=>openSheet('legend');
 document.getElementById('bInfo').onclick=()=>openSheet('info');
 document.getElementById('bAiuto').onclick=()=>openSheet('aiuto');
+document.getElementById('bAiutoSet').onclick=()=>openSheet('aiuto');
+/* IL TASTO CHE RICHIEDE LA POSIZIONE (20/09/2026, idea di Tiago dopo il caso del
+   permesso). Oggi la posizione la chiediamo NOI, quando decidiamo noi: se quella
+   domanda muore — dietro un velo, per una ricarica, per un tocco fuori tempo — la
+   persona non ha nessun modo di rifarla partire se non togliere l'icona e perdere le
+   mappe. Qui la richiesta nasce da un tocco suo, che e' la condizione in cui iOS e'
+   piu' disposto a mostrare la domanda.
+
+   IL LIMITE, DETTO SUL TASTO E NON SCOPERTO PROVANDO: se il no e' gia' registrato per
+   questa origine, iOS la domanda non la rimostra e nessun tasto puo' farlo. Il tasto
+   serve nel caso «mai chiesto» e nel caso «la domanda e' morta prima della risposta»,
+   non nel caso «ho detto no». Per questo si LEGGE lo stato prima (`permissions.query`)
+   e si scrive sul tasto quello che succedera', invece di far provare e sperare.
+   Se lo stato non si legge — API assente, o browser che non la implementa — si prova
+   lo stesso: peggio di cosi' non va, e il messaggio del rifiuto e' gia' scritto. */
+async function statoPermesso(){
+  try{ return (await navigator.permissions.query({name:'geolocation'})).state }
+  catch(e){ return 'ignoto' }
+}
+async function aggiornaTastoGps(){
+  const b = document.getElementById('bChiediGps'); if(!b) return;
+  const st = await statoPermesso();
+  b.dataset.stato = st;
+  b.textContent = st === 'granted' ? tr().gpsTastoOk
+                : st === 'denied'  ? tr().gpsTastoRiprova
+                                   : tr().gpsTastoChiedi;
+}
+document.getElementById('bChiediGps').onclick = async () => {
+  const b = document.getElementById('bChiediGps');
+  const es = document.getElementById('chiediGpsEsito');
+  const st = b.dataset.stato || await statoPermesso();
+  if(st === 'denied'){
+    /* Un tasto che non fa niente e non spiega e' peggio di nessun tasto: qui si dice
+       cosa e' successo e si lascia la persona dentro l'Aiuto, dove sotto c'e' cosa fare. */
+    es.textContent = tr().gpsEsitoNegato;
+    es.style.color = 'var(--pericolo)';
+    return;
+  }
+  es.style.color = '';
+  es.textContent = st === 'granted' ? tr().gpsEsitoGranted : tr().gpsEsitoChiesto;
+  /* Dentro il gesto: `startGps` chiede la posizione, e se il permesso manca la domanda
+     compare adesso, con il foglio aperto ma per volonta' sua. */
+  startGps();
+};
 /* La fisarmonica dell'Aiuto: una sola per tutte le voci, sul contenitore. Ogni
    intestazione apre il blocco che le sta subito sotto. */
 document.getElementById('aiutoLista').addEventListener('click', e => {
