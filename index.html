@@ -553,7 +553,6 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     border-radius:11px;background:var(--fondo2)}
   #invitoBox h3{margin:0 0 6px}
   .invito-row{display:flex;gap:8px;margin-top:8px}
-  #invitoApri{width:auto;margin:10px 0 2px;padding:8px 14px;font-size:13px;opacity:.8}
   .invito-row input{flex:1;min-width:0;border:1px solid var(--bordo2);border-radius:9px;
     padding:10px 11px;font:inherit;font-size:13px;background:var(--fondo3);color:var(--ink)}
   .invito-row input:focus{outline:2px solid var(--accent);outline-offset:1px}
@@ -853,10 +852,9 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
        auto, installa, e dall'icona si ritrova l'app vuota con l'auto di partenza.
        Segnalato da Enrico il 2/09 con un video, e capita a chiunque installi.
        Qui puo' rimettere il suo profilo senza che Tiago gli rimandi niente.
-       Si mostra aperto SOLO a chi un profilo non ce l'ha: a chi ce l'ha sarebbe
-       rumore, e dal 18/09 gli resta dietro un tocco («Ho un link nuovo»), perche' un
-       link puo' portare un'auto in piu'. -->
-  <button class="btn" id="invitoApri" hidden></button>
+       Si mostra SOLO a chi un profilo non ce l'ha: a chi ce l'ha sarebbe rumore, e
+       dal 20/09 non c'e' piu' nemmeno il tasto che lo apriva — col profilo vivo le
+       correzioni e le auto in piu' arrivano da sole. -->
   <div id="invitoBox" hidden>
     <h3><span data-lang="it">Hai un link d'invito?</span><span data-lang="en">Got an invite link?</span><span data-lang="fr">Tu as un lien d'invitation ?</span></h3>
     <p class="disc" id="invitoSpieg"></p>
@@ -1286,7 +1284,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '297';
+const APPVER = '298';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4368,14 +4366,32 @@ try{
    leggere. Lo chiedono una volta sola alla funzione del sito, che traduce il codice
    tester nel codice del profilo (functions/k.js). Il codice tester viaggia nel CORPO di
    una POST, mai nell'indirizzo: cosi' non finisce nei registri del server (condizione di
-   «CD · Legale e mercato», 20/09). Chiesto una volta e basta: se la risposta e' «non ho
-   niente per te» non si richiede mai piu'; se e' la rete a mancare si riprova al
-   prossimo avvio, se no chi installa l'app in metropolitana resterebbe fuori per sempre. */
-const PK_CHIESTO = 'copilota-pk-chiesto';
+   «CD · Legale e mercato», 20/09). Se e' la rete a mancare si riprova al prossimo avvio,
+   se no chi installa l'app in metropolitana resterebbe fuori per sempre.
+
+   «GIA' CHIESTO» RICORDAVA LA COSA SBAGLIATA (corretto il 20/09 sera, visto dal Database).
+   Prima bastava una risposta vera — anche «non ho niente per te» — per segnarsi «chiesto»
+   e non ridomandare MAI PIU'. Ma quella risposta non vuol dire «questo telefono ha finito
+   la migrazione»: vuol dire «questo telefono ha chiesto troppo presto», ed e' una cosa
+   diversa che il codice trattava uguale.
+   Non e' un caso limite: i codici sono nati la mattina del 20/09 e la tabella e' andata
+   online solo la sera. Chiunque abbia aperto l'app in quelle ore si sarebbe segnato
+   «chiesto» contro una tabella che non c'era, e non avrebbe ricevuto il profilo mai piu'.
+   Silenzioso, definitivo, e invisibile da tutte e due le parti — non lascia traccia ne'
+   nei file del Database ne' nei nostri registri.
+   Adesso si ricorda il GIORNO dell'ultima domanda e si ridomanda al massimo una volta al
+   giorno, finche' un codice non arriva davvero. Chi ha chiesto troppo presto si ripara da
+   solo al giorno dopo; chi e' gia' a posto non chiede piu' (esce alla prima riga, ha il
+   codice); chi non avra' mai una riga spende una POST al giorno, che e' il prezzo piu'
+   basso di tutti quelli sul tavolo — l'alternativa era mandare link nuovi a un gruppo che
+   non sappiamo nemmeno identificare. */
+const PK_CHIESTO = 'copilota-pk-chiesto';        // il GIORNO dell'ultima domanda, non un '1'
+const oggiISO = () => new Date().toISOString().slice(0, 10);
 async function chiediPk(){
   let pk = null, chiesto = '';
   try{ pk = localStorage.getItem(PK_K); chiesto = localStorage.getItem(PK_CHIESTO) || '' }catch(e){}
-  if(pk || chiesto) return pk;
+  if(pk) return pk;
+  if(chiesto === oggiISO()) return null;         // gia' chiesto oggi: domani si riprova
   let t = null; try{ t = localStorage.getItem(TESTER_K) }catch(e){}
   if(!t || !/^[a-z2-9]{6}$/.test(t)) return null;
   let r;
@@ -4393,8 +4409,9 @@ async function chiediPk(){
   try{ d = await r.json() }catch(e){ return null }
   if(!d || d.v !== 1) return null;
   const k = typeof d.k === 'string' && /^[a-z0-9]{22}$/.test(d.k) ? d.k : null;
-  /* Risposta vera, con o senza codice: la domanda e' fatta e non si ripete. */
-  try{ localStorage.setItem(PK_CHIESTO, '1'); if(k) localStorage.setItem(PK_K, k) }catch(e){}
+  /* Si segna il giorno, non un «fatto»: con un codice vero non si passa nemmeno piu' di
+     qui, senza si riprova domani. */
+  try{ localStorage.setItem(PK_CHIESTO, oggiISO()); if(k) localStorage.setItem(PK_K, k) }catch(e){}
   return k;
 }
 async function aggiornaProfilo(){
@@ -4859,7 +4876,6 @@ const T = {
     invSpieg:'Se l\'app è in schermata Home su iPhone, ha una memoria sua: il profilo della tua auto non passa da Safari. Incolla qui il link che ti hanno mandato e torna com\'era.',
     invPh:'incolla il link', invGo:'Applica',
     invOk:n=>'Fatto: '+n+'. Riapro l\'app…',
-    invAltro:'Ho un link nuovo',
     invNo:'Questo non è un link d\'invito valido. Deve contenere la parte dopo il cancelletto, quella che comincia con «#p=».',
     gReg:n=>n+(n===1?' regione':' regioni'), gGiu:n=>n+' sul telefono', gNess:'nessuna scaricata',
     noSave:'Non riesco a salvare la scelta: spazio esaurito o navigazione privata. Libera spazio e riprova.',
@@ -4890,7 +4906,7 @@ const T = {
     segnAnnullata:'Segnalazione annullata.',
     voceSilenzio:'Non senti la voce? Controlla che il telefono non sia in silenzioso o in vibrazione.',
     garNuova:n=>'🏁 La tua '+(n||'auto')+' è entrata nel garage',
-    garRipiego:n=>'Questa ('+n+') è un\'auto di partenza simile alla tua: il profilo della tua non sono riuscito a leggerlo. Non è colpa tua e non serve che tu faccia niente: scrivici e lo sistemiamo. Se hai il tuo link a portata di mano puoi anche incollarlo in «Ho un link nuovo», nel pannello dell\'auto.',
+    garRipiego:n=>'Questa ('+n+') è un\'auto di partenza simile alla tua: il profilo della tua non sono riuscito a leggerlo. Non è colpa tua e non serve che tu faccia niente: scrivici e te lo rimettiamo a posto noi da qui.',
     garTogli:'Togli un\'auto', garTogliSub:'dal tuo garage', garFine:'Fatto', garFineSub:'non togliere niente',
     garConf:n=>'Togliere «'+n+'» dal tuo garage? Se ti serve di nuovo, riapri il link che te l\'ha data.',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
@@ -4960,7 +4976,6 @@ const T = {
     invSpieg:'A web app on the iPhone Home Screen has its own storage: your car profile does not carry over from Safari. Paste the link you were sent and it comes back.',
     invPh:'paste the link', invGo:'Apply',
     invOk:n=>'Done: '+n+'. Reopening…',
-    invAltro:'I have a new link',
     invNo:'That is not a valid invite link. It must include the part after the hash, the one starting with “#p=”.',
     gReg:n=>n+(n===1?' region':' regions'), gGiu:n=>n+' on this phone', gNess:'none downloaded',
     noSave:'Cannot save your choice: storage full or private browsing. Free some space and try again.',
@@ -4991,7 +5006,7 @@ const T = {
     segnAnnullata:'Report cancelled.',
     voceSilenzio:'Can\'t hear the voice? Make sure your phone is not on silent or vibrate.',
     garNuova:n=>'🏁 Your '+(n||'car')+' is now in your garage',
-    garRipiego:n=>'This ('+n+') is a starter car similar to yours: I could not read your car\u2019s profile. It is not your fault and you do not have to do anything: write to us and we will fix it. If you have your link handy you can also paste it in “I have a new link”, in the car panel.',
+    garRipiego:n=>'This ('+n+') is a starter car similar to yours: I could not read your car\u2019s profile. It is not your fault and you do not have to do anything: write to us and we will fix it from our side.',
     garTogli:'Remove a car', garTogliSub:'from your garage', garFine:'Done', garFineSub:'remove nothing',
     garConf:n=>'Remove «'+n+'» from your garage? If you need it again, reopen the link it came with.',
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
@@ -5058,7 +5073,6 @@ const T = {
     invSpieg:'Sur l\'écran d\'accueil de l\'iPhone, l\'app a sa propre mémoire : le profil de ta voiture ne vient pas de Safari. Colle ici le lien qu\'on t\'a envoyé et tout revient.',
     invPh:'colle le lien', invGo:'Appliquer',
     invOk:n=>'C\'est fait : '+n+'. Je rouvre l\'app…',
-    invAltro:'J\'ai un nouveau lien',
     invNo:'Ce n\'est pas un lien d\'invitation valide. Il doit contenir la partie après le dièse, celle qui commence par « #p= ».',
     gReg:n=>n+(n===1?' région':' régions'), gGiu:n=>n+' sur le téléphone', gNess:'aucune téléchargée',
     noSave:'Impossible d\'enregistrer le choix : espace insuffisant ou navigation privée. Libère de l\'espace et réessaie.',
@@ -5089,7 +5103,7 @@ const T = {
     segnAnnullata:'Signalement annulé.',
     voceSilenzio:'Tu n\'entends pas la voix ? Vérifie que le téléphone n\'est pas en silencieux ou en vibreur.',
     garNuova:n=>'🏁 Ta '+(n||'voiture')+' est entrée dans ton garage',
-    garRipiego:n=>'Celle-ci ('+n+') est une voiture de départ proche de la tienne : je n\'ai pas réussi à lire le profil de la tienne. Ce n\'est pas ta faute et tu n\'as rien à faire : écris-nous et on corrige. Si tu as ton lien sous la main, tu peux aussi le coller dans « J\'ai un nouveau lien », dans le panneau de la voiture.',
+    garRipiego:n=>'Celle-ci ('+n+') est une voiture de départ proche de la tienne : je n\'ai pas réussi à lire le profil de la tienne. Ce n\'est pas ta faute et tu n\'as rien à faire : écris-nous et on corrige tout de notre côté.',
     garTogli:'Retirer une voiture', garTogliSub:'de ton garage', garFine:'Terminé', garFineSub:'ne rien retirer',
     garConf:n=>'Retirer «'+n+'» de ton garage ? Si tu en as de nouveau besoin, rouvre le lien qui te l\'a donnée.',
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
@@ -11868,25 +11882,20 @@ let carApertoTutto = false;
    stessi due posti in cui scriverebbe il link e ricarica. Cosi' funziona anche se
    il tester incolla un link di un'altra origine (github.io invece di pages.dev),
    che e' successo davvero mentre spostavamo il mirror. */
-let invitoAperto = false;
 function montaInvito(){
   const box = document.getElementById('invitoBox');
   if(!box) return;
-  /* Con un profilo gia' presente il riquadro sta dietro un tocco (18/09): serve a chi
-     riceve un link con un'auto in piu', e sull'iPhone dalla Home e' l'UNICA strada —
-     un link toccato in un messaggio si apre in Safari, che ha un'altra memoria. A chi
-     un profilo non ce l'ha, il riquadro si mostra aperto come prima. */
-  const apri = document.getElementById('invitoApri');
-  if(CARS.mio && !invitoAperto){
-    box.hidden = true;
-    if(apri){
-      apri.hidden = false;
-      apri.textContent = tr().invAltro;
-      apri.onclick = () => { invitoAperto = true; montaInvito() };
-    }
-    return;
-  }
-  if(apri) apri.hidden = true;
+  /* IL TASTO «HO UN LINK NUOVO» NON C'E' PIU' (20/09, richiesta di Tiago: «ora che
+     gestiamo tutto noi da qui possiamo toglierlo»). Dal profilo vivo le correzioni e le
+     auto in piu' arrivano da sole dal file del Database, quindi a chi un'auto ce l'ha
+     gia' quel tasto non serve piu' a niente.
+     IL RIQUADRO RESTA, e si apre da solo sui telefoni VUOTI: e' l'unico modo in cui
+     un'icona appena installata riceve il suo profilo. Sull'iPhone l'app in schermata
+     Home ha una memoria sua, quindi il link toccato in un messaggio si apre in Safari e
+     l'icona resta vuota lo stesso (video di Enrico, 2/09). Togliere anche questo vorrebbe
+     dire che chi reinstalla non ha piu' nessuna strada.
+     LA FUNZIONE DIETRO NON SI SMONTA: la migrazione `/k` serve fino al 20 ottobre. */
+  if(CARS.mio){ box.hidden = true; return }
   box.hidden = false;
   const inp = document.getElementById('invitoIn');
   const bt  = document.getElementById('invitoGo');
