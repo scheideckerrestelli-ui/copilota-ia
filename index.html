@@ -1262,7 +1262,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '294';
+const APPVER = '295';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -9659,6 +9659,9 @@ const dopoStop = a => !!(S.stopMuti && S.stopMuti.has(a.key));
    - una laterale vera ci vuole: una giunzione con 3 archi dove gli altri sono la
      prosecuzione della stessa via non e' un incrocio. */
 const INCROCIO_VMIN = 15.3, INCROCIO_CEDE_M = 150;      // m/s (55 km/h) e metri
+/* Quanta pendenza in SALITA si lascia accorciare l'anticipo. In discesa nessun tetto:
+   li' l'errore allunga, e allungare non fa male. */
+const SALITA_MAX = 0.06;
 function incrocioSemplice(e, dir, jn){
   if(inPaese(e) || S.v < INCROCIO_VMIN) return false;
   const l = JUN.get(jn)||[]; if(l.length < 3) return false;
@@ -9967,7 +9970,10 @@ function updateNote(){
         if(dk && ixV['d.metri']) chS = [dk, 'd.metri', parolaStop];
       }
       const stS = stileAttivo(), reazS = Math.max(0.6, stS.reaz + (S.antic||0));   // come `reaz` piu' sotto
-      const leadS = Math.max(S.v*2.2, S.v*(durataFrase(chS) + reazS) + S.v*S.v/(2*stS.dec));
+      // stessa correzione di pendenza della frenata in curva: uno stop in fondo a una
+      // discesa e' proprio il caso in cui l'anticipo di prima non bastava
+      const decS = Math.max(1.2, stS.dec + 9.81*Math.min(SALITA_MAX, S.pend||0));
+      const leadS = Math.max(S.v*2.2, S.v*(durataFrase(chS) + reazS) + S.v*S.v/(2*decS));
       if(st0.dist <= leadS + S.v) musicaPreavvisa(st0.key);
       const now = performance.now();
       if(st0.dist <= leadS && now-S.lastSaid > 900 && dilo(chS, false) > 0){
@@ -10085,7 +10091,18 @@ function updateNote(){
   /* La frenata si calcola con la decelerazione DELLO STILE, non con un 3,0 fisso.
      Piu' dolce freni, piu' lontano va detta la nota: e' lo stesso conto che fa un
      copilota vero quando conosce il suo pilota. */
-  const frenata = (av && S.v>vRif) ? (S.v*S.v - vRif*vRif)/(2*st.dec) : 0;
+  /* LA PENDENZA ENTRA NELLA FRENATA (20/09/2026, ordine di Tiago). In discesa la gravita'
+     tira avanti e toglie g x pendenza alla decelerazione utile: al -10% restano 2,0 m/s²
+     su 3,0 del Comfort, cioe' mezzo spazio di frenata in piu', e la nota va detta prima.
+     E' la stessa formula che il simulatore della demo usava da mesi mentre la guida vera
+     non la conosceva. Il minimo di 1,2 m/s² evita numeri assurdi dove il dato di quota
+     sbaglia (un ponte, una galleria, un errore del modello del terreno).
+     In salita accorcia, ed e' giusto: in salita si frena meno. Il guadagno e' pero'
+     TAGLIATO a `SALITA_MAX`, perche' li' un errore di quota accorcerebbe l'anticipo, che
+     e' l'unico verso in cui sbagliare fa male. `S.pend` e' 0 senza il file delle quote:
+     chi ha una mappa vecchia sente esattamente quello di prima. */
+  const decPend = Math.max(1.2, st.dec + 9.81*Math.min(SALITA_MAX, S.pend||0));
+  const frenata = (av && S.v>vRif) ? (S.v*S.v - vRif*vRif)/(2*decPend) : 0;
   const parlato = (ch ? durataFrase(ch) : 0) || 1.2;
   /* ---- l'anticipo, in tre pezzi che si sommano e basta ----
        [ frase ] + [ reazione ] + [ frenata ]
