@@ -414,18 +414,36 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .segn-testa{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .segn-testa h2{margin:0}
   .segn-nord{width:auto;height:40px;padding:0 14px;font-size:13px;white-space:nowrap}
-  .segn-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0 10px}
-  .segn-b{min-height:76px;border-radius:14px;border:1px solid var(--line);
+  /* 20/09/2026, ordine di Tiago: icone al posto delle parole. Le parole restano nel
+     bottone ma solo per chi usa il lettore di schermo (`.solo-voce`), se no il bottone
+     non avrebbe nessun nome da leggere: un'icona muta e' inutilizzabile al buio totale.
+     La riga e' FLESSIBILE e non a due colonne fisse: con cinque voci la prima riga ne
+     tiene tre e la seconda due, larghe uguali, senza buchi. */
+  .segn-grid{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 10px}
+  .segn-b{flex:1 1 92px;min-height:76px;border-radius:14px;border:1px solid var(--line);
     background:var(--panel2);color:var(--ink);font-family:var(--font-b);font-size:15px;
     font-weight:600;line-height:1.25;padding:10px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
     transition:transform .12s ease,filter .12s ease}
+  .segn-b svg{width:46px;height:46px}
+  /* Ogni icona ha il SUO colore, gli stessi gia' usati nell'app: l'arancione e' quello
+     degli autovelox sulla mappa, il giallo quello dei dossi. I ritagli (la lente, le
+     crepe) sono del colore del bottone, cosi' l'icona si legge anche piccola. */
+  .segn-b .ic-tag{fill:currentColor}
+  .segn-b .ic-buco{fill:var(--panel2)}
+  .segn-b .ic-linea{stroke:var(--ink2);stroke-width:2;stroke-linecap:round;fill:none}
+  .segn-b[data-cosa="autovelox"]{color:#ff8a1e}
+  .segn-b[data-cosa="polizia"]{color:#4c8dff}
+  .segn-b[data-cosa="dosso"]{color:#f5c518}
+  .segn-b[data-cosa="dissestata"]{color:#c98b3a}
+  .segn-b[data-cosa="altro"]{color:var(--ink2)}
+  .solo-voce{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .segn-b:active{transform:scale(.97);filter:brightness(1.25)}
   .segn-b:disabled{opacity:.4;cursor:default}
   .segn-b[hidden]{display:none}
-  /* Numero dispari di voci (oggi tre, quando la voce autovelox non si puo' mostrare):
-     l'ultima prende tutta la riga invece di restare mezza vuota. Vale anche il giorno in
-     cui le voci diventano cinque. */
-  .segn-grid.dispari .segn-b:last-of-type{grid-column:1/-1}
+  /* La regola del numero dispari non serve piu': con la riga flessibile i bottoni di
+     ogni riga si allargano da soli. La classe `dispari` la mette ancora il codice e non
+     fa niente: toglierla e' una riga, ma sta in un pezzo di un'altra sessione. */
   .segn-stato{color:var(--ink2);font-size:13px;margin-top:6px}
   .segn-nota a{color:var(--accent)}
   @media (prefers-reduced-motion:reduce){ .segn-b{transition:none} .segn-b:active{transform:none} }
@@ -925,13 +943,16 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   </div>
   <p class="segn-stato" id="segnStato" hidden></p>
   <div class="segn-grid">
-    <button class="segn-b" type="button" data-cosa="autovelox" id="segnVelox"><span data-lang="it">Autovelox fisso</span><span data-lang="en">Fixed speed camera</span><span data-lang="fr">Radar fixe</span></button>
-    <button class="segn-b" type="button" data-cosa="dosso"><span data-lang="it">Dosso</span><span data-lang="en">Speed bump</span><span data-lang="fr">Dos-d’âne</span></button>
-    <button class="segn-b" type="button" data-cosa="dissestata"><span data-lang="it">Strada dissestata</span><span data-lang="en">Damaged road</span><span data-lang="fr">Route dégradée</span></button>
-    <button class="segn-b" type="button" data-cosa="altro"><span data-lang="it">Altro</span><span data-lang="en">Other</span><span data-lang="fr">Autre</span></button>
+    <button class="segn-b" type="button" data-cosa="autovelox" id="segnVelox" title="Autovelox fisso"><svg viewBox="0 0 24 24" aria-hidden="true"><rect class="ic-tag" x="2" y="6.5" width="13.5" height="10.5" rx="2.5"/><circle class="ic-buco" cx="8.8" cy="11.8" r="3.2"/><circle class="ic-tag" cx="8.8" cy="11.8" r="1.4"/><path class="ic-tag" d="M16.5 10l5.5-2.8v9.6L16.5 14z"/><path class="ic-linea" d="M3 20.5h18"/></svg><span class="solo-voce" data-lang="it">Autovelox fisso</span><span class="solo-voce" data-lang="en">Fixed speed camera</span><span class="solo-voce" data-lang="fr">Radar fixe</span></button>
+    <button class="segn-b" type="button" data-cosa="polizia" title="Polizia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5h8v7.5H6.5a2.5 2.5 0 0 1-2.5-2.5z" fill="#e04b4b"/><path d="M12 11.5h8v5a2.5 2.5 0 0 1-2.5 2.5H12z" fill="#4c8dff"/><path class="ic-buco" d="M11.2 11.5h1.6v7.5h-1.6z"/><path class="ic-linea" d="M2.5 21.5h19"/><path class="ic-linea" d="M6.5 4.5l2 2.6M17.5 4.5l-2 2.6M12 3v3"/></svg><span class="solo-voce" data-lang="it">Polizia</span><span class="solo-voce" data-lang="en">Police</span><span class="solo-voce" data-lang="fr">Police</span></button>
+    <button class="segn-b" type="button" data-cosa="dosso" title="Dosso"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-tag" d="M2.5 17.5c0-5.5 4.2-8.5 9.5-8.5s9.5 3 9.5 8.5z"/><path class="ic-buco" d="M8.6 10.2l1.8.6-2.4 6.7H6.2zM13.4 10.1l1.8.8-2.7 6.6h-2z"/><path class="ic-linea" d="M1.5 20.5h21"/></svg><span class="solo-voce" data-lang="it">Dosso</span><span class="solo-voce" data-lang="en">Speed bump</span><span class="solo-voce" data-lang="fr">Dos-d’âne</span></button>
+    <button class="segn-b" type="button" data-cosa="dissestata" title="Strada dissestata"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-tag" d="M3 21 8.1 4h7.8L21 21z"/><path class="ic-buco" d="M11.15 6h1.7l.3 2.5h-2.3zM10.75 10.7h2.5l.35 2.7h-3.2z"/><path class="ic-buco" d="M8.3 15.1c3-1 5.3.5 4.9 2.5-.4 2.1-4.1 3-5.8 1.6-1.3-1.1-1-3.3.9-4.1z"/></svg><span class="solo-voce" data-lang="it">Strada dissestata</span><span class="solo-voce" data-lang="en">Damaged road</span><span class="solo-voce" data-lang="fr">Route dégradée</span></button>
+    <button class="segn-b" type="button" data-cosa="altro" title="Altro"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="ic-tag" cx="5.5" cy="12" r="2"/><circle class="ic-tag" cx="12" cy="12" r="2"/><circle class="ic-tag" cx="18.5" cy="12" r="2"/></svg><span class="solo-voce" data-lang="it">Altro</span><span class="solo-voce" data-lang="en">Other</span><span class="solo-voce" data-lang="fr">Autre</span></button>
   </div>
-  <p class="disc segn-nota"><span data-lang="it">Parte il punto, con direzione, velocità arrotondata, ora e il tuo codice tester.</span><span data-lang="en">Sends the point, with direction, rounded speed, time and your tester code.</span><span data-lang="fr">Envoie le point, avec direction, vitesse arrondie, heure et ton code testeur.</span>
-    <a href="https://codriver.pages.dev/beta#privacy" target="_blank" rel="noopener"><span data-lang="it">Informativa</span><span data-lang="en">Privacy</span><span data-lang="fr">Confidentialité</span></a></p>
+  <!-- 20/09/2026, ordine di Tiago: sotto i bottoni va un ringraziamento, non l'elenco di
+       cosa parte. Quello che esce dal telefono resta scritto nei termini v5 e
+       nell'informativa v6, che sono il posto dove vale davvero. -->
+  <p class="disc segn-nota"><span data-lang="it">Grazie per la tua segnalazione!</span><span data-lang="en">Thanks for your report!</span><span data-lang="fr">Merci pour ton signalement !</span></p>
   <button class="btn" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span><span data-lang="fr">Fermer</span></button>
 </div></div>
 
@@ -1127,7 +1148,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '285';
+const APPVER = '286';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -8476,8 +8497,8 @@ function buildAhead(){
       const jv = dir>0 ? e.j1 : e.j0, fine = acc + (dir>0 ? e.len-d0 : d0);
       if(fine>=0 && fine<=HORIZON && arrivo==null && !ROTONDA.has(e.id)
          && !S.aheadStop.some(z => Math.abs(z.dist-fine) <= STOP_VICINO_M)
-         && precedenzaDedotta(e, dir, jv))
-        S.aheadStop.push({dist:fine, tipo:2, key:'ded'+e.id+':'+jv});
+         && (precedenzaDedotta(e, dir, jv) || incrocioSemplice(e, dir, jv)))
+        S.aheadStop.push({dist:fine, tipo:2, jn:jv, key:'ded'+e.id+':'+jv});
     }
     const list = dir>0 ? e.curves : [...e.curves].reverse();
     for(const c of list){
@@ -8561,6 +8582,20 @@ function buildAhead(){
      cartello non e' piu' nel lookahead. Solo lo stop: col dare precedenza non ci si
      ferma per forza. E solo se la voce SA dire «stop»: senza la clip (prima di
      generarla) le curve tacerebbero senza che nessuno abbia detto perche'. */
+  /* La parola dell'incrocio sta AL POSTO della nota di curva di quell'incrocio, e solo
+     se quella curva e' larga: se ce n'e' una stretta, l'incrocio si toglie dalla lista. */
+  S.aheadStop = S.aheadStop.filter(st => {
+    if(st.jn == null) return true;
+    const tocca = S.ahead.filter(a => !a.inside && (a.gj||[]).includes(st.jn));
+    /* Una curva stretta vince anche se arriva POCO DOPO l'incrocio, non solo dentro i 25 m
+       della giunzione: senza questa riga la voce era occupata a dire «incrocio» quando
+       arrivava il tornante, e in 150 km di Valle d'Aosta ne perdeva tre. */
+    if(tocca.some(a => a.c.c <= DEDOTTA_CLS)) return false;
+    if(S.ahead.some(a => !a.inside && a.c.c <= DEDOTTA_CLS
+                      && a.dist >= st.dist-5 && a.dist-st.dist <= INCROCIO_CEDE_M)) return false;
+    for(const a of tocca) (S.stopMuti || (S.stopMuti = new Set())).add(a.key);
+    return true;
+  });
   const saStop = !!(VOCE.idx[L] && VOCE.idx[L]['h.stop']);
   for(const st of S.aheadStop){
     /* Il semaforo zittisce senza spiegare, ed e' voluto: dopo un rosso riparti a passo
@@ -9416,6 +9451,31 @@ const dopoStop = a => !!(S.stopMuti && S.stopMuti.has(a.key));
      chilometro, cioe' il rumore di fondo che lui ha fatto togliere agli incroci. In paese
      restano i cartelli veri;
    - mai in rotatoria (li' parla il navigatore) e mai dove il cartello vero c'e' gia'. */
+/* INCROCI SEMPLICI (20/09/2026, richiesta di Tiago: «agli incroci dove non ci sono stop o
+   altro metti anche la parola incrocio, tranne nei centri abitati»). Qui non c'e' nessun
+   cartello e nessuna precedenza da dedurre: e' l'incrocio in se'.
+   Tre condizioni, e ognuna viene da una misura fatta guidando (prove/prova-voce-curve.js):
+   - FUORI DAI PAESI e sopra INCROCIO_VMIN (55 all'ora): annunciarli tutti faceva 7,2-7,8
+     frasi ogni 10 km, vicino al rumore che Tiago aveva fatto togliere il 18/09; cosi' sono
+     3,7 in montagna e 6,3 in pianura;
+   - la parola PRENDE IL POSTO della nota di curva di quell'incrocio (sua precisazione), ma
+     SOLO se quella curva e' larga: dicendola sempre sparivano 125 note su 868 in Valle
+     d'Aosta, fra cui 10 tornanti e 9 curve di classe 1 — un tornante annunciato come
+     «incrocio» e' la cosa peggiore che questa voce possa fare. Se all'incrocio c'e' una
+     curva di classe 3 o piu' stretta, parla la curva e l'incrocio tace (scelta di Tiago
+     fra quattro, coi numeri davanti);
+   - una laterale vera ci vuole: una giunzione con 3 archi dove gli altri sono la
+     prosecuzione della stessa via non e' un incrocio. */
+const INCROCIO_VMIN = 15.3, INCROCIO_CEDE_M = 150;      // m/s (55 km/h) e metri
+function incrocioSemplice(e, dir, jn){
+  if(inPaese(e) || S.v < INCROCIO_VMIN) return false;
+  const l = JUN.get(jn)||[]; if(l.length < 3) return false;
+  let altri = 0;
+  for(const id of l){ const o=E[id]; if(!o || o.id===e.id) continue;
+    if(ROTONDA.has(o.id)) return false;
+    if(o.wid !== e.wid) altri++; }
+  return altri > 0;
+}
 const DEDOTTA_CLS = 3;
 function precedenzaDedotta(e, dir, jn){
   if(inPaese(e)) return false;
@@ -10806,14 +10866,20 @@ function inFascia(la, lo){
    prende dalla POSIZIONE, non dalle mappe accese: chi guida in Francia con la mappa
    italiana accesa non deve vedere la voce. */
 const SEGN_PAESI_VELOX = new Set(['it','es','be','gb']);
+/* 20/09/2026, scelta di Tiago (domanda strutturata, col vincolo davanti): autovelox e
+   polizia si mostrano OVUNQUE. Prima sparivano fuori da Italia, Spagna, Belgio e Gran
+   Bretagna e dentro la fascia di 2 km dai confini con Francia e Svizzera, dove segnalare
+   autovelox e controlli e' vietato — regola del 19/09 nata dal parere legale. Lui l'ha
+   cambiata sapendo che quello e' il punto in cui la beta e' piu' esposta; segnalato a
+   CD · Legale e mercato perche' lo verifichi sui testi.
+   Restano le due condizioni TECNICHE, che non sono di legge: una posizione buona e un
+   aggancio vicino a una strada che conosciamo, se no il punto finisce sulla strada
+   sbagliata (a Chiasso le strade svizzere cominciano a venti metri da quelle italiane).
+   `inFascia` e `SEGN_PAESI_VELOX` restano nel file: rimetterli in piedi e' una riga. */
 function veloxLecito(f){
   if(!f || f.acc > 50) return false;
-  /* Agganciati a una strada nostra, e da vicino: i dati sono tagliati al confine, e a
-     Chiasso le strade svizzere cominciano a venti metri da quelle italiane. */
   if(!S.snap || S.snap.d > 15) return false;
-  if(inFascia(f.lat, f.lon)) return false;
-  return REG.some(r => RSTATE.att.includes(r.id) && SEGN_PAESI_VELOX.has(r.paese)
-                    && inBox(r.bbox, f.lat, f.lon));
+  return true;
 }
 
 function apriSegnala(){
