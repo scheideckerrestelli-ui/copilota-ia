@@ -691,7 +691,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
     <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
   <button class="rbtn" id="bCar" title="Il mio veicolo" aria-label="Il mio veicolo">
-    <svg viewBox="0 0 24 24"><path d="M3 14.5h18M4.6 14.5l1.6-5.2a2 2 0 0 1 1.9-1.4h7.8a2 2 0 0 1 1.9 1.4l1.6 5.2"></path><path d="M3 14.5v3h3v-3M18 14.5v3h3v-3"></path><circle cx="7.5" cy="14.5" r="1.4"></circle><circle cx="16.5" cy="14.5" r="1.4"></circle></svg></button>
+    <!-- 20/09/2026, ordine di Tiago: «non sembra una macchina quasi». Il disegno di
+         prima aveva tre righe orizzontali quasi attaccate (terra, corpo, ruote) e due
+         ruote grandi come pallini: a 21 px si impastavano in una macchia. Questa ha le
+         due cose che l'occhio usa per dire «auto» in fretta, RUOTE GRANDI E STACCATE e
+         la riga netta fra vetri e carrozzeria, e non ha la riga di terra, che era quella
+         che impastava. Scelta da Tiago fra tre, guardate a grandezza vera
+         (`proposte/icona-auto.html`): chi la rifa' le guardi a 21 px, non ingrandite. -->
+    <svg viewBox="0 0 24 24"><path d="M2.6 15.3v-1.9c0-.9.6-1.5 1.7-1.7l2.7-3.2c.5-.6 1.2-.9 2-.9h5.5c.8 0 1.5.3 2 .9l2.6 3.2c1.5.2 2.3.8 2.3 1.7v1.9"></path><path d="M4.3 11.7h15.1"></path><path d="M2.6 15.3h1.9M9.7 15.3h4.6M19.5 15.3h1.9"></path><circle cx="7.1" cy="15.3" r="2.3"></circle><circle cx="16.9" cy="15.3" r="2.3"></circle></svg></button>
   <!-- Ricentrare e' l'unico comando che in guida non puo' stare dietro un menu:
        se tocchi la mappa e perdi l'inseguimento devi tornare con UN dito. In fondo
        alla colonna, come chiesto, e sparisce quando gia' si insegue. -->
@@ -1242,7 +1249,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '290';
+const APPVER = '291';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
