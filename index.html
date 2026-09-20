@@ -420,12 +420,20 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      La riga e' FLESSIBILE e non a due colonne fisse: con cinque voci la prima riga ne
      tiene tre e la seconda due, larghe uguali, senza buchi. */
   .segn-grid{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0 10px}
-  .segn-b{flex:1 1 92px;min-height:76px;border-radius:14px;border:1px solid var(--line);
+  .segn-b{flex:1 1 92px;min-height:86px;border-radius:14px;border:1px solid var(--line);
     background:var(--panel2);color:var(--ink);font-family:var(--font-b);font-size:15px;
-    font-weight:600;line-height:1.25;padding:10px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
+    font-weight:600;line-height:1.25;padding:10px 6px;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
     transition:transform .12s ease,filter .12s ease}
-  .segn-b svg{width:46px;height:46px}
+  .segn-b svg{width:40px;height:40px}
+  /* 20/09/2026, ordine di Tiago guardando il foglio: sotto ogni icona la parola. Le
+     icone da sole erano riquadri muti, e soprattutto non si capiva quale fosse
+     l'autovelox fisso e quale la pattuglia. Le parole c'erano gia', scritte per il
+     lettore di schermo: qui si limitano a diventare visibili, cosi' non esistono due
+     testi diversi per la stessa cosa. */
+  .segn-b .solo-voce{position:static;width:auto;height:auto;overflow:visible;
+    clip-path:none;white-space:normal;text-align:center;font-size:11px;font-weight:600;
+    line-height:1.15;letter-spacing:.01em;color:var(--ink2)}
   /* Ogni icona ha il SUO colore, gli stessi gia' usati nell'app: l'arancione e' quello
      degli autovelox sulla mappa, il giallo quello dei dossi. I ritagli (la lente, le
      crepe) sono del colore del bottone, cosi' l'icona si legge anche piccola. */
@@ -548,6 +556,16 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .gcap.aperto .gfre{transform:rotate(0deg);border-top-color:var(--accent)}
   .gcap:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
   .gbox .rrow:last-of-type{border-bottom:0}
+  /* Aiuto (20/09/2026, chiesto da un tester tramite la plancia): stessa fisarmonica
+     dei gruppi di paese nel pannello Mappe, cosi' non nasce un secondo modo di aprire
+     e chiudere le cose. Niente <details>: il triangolino di sistema su iOS non si
+     lascia impaginare, ed e' il motivo per cui `.gcap` esiste. */
+  #aiutoLista .gcap{padding:14px 0 11px}
+  #aiutoLista .gnm{text-transform:none;letter-spacing:.01em;font-size:14.5px}
+  #aiutoLista .gbox{padding:2px 0 12px;font-size:13.5px;line-height:1.5;color:var(--ink2)}
+  #aiutoLista .gbox p{margin:9px 0}
+  #aiutoLista .gbox b{color:var(--ink)}
+  #aiutoLista .gbox .attenzione{color:var(--pericolo);font-weight:600}
   @media (prefers-reduced-motion:reduce){ .gcap .gfre{transition:none} }
 
   /* ======== ERGONOMIA · priorita' 1 (19/09/2026, analisi in proposte/ergonomia/ANALISI.md,
@@ -1110,7 +1128,79 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     (© contributeurs OpenStreetMap, ODbL) et peuvent être erronés ou obsolètes : la signalisation
     routière et ton propre compteur font foi. <b>L'absence d'alerte ne garantit pas
     l'absence de contrôle.</b> Regarde la route, pas l'écran — règle tout à l'arrêt.</div>
+  <button class="btn" id="bAiuto" type="button" style="background:none;border:1px solid var(--bordo2);color:var(--ink)"><span data-lang="it">Aiuto</span><span data-lang="en">Help</span><span data-lang="fr">Aide</span></button>
   <button class="btn" data-close><span data-lang="it">Si parte</span><span data-lang="en">Let's go</span><span data-lang="fr">C'est parti</span></button>
+</div></div>
+
+<!-- AIUTO (20/09/2026). Chiesto da un tester tramite la plancia, dopo il difetto del
+     permesso di posizione: le stesse domande tornavano nei DM e la risposta stava
+     sparsa fra un avviso che dura sei secondi e la pagina /beta, che in viaggio non si
+     apre. Qui sta tutto insieme, dentro l'app, e si legge senza rete.
+     La voce del GPS e' la prima perche' e' quella che blocca davvero, e dice a chiare
+     lettere che togliere l'icona cancella le mappe: quella frase mancava, ed e' quella
+     che fa piu' danno quando manca. -->
+<div class="sheet" id="sheetAiuto"><div class="inner">
+  <div class="grip"></div>
+  <h2><span data-lang="it">Aiuto</span><span data-lang="en">Help</span><span data-lang="fr">Aide</span></h2>
+  <p class="disc"><span data-lang="it">Le cose che ci chiedono più spesso. Se non trovi la tua, scrivici: <b>@co_driver_</b>.</span><span data-lang="en">The things people ask us most. If yours isn't here, write to us: <b>@co_driver_</b>.</span><span data-lang="fr">Ce qu'on nous demande le plus souvent. Si la tienne n'y est pas, écris-nous : <b>@co_driver_</b>.</span></p>
+  <div id="aiutoLista">
+  <button class="gcap" type="button" aria-expanded="false"><span class="gnm"><span data-lang="it">Il GPS non parte, o la mappa non mi segue</span><span data-lang="en">GPS won't start, or the map doesn't follow me</span><span data-lang="fr">Le GPS ne démarre pas, ou la carte ne me suit pas</span></span><i class="gfre"></i></button>
+  <div class="gbox" hidden><div data-lang="it"><p>Prima cosa, <b>chiudi l'app e riaprila</b>: le correzioni arrivano da sole e non c'è niente da installare.</p>
+<p><b>Su iPhone, con l'icona nella schermata Home:</b> quell'icona ha permessi suoi, separati da Safari, e <b>non compare</b> in Impostazioni, Privacy, Localizzazione. Non cercarla lì. Il permesso si chiede una volta sola: se la prima volta hai toccato «Non consentire», o hai chiuso la domanda senza rispondere, l'unico modo di rifarla comparire è togliere l'icona e rimetterla.</p>
+<p class="attenzione">Attenzione: togliere l'icona cancella le mappe che hai scaricato. Fallo quando sei sotto wifi e hai tempo di riscaricarle, non prima di partire.</p>
+<p>Quando l'hai rimessa: apri, tocca «Ho letto e accetto», e alla domanda della posizione rispondi <b>Consenti</b> prima di fare altro.</p>
+<p><b>Su Android</b> l'app usa i permessi di Chrome: Impostazioni, App, Chrome, Autorizzazioni, Posizione.</p>
+<p><b>Se il GPS c'è ma la mappa non ti segue:</b> hai toccato la mappa e sei passato al modo libero. Il bottone in basso a destra ti riaggancia.</p></div><div data-lang="en"><p>First thing, <b>close the app and reopen it</b>: fixes arrive on their own, there is nothing to install.</p>
+<p><b>On iPhone, with the icon on the Home screen:</b> that icon has its own permissions, separate from Safari, and it <b>does not appear</b> under Settings, Privacy, Location Services. Don't look for it there. The permission is asked once only: if you tapped "Don't Allow" the first time, or dismissed the question without answering, the only way to get it back is to remove the icon and add it again.</p>
+<p class="attenzione">Careful: removing the icon deletes the maps you downloaded. Do it on wifi, with time to download them again, not just before a drive.</p>
+<p>Once it's back: open it, tap "I have read and accept", and answer <b>Allow</b> to the location question before doing anything else.</p>
+<p><b>On Android</b> the app uses Chrome's permissions: Settings, Apps, Chrome, Permissions, Location.</p>
+<p><b>If GPS works but the map doesn't follow you:</b> you touched the map and switched to free mode. The button at the bottom right locks back on.</p></div><div data-lang="fr"><p>D'abord, <b>ferme l'app et rouvre-la</b> : les corrections arrivent toutes seules, il n'y a rien à installer.</p>
+<p><b>Sur iPhone, avec l'icône sur l'écran d'accueil :</b> cette icône a ses propres autorisations, séparées de Safari, et elle <b>n'apparaît pas</b> dans Réglages, Confidentialité, Service de localisation. Ne la cherche pas là. L'autorisation n'est demandée qu'une fois : si tu as touché « Refuser » la première fois, ou fermé la question sans répondre, le seul moyen est de retirer l'icône et de la remettre.</p>
+<p class="attenzione">Attention : retirer l'icône efface les cartes que tu as téléchargées. Fais-le en wifi, avec le temps de les retélécharger, pas juste avant de partir.</p>
+<p>Une fois remise : ouvre, touche « J'ai lu et j'accepte », et réponds <b>Autoriser</b> à la question sur la position avant de faire autre chose.</p>
+<p><b>Sur Android</b> l'app utilise les autorisations de Chrome : Paramètres, Applications, Chrome, Autorisations, Localisation.</p>
+<p><b>Si le GPS marche mais que la carte ne te suit pas :</b> tu as touché la carte et tu es passé en mode libre. Le bouton en bas à droite te raccroche.</p></div></div>
+  <button class="gcap" type="button" aria-expanded="false"><span class="gnm"><span data-lang="it">Mettere l'icona nella schermata Home</span><span data-lang="en">Putting the icon on the Home screen</span><span data-lang="fr">Mettre l'icône sur l'écran d'accueil</span></span><i class="gfre"></i></button>
+  <div class="gbox" hidden><div data-lang="it"><p><b>iPhone, con Safari:</b> tocca Condividi, poi «Aggiungi a schermata Home». Deve essere Safari: da un browser dentro Instagram o Telegram quel comando non c'è.</p>
+<p><b>Android, con Chrome:</b> menu in alto a destra, «Aggiungi a schermata Home».</p>
+<p>Conviene farlo: a schermo pieno si vede più strada, e l'app resta dov'è anche se chiudi il browser.</p>
+<p>Una cosa da sapere: <b>il browser dentro un'altra app ha una memoria sua</b>. Le mappe scaricate toccando il link dentro Instagram non esistono per l'app della schermata Home, e viceversa. Se ti sembra di aver perso tutto, è quasi sempre questo.</p></div><div data-lang="en"><p><b>iPhone, in Safari:</b> tap Share, then "Add to Home Screen". It has to be Safari: inside Instagram's or Telegram's browser that command isn't there.</p>
+<p><b>Android, in Chrome:</b> menu at the top right, "Add to Home screen".</p>
+<p>It's worth doing: full screen shows more road, and the app stays there even if you close the browser.</p>
+<p>One thing to know: <b>a browser inside another app has its own storage</b>. Maps downloaded by tapping the link inside Instagram don't exist for the Home screen app, and the other way round. If it feels like you lost everything, that's almost always why.</p></div><div data-lang="fr"><p><b>iPhone, dans Safari :</b> touche Partager, puis « Sur l'écran d'accueil ». Il faut Safari : dans le navigateur d'Instagram ou de Telegram, cette commande n'existe pas.</p>
+<p><b>Android, dans Chrome :</b> menu en haut à droite, « Ajouter à l'écran d'accueil ».</p>
+<p>Ça vaut le coup : en plein écran on voit plus de route, et l'app reste là même si tu fermes le navigateur.</p>
+<p>Une chose à savoir : <b>le navigateur à l'intérieur d'une autre app a sa propre mémoire</b>. Les cartes téléchargées en touchant le lien dans Instagram n'existent pas pour l'app de l'écran d'accueil, et inversement. Si tu as l'impression d'avoir tout perdu, c'est presque toujours ça.</p></div></div>
+  <button class="gcap" type="button" aria-expanded="false"><span class="gnm"><span data-lang="it">Non sento la voce</span><span data-lang="en">I can't hear the voice</span><span data-lang="fr">Je n'entends pas la voix</span></span><i class="gfre"></i></button>
+  <div class="gbox" hidden><div data-lang="it"><p>La voce parla <b>solo con la suoneria attiva</b>. In silenzioso o in vibrazione il telefono la zittisce e l'app non se ne accorge: per lei sta parlando.</p>
+<p>Su iPhone guarda l'<b>interruttore laterale</b> (o il tasto Azione). Su Android controlla il volume dei <b>contenuti multimediali</b>, che è diverso da quello della suoneria.</p>
+<p>Controlla anche che l'audio sia acceso nell'app: il bottone dell'altoparlante.</p></div><div data-lang="en"><p>The voice speaks <b>only with the ringer on</b>. On silent or vibrate the phone mutes it and the app can't tell: as far as it knows, it is speaking.</p>
+<p>On iPhone check the <b>side switch</b> (or the Action button). On Android check the <b>media</b> volume, which is not the ringer volume.</p>
+<p>Also check that audio is on in the app: the speaker button.</p></div><div data-lang="fr"><p>La voix ne parle <b>qu'avec la sonnerie activée</b>. En silencieux ou en vibreur, le téléphone la coupe et l'app ne le sait pas : pour elle, elle parle.</p>
+<p>Sur iPhone, regarde le <b>bouton latéral</b> (ou le bouton Action). Sur Android, vérifie le volume <b>multimédia</b>, qui n'est pas celui de la sonnerie.</p>
+<p>Vérifie aussi que le son est activé dans l'app : le bouton du haut-parleur.</p></div></div>
+  <button class="gcap" type="button" aria-expanded="false"><span class="gnm"><span data-lang="it">Le mappe: scaricarle, quanto pesano, se spariscono</span><span data-lang="en">Maps: downloading them, size, and if they vanish</span><span data-lang="fr">Les cartes : télécharger, le poids, si elles disparaissent</span></span><i class="gfre"></i></button>
+  <div class="gbox" hidden><div data-lang="it"><p>Le mappe si scaricano una volta e restano sul telefono: in viaggio l'app funziona <b>senza rete</b>.</p>
+<p>Scarica solo le regioni dove guidi davvero. Una regione grande può pesare centinaia di megabyte, e il pannello Mappe te lo dice prima.</p>
+<p><b>Se una mappa sparisce da sola</b> non è un guasto tuo: quando lo spazio scarseggia il sistema può cancellare quello che le app hanno messo da parte. Si riscarica.</p>
+<p>Scarica sotto wifi e col telefono in carica: sono file grossi.</p></div><div data-lang="en"><p>Maps are downloaded once and stay on the phone: on the road the app works <b>with no connection</b>.</p>
+<p>Only download the regions where you actually drive. A large region can be hundreds of megabytes, and the Maps panel tells you before you start.</p>
+<p><b>If a map disappears on its own</b> it's not something you did: when storage runs low the system can delete what apps have put aside. Download it again.</p>
+<p>Download on wifi with the phone charging: these are big files.</p></div><div data-lang="fr"><p>Les cartes se téléchargent une fois et restent sur le téléphone : en route, l'app fonctionne <b>sans réseau</b>.</p>
+<p>Ne télécharge que les régions où tu roules vraiment. Une grande région peut peser des centaines de mégaoctets, et le panneau Cartes te le dit avant.</p>
+<p><b>Si une carte disparaît toute seule</b>, ce n'est pas ta faute : quand l'espace manque, le système peut effacer ce que les apps ont mis de côté. Il suffit de la retélécharger.</p>
+<p>Télécharge en wifi, téléphone en charge : ce sont de gros fichiers.</p></div></div>
+  <button class="gcap" type="button" aria-expanded="false"><span class="gnm"><span data-lang="it">I due modi: inseguimento e libero</span><span data-lang="en">The two modes: follow and free</span><span data-lang="fr">Les deux modes : suivi et libre</span></span><i class="gfre"></i></button>
+  <div class="gbox" hidden><div data-lang="it"><p>In <b>inseguimento</b> la mappa ti segue e la voce annuncia le curve. È il modo in cui si guida.</p>
+<p>Appena tocchi o trascini la mappa passi al modo <b>libero</b>: puoi guardarti intorno, e la voce tace perché non sa più dove sei diretto. Il bottone in basso a destra ti riaggancia.</p>
+<p>La <b>bussola</b> in alto apre le segnalazioni, e lì dentro c'è «Nord in alto» che rimette la mappa dritta.</p></div><div data-lang="en"><p>In <b>follow</b> the map tracks you and the voice calls the corners. That's the driving mode.</p>
+<p>As soon as you touch or drag the map you switch to <b>free</b>: you can look around, and the voice goes quiet because it no longer knows where you're headed. The button at the bottom right locks back on.</p>
+<p>The <b>compass</b> at the top opens the reports, and inside it there is "North up", which puts the map straight again.</p></div><div data-lang="fr"><p>En <b>suivi</b>, la carte te suit et la voix annonce les virages. C'est le mode de conduite.</p>
+<p>Dès que tu touches ou fais glisser la carte, tu passes en <b>libre</b> : tu peux regarder autour, et la voix se tait parce qu'elle ne sait plus où tu vas. Le bouton en bas à droite te raccroche.</p>
+<p>La <b>boussole</b> en haut ouvre les signalements, et dedans il y a « Nord en haut », qui remet la carte droite.</p></div></div>
+  </div>
+  <button class="btn" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span><span data-lang="fr">Fermer</span></button>
 </div></div>
 
 <div class="sheet" id="sheetMaps"><div class="inner">
@@ -1152,7 +1242,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '289';
+const APPVER = '290';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -5200,7 +5290,8 @@ if(autoDalLink || profiloDalLink) save();
   var SALTO_MAX_M = 400;
   var PRECISIONE_MAX_M = 50;     // oltre questa la fix non contribuisce ai km
   var TIPI_ANOMALIA = ['voce-interrotta', 'dati-ko', 'gps-perso',
-                       'sidecar-scartato', 'ripresa-a-freddo', 'voce-ripresa'];
+                       'sidecar-scartato', 'ripresa-a-freddo', 'voce-ripresa',
+                       'gps-negato'];
   var CODA = 'codriver-bb-coda-v1';
   /* Il trasporto e' INIETTATO: il modulo non sa se dietro c'e' un Google Form, un
      Worker o altro. Cosi' la scelta resta di Tiago e qui non si riscrive niente.
@@ -8844,17 +8935,17 @@ function svegliaVoce(){
    messaggio uguale una volta sola per sessione, e qui serve ogni episodio. */
 var VOCE_MUTA = '';                    // `var`: creaCtx puo' girare prima di questa riga
                                        // stato in cui la voce si e' spenta, '' se parla
-function contaVoce(tipo){ try{ if(window.SN) window.SN.anomalia(tipo) }catch(e){} }
+function contaAnomalia(tipo){ try{ if(window.SN) window.SN.anomalia(tipo) }catch(e){} }
 function guardiaVoce(){
   const c = VOCE.ctx; if(!c) return;
   c.onstatechange = () => {
     const st = c.state;
     if(st === 'running'){
-      if(VOCE_MUTA){ nota('voce ripresa dopo lo stato '+VOCE_MUTA); contaVoce('voce-ripresa'); VOCE_MUTA = '' }
+      if(VOCE_MUTA){ nota('voce ripresa dopo lo stato '+VOCE_MUTA); contaAnomalia('voce-ripresa'); VOCE_MUTA = '' }
       return;
     }
     if(st === 'closed' || !S.audio || document.hidden) return;
-    if(!VOCE_MUTA){ VOCE_MUTA = st; nota('voce muta: audio '+st+' dal sistema'); contaVoce('voce-interrotta') }
+    if(!VOCE_MUTA){ VOCE_MUTA = st; nota('voce muta: audio '+st+' dal sistema'); contaAnomalia('voce-interrotta') }
     const p = c.resume(); if(p && p.catch) p.catch(()=>{});
   };
 }
@@ -9231,7 +9322,7 @@ function dilo(chiavi, urgente){
   const buf=VOCE.buf[L], ix=VOCE.idx[L];
   if(!buf||!ix) return 0;
   if(!svegliaVoce() && !VOCE_MUTA && !document.hidden){
-    VOCE_MUTA = VOCE.ctx.state; nota('voce muta: nota su audio '+VOCE.ctx.state); contaVoce('voce-interrotta');
+    VOCE_MUTA = VOCE.ctx.state; nota('voce muta: nota su audio '+VOCE.ctx.state); contaAnomalia('voce-interrotta');
   }
   /* Solo un annuncio urgente interrompe quello in corso. La curva severa batte la
      manovra: sbagliare strada si rimedia, una curva no. */
@@ -10690,6 +10781,11 @@ function startGps(){
        di localizzare — e sono anche i due in cui il segnaposto va spento, perché la
        posizione che resta a schermo invecchia (ci pensa `POS_VECCHIA`). */
     if(err.code===1){                                  // permesso negato: definitivo
+      /* Si CONTA, e basta: niente ricarica e niente secondo startGps. Questo ramo e'
+         l'unico punto in cui l'app sa di aver perso il permesso, e il bug #28 (20/09)
+         si era visto solo nei messaggi dei tester, perche' un giro senza posizione
+         dura pochi secondi e viene buttato prima di diventare una riga nel foglio. */
+      contaAnomalia('gps-negato');
       stopGps(); setMode('free'); S.gpsBuco=false;
       gpsWhy().then(m=>toast(m, 14000));
       return;
@@ -11068,6 +11164,7 @@ const sheets={set:document.getElementById('sheetSet'),car:document.getElementByI
 /* pannello Mappe: lo aggiunge la sessione multi-regione. Bottone e voce si
    agganciano da soli quando #sheetMaps compare nel documento. */
 sheets.segna=document.getElementById('sheetSegna');
+sheets.aiuto=document.getElementById('sheetAiuto');
 const sheetMaps=document.getElementById('sheetMaps'); if(sheetMaps) sheets.maps=sheetMaps;
 const bMaps=document.getElementById('bMaps');
 if(bMaps && sheetMaps){ bMaps.hidden=false; bMaps.onclick=()=>openSheet('maps'); }
@@ -11487,6 +11584,19 @@ function suggestRegion(la,lo){
 document.getElementById('bCar').onclick=()=>openSheet('car');
 document.getElementById('bLegend').onclick=()=>openSheet('legend');
 document.getElementById('bInfo').onclick=()=>openSheet('info');
+document.getElementById('bAiuto').onclick=()=>openSheet('aiuto');
+/* La fisarmonica dell'Aiuto: una sola per tutte le voci, sul contenitore. Ogni
+   intestazione apre il blocco che le sta subito sotto. */
+document.getElementById('aiutoLista').addEventListener('click', e => {
+  const cap = e.target.closest('.gcap');
+  if(!cap) return;
+  const box = cap.nextElementSibling;
+  if(!box || !box.classList.contains('gbox')) return;
+  const apri = box.hidden;
+  box.hidden = !apri;
+  cap.classList.toggle('aperto', apri);
+  cap.setAttribute('aria-expanded', apri ? 'true' : 'false');
+});
 document.getElementById('bCoda').onclick=()=>{ try{ window.SN.svuota().then(mostraCoda) }catch(e){} };
 /* L'ingranaggio e' un interruttore, non solo un'apertura: chi lo tocca una seconda
    volta si aspetta di richiudere. Senza questo il tocco cadeva nel ramo «dentro un
