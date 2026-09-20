@@ -208,6 +208,10 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .rbtn svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;
             stroke-linecap:round;stroke-linejoin:round}
   .rbtn.on{background:var(--accent);border-color:var(--accent);color:var(--suaccento)}
+  #bAudio .onde{display:none}   /* di partenza la voce e' spenta: si vede la croce */
+  #bAudio .taglio{display:inline}
+  #bAudio.on .onde{display:inline}
+  #bAudio.on .taglio{display:none}
   /* Bussola e 3D stanno insieme in alto a destra, come su Google Maps: l'ago
      rimette a nord, il gettone sotto inclina la vista. Erano due comandi in due
      posti diversi (l'ago qui, il 3D in fondo alla colonna a destra) e per accendere
@@ -706,8 +710,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <div class="rail">
   <button class="rbtn" id="bSet" title="Impostazioni" aria-label="Impostazioni">
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1"></circle><path d="M19.4 13.6a7.7 7.7 0 0 0 0-3.2l1.8-1.4-1.9-3.3-2.2.9a7.7 7.7 0 0 0-2.7-1.6L14 2.4h-4l-.4 2.6a7.7 7.7 0 0 0-2.7 1.6l-2.2-.9-1.9 3.3 1.8 1.4a7.7 7.7 0 0 0 0 3.2l-1.8 1.4 1.9 3.3 2.2-.9a7.7 7.7 0 0 0 2.7 1.6l.4 2.6h4l.4-2.6a7.7 7.7 0 0 0 2.7-1.6l2.2.9 1.9-3.3z"></path></svg></button>
+  <!-- ACCESA O SPENTA SI DEVE VEDERE SENZA IL COLORE (20/09). Prima l'unico segno era
+       l'azzurro del bottone: chi non lo distingue non aveva NESSUN modo di sapere se la
+       voce era accesa, e lo scopriva guidando. Qui non ci sta una parola — e' un comando
+       da 44 px in mezzo alla mappa — quindi parla la FORMA: spenta, l'altoparlante e'
+       sbarrato, che e' il segno che tutti leggono. La parola resta nel titolo del
+       bottone, che e' quello che legge chi usa lo schermo a voce. -->
   <button class="rbtn" id="bAudio" title="Voce copilota" aria-label="Voce copilota">
-    <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path></svg></button>
+    <svg viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"></path><path class="onde" d="M16 9.2a4.2 4.2 0 0 1 0 5.6M18.4 6.8a7.6 7.6 0 0 1 0 10.4"></path><path class="taglio" d="M15.5 8.5l5.5 7M21 8.5l-5.5 7"></path></svg></button>
   <button class="rbtn" id="bCar" title="Il mio veicolo" aria-label="Il mio veicolo">
     <!-- 20/09/2026, ordine di Tiago: «non sembra una macchina quasi». Il disegno di
          prima aveva tre righe orizzontali quasi attaccate (terra, corpo, ruote) e due
@@ -1276,7 +1286,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '296';
+const APPVER = '297';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4098,7 +4108,16 @@ function profiloDecodifica(s){
   try{
     if(typeof s!=='string' || s.length<20 || s.length>200) return null;
     const c = s.split('.');
-    if(c.length!==15 || c[0]!=='1') return null;
+    /* QUINDICI CAMPI O SEDICI (20/09). Il sedicesimo, quando c'e', e' la velocita'
+       massima dichiarata: serve ai quadricicli, dove la fisica sbaglia in alto — per
+       un Ami il conto da' 74 km/h e il mezzo ne fa 45, limitato per legge. Finche'
+       non c'e', si fa come prima e comanda la fisica.
+       ACCETTARE ENTRAMBE LE LUNGHEZZE E' IL PASSO 1 DI DUE, ed e' l'ordine che conta:
+       se il Database cominciasse a scrivere il sedicesimo campo mentre in giro c'e'
+       ancora un'app che ne pretende quindici, quell'app scarterebbe TUTTI i profili,
+       non solo quelli dei quadricicli — il guasto di stasera moltiplicato per 145.
+       Il passo 2 (scrivere il campo) si fa quando questa versione e' sui telefoni. */
+    if((c.length!==15 && c.length!==16) || c[0]!=='1') return null;
     const num=(x,lo,hi)=>{ const v=+x;
       return (x!=='' && Number.isFinite(v) && v>=lo && v<=hi) ? v : null };
     const nm = c[1].replace(/_/g,' ').replace(/[^A-Za-z0-9 -]/g,'').replace(/\s+/g,' ').trim().slice(0,32);
@@ -4127,6 +4146,8 @@ function profiloDecodifica(s){
           gr=num(c[6],60,130),  cd=num(c[7],30,120),   cr=num(c[8],5,25),
           bo=num(c[9],1,8000),  rl=num(c[10],3000,12000), rf=num(c[11],15,85),
           cs=num(c[13],0,1500), an=num(c[14],0,2030);
+    const vl = c.length===16 ? num(c[15],25,320) : 0;
+    if(c.length===16 && vl===null) return null;   // c'e' ma e' storto: si butta, come ogni altro campo
     if(!nm || cv===null||kg===null||n===null||gr===null||cd===null||cr===null||
        bo===null||rl===null||rf===null||cs===null||an===null) return null;
     if(!Number.isInteger(n) || !PROF_SPAZ[n]) return null;
@@ -4180,7 +4201,7 @@ function profiloDecodifica(s){
     };
     const p = {
       nm:nm, sub:'', auto:(n===1), n:n, g:PROF_SPAZ[n].slice(), ref:rf,
-      cv:cv, kg:kg, cda:cd/100, crr:cr/1000, boost:bo, rpmLim:rl, grip:gr/100,
+      cv:cv, kg:kg, cda:cd/100, crr:cr/1000, boost:bo, rpmLim:rl, grip:gr/100, vlim:vl||0,
       d_it:'', d_en:'', d_fr:'',
       /* Etichetta corta e stabile del profilo, per chi un domani dovra' dire su
          quale taratura girava un rapporto della scatola nera: due giri con numeri
@@ -4811,7 +4832,7 @@ const T = {
     gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', curvLab:'CURVA', lean:'piega', flat:'· in pieno', rpm:'giri',
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale',5:'Strada di paese'},
-    roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo',
+    roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo', voceAccesa:'Voce accesa', voceSpenta:'Voce spenta',
     /* `roads[]` è indicizzato dal RANGO, e le autostrade entrano come rango 0 come le
        trunk: quindi un'autostrada uscirebbe come «Statale». La distinzione arriva dal
        campo `cls` dell'arco (1 rampa, 2 autostrada), non dal rango — chi disegna l'HUD
@@ -4869,7 +4890,7 @@ const T = {
     segnAnnullata:'Segnalazione annullata.',
     voceSilenzio:'Non senti la voce? Controlla che il telefono non sia in silenzioso o in vibrazione.',
     garNuova:n=>'🏁 La tua '+(n||'auto')+' è entrata nel garage',
-    garRipiego:n=>'Questa ('+n+') è un\'auto di partenza simile alla tua: il link è arrivato tagliato. Chiedi di nuovo il tuo link in DM, oppure incollalo intero in «Ho un link nuovo», nel pannello dell\'auto.',
+    garRipiego:n=>'Questa ('+n+') è un\'auto di partenza simile alla tua: il profilo della tua non sono riuscito a leggerlo. Non è colpa tua e non serve che tu faccia niente: scrivici e lo sistemiamo. Se hai il tuo link a portata di mano puoi anche incollarlo in «Ho un link nuovo», nel pannello dell\'auto.',
     garTogli:'Togli un\'auto', garTogliSub:'dal tuo garage', garFine:'Fatto', garFineSub:'non togliere niente',
     garConf:n=>'Togliere «'+n+'» dal tuo garage? Se ti serve di nuovo, riapri il link che te l\'ha data.',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
@@ -4916,7 +4937,7 @@ const T = {
     gear:'GEAR', then:'then', radius:'radius', ref:'ref.', curvLab:'CORNER', lean:'lean', flat:'· flat out', rpm:'rpm',
     off:'Off mapped roads', offSub:'get closer to a mapped road to resume pacenotes',
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road',5:'Residential street'},
-    roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active',
+    roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active', voceAccesa:'Voice on', voceSpenta:'Voice off',
     clsAuto:'Motorway', clsRampa:'Slip road',
     localCall:'Local road', localSub:'urban street: no corner calls, limit inferred',
     gWords:['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth'],
@@ -4970,7 +4991,7 @@ const T = {
     segnAnnullata:'Report cancelled.',
     voceSilenzio:'Can\'t hear the voice? Make sure your phone is not on silent or vibrate.',
     garNuova:n=>'🏁 Your '+(n||'car')+' is now in your garage',
-    garRipiego:n=>'This ('+n+') is a starter car similar to yours: your link arrived cut short. Ask for your link again by DM, or paste it whole in “I have a new link”, in the car panel.',
+    garRipiego:n=>'This ('+n+') is a starter car similar to yours: I could not read your car\u2019s profile. It is not your fault and you do not have to do anything: write to us and we will fix it. If you have your link handy you can also paste it in “I have a new link”, in the car panel.',
     garTogli:'Remove a car', garTogliSub:'from your garage', garFine:'Done', garFineSub:'remove nothing',
     garConf:n=>'Remove «'+n+'» from your garage? If you need it again, reopen the link it came with.',
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
@@ -5014,7 +5035,7 @@ const T = {
     gear:'VITESSE', then:'puis', radius:'rayon', ref:'réf.', curvLab:'VIRAGE', lean:'inclinaison', flat:'· à fond', rpm:'tr/min',
     off:'Hors des routes cartographiées', offSub:'rapproche-toi d\'une route pour reprendre les indications',
     roads:{0:'Route nationale',1:'Nationale / Provinciale',2:'Route provinciale',3:'Provinciale secondaire',4:'Route locale',5:'Rue de village'},
-    roadOff:'hors des routes cartographiées', roadLocal:'route locale', voiceOn:'copilote actif',
+    roadOff:'hors des routes cartographiées', roadLocal:'route locale', voiceOn:'copilote actif', voceAccesa:'Voix active', voceSpenta:'Voix coupée',
     clsAuto:'Autoroute', clsRampa:'Bretelle',
     localCall:'Route locale', localSub:'rue urbaine : pas d\'annonce de virage, limite estimée',
     gWords:['première','deuxième','troisième','quatrième','cinquième','sixième','septième','huitième','neuvième'],
@@ -5068,7 +5089,7 @@ const T = {
     segnAnnullata:'Signalement annulé.',
     voceSilenzio:'Tu n\'entends pas la voix ? Vérifie que le téléphone n\'est pas en silencieux ou en vibreur.',
     garNuova:n=>'🏁 Ta '+(n||'voiture')+' est entrée dans ton garage',
-    garRipiego:n=>'Celle-ci ('+n+') est une voiture de départ proche de la tienne : ton lien est arrivé coupé. Redemande ton lien en DM, ou colle-le en entier dans « J\'ai un nouveau lien », dans le panneau de la voiture.',
+    garRipiego:n=>'Celle-ci ('+n+') est une voiture de départ proche de la tienne : je n\'ai pas réussi à lire le profil de la tienne. Ce n\'est pas ta faute et tu n\'as rien à faire : écris-nous et on corrige. Si tu as ton lien sous la main, tu peux aussi le coller dans « J\'ai un nouveau lien », dans le panneau de la voiture.',
     garTogli:'Retirer une voiture', garTogliSub:'de ton garage', garFine:'Terminé', garFineSub:'ne rien retirer',
     garConf:n=>'Retirer «'+n+'» de ton garage ? Si tu en as de nouveau besoin, rouvre le lien qui te l\'a donnée.',
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
@@ -11076,7 +11097,14 @@ if(bDemo) bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
 /* Questo tocco è anche l'unico momento in cui iOS lascia aprire il contesto audio:
    fuori da un gesto utente il primo suono viene scartato in silenzio. Da qui si
    sveglia il contesto e si scarica lo sprite della lingua attiva. */
+/* Il titolo dice lo STATO, non l'azione: «Voce accesa» / «Voce spenta». E' quello che
+   legge chi usa lo schermo a voce, ed e' la parola che manca sul bottone. */
+function diciTastoVoce(){
+  const t = S.audio ? tr().voceAccesa : tr().voceSpenta;
+  bAudio.title = t; bAudio.setAttribute('aria-label', t);
+}
 bAudio.onclick=()=>{ S.audio=!S.audio; bAudio.classList.toggle('on',S.audio);
+  diciTastoVoce();
   window.SN.voce(S.audio);      // minuti di voce VERI, non minuti di voce disponibile
   if(S.audio){
     svegliaVoce();
@@ -11135,6 +11163,7 @@ bTema.onclick=()=>{
 };
 setInterval(()=>{ if(S.tema==='auto' && document.documentElement.dataset.tema!==temaDelGiorno()) applicaTema('auto') }, 60000);
 bAudio.classList.toggle('on',S.audio);
+diciTastoVoce();
 bGps.hidden = (S.mode==='follow');   // stato iniziale: al boot non si insegue nessuno
 /* La bussola rimette nord in alto E la mappa a piombo, in un tocco solo: è quello
    che fa quella di Google Maps, ed è l'unica via d'uscita ovvia se ti sei ritrovato
