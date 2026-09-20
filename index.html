@@ -1152,7 +1152,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '287';
+const APPVER = '288';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4299,11 +4299,30 @@ async function aggiornaProfilo(){
     try{ localStorage.setItem(PK_AGG, agg) }catch(e){}
     return;
   }
+  /* COSA DIRE, e non e' un dettaglio di stile. La prima versione diceva sempre «la scheda
+     della tua <prima auto> e' stata aggiornata»: con un file che AGGIUNGE un'auto al
+     garage — il caso di chi ne compra una seconda — l'app avrebbe annunciato la correzione
+     di un'auto che nessuno ha toccato, mentre la vera novita' era un'altra macchina
+     comparsa in garage. Un avviso falso e' peggio di nessun avviso, perche' chi lo legge
+     ci crede. Quindi: se entra un'auto nuova lo si dice come per un link; se no si nomina
+     l'auto che e' cambiata DAVVERO, non la prima della lista. */
+  const eraNelGarage = new Set((prima ? [prima] : [])
+    .concat(Array.isArray(extra) ? extra : []).map(chiaveAuto));
+  const entrate = buone.filter(g => !eraNelGarage.has(chiaveAuto(g)));
+  const vecchie = (prima ? [prima] : []).concat(Array.isArray(extra) ? extra : []);
+  const cambiata = buone.find(g => {
+    const v = vecchie.find(x => chiaveAuto(x) === chiaveAuto(g));
+    return v && v !== g;
+  });
   try{
     localStorage.setItem(PROF_CHIAVE, buone[0]);
     localStorage.setItem(PROF_EXTRA, JSON.stringify(buone.slice(1)));
     localStorage.setItem(PK_AGG, agg);
-    localStorage.setItem('copilota-profilo-agg', (profiloDecodifica(buone[0]) || {}).nm || '');
+    const nome = g => (profiloDecodifica(g) || {}).nm || '';
+    if(entrate.length) localStorage.setItem('copilota-garage-nuova', nome(entrate[0]));
+    else if(cambiata) localStorage.setItem('copilota-profilo-agg', nome(cambiata));
+    /* Ne' entrata ne' cambiata: e' sparita un'auto, o e' cambiato solo l'ordine. Si scrive
+       il garage nuovo e si tace: non c'e' niente di vero da dire in una riga sola. */
   }catch(e){ return }                               // memoria piena: meglio il garage di prima
   /* L'auto che era in uso torna in uso, dovunque sia finita nel file nuovo. Se nel file
      non c'e' piu' non si scrive niente: il ripristino all'avvio vede che `CARS[st.car]`
