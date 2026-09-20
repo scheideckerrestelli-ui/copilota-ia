@@ -522,14 +522,28 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .rrow .mm .mm-lontana{fill:none;stroke:var(--accent);stroke-width:1.1;stroke-dasharray:2 1.4}
   .rrow .rbt{flex:none;border:1px solid var(--bordo2);border-radius:9px;padding:8px 12px;
     font:inherit;font-size:12.5px;background:var(--fondo2);color:var(--ink);cursor:pointer;
-    min-width:92px;text-align:center;font-variant-numeric:tabular-nums}
+    min-width:104px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
   .rrow .rbt.on{background:var(--accent);color:var(--suaccento);border-color:var(--accent);font-weight:600}
   .rrow .rbt:disabled{opacity:.6;cursor:default}
   .rrow .rdel{flex:none;width:34px;height:34px;border:0;background:none;color:var(--ink2);
     cursor:pointer;font-size:17px;line-height:1;border-radius:8px}
   .rrow .rdel:hover{color:var(--pericolo);background:var(--fondo3)}
   .rrow.daattivare{background:var(--evidenza);border-radius:9px;padding-left:8px;padding-right:8px}
-  .rrow .rbt.vai{border-color:var(--accent);color:var(--accent);font-weight:600}
+  /* LO STATO, NON L'AZIONE (20/09, ordine di Tiago dopo il caso di peppetummy).
+     La mappa spenta portava scritto «Attiva ora», cioe' quello che sarebbe successo
+     toccandola; chi leggeva capiva il contrario, «questa e' attiva». Un tester di
+     Palermo aveva la Sicilia scaricata e spenta, leggeva «fuori dalla mappa caricata»
+     e giurava che la mappa fosse giusta: aveva ragione lui, era il bottone a mentire.
+     Tiago in persona ha dovuto dirgli «deve diventare blu, cliccaci di nuovo» — se
+     serve l'autore a voce, il tasto e' sbagliato. Adesso il bottone dice com'e' MESSA
+     la mappa: «Attiva» o «Disattivata».
+     IL ROSSO NON E' L'UNICO SEGNO: c'e' la parola, e davanti un cerchio vuoto contro
+     il cerchio pieno della mappa accesa. Chi non distingue il rosso legge le stesse
+     due cose lo stesso. */
+  .rrow .rbt.spenta{border-color:var(--pericolo);color:var(--pericolo);font-weight:600}
+  .rrow .rbt .seg{display:inline-block;width:8px;height:8px;border-radius:50%;
+    margin-right:6px;border:1.6px solid currentColor}
+  .rrow .rbt.on .seg{background:currentColor}
   .rrow.here .rnm b::after{content:' ●';color:var(--accent);font-size:11px;vertical-align:2px}
   #invitoBox{margin:10px 0 4px;padding:12px 13px;border:1px solid var(--bordo2);
     border-radius:11px;background:var(--fondo2)}
@@ -1262,7 +1276,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '295';
+const APPVER = '296';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4089,13 +4103,29 @@ function profiloDecodifica(s){
       return (x!=='' && Number.isFinite(v) && v>=lo && v<=hi) ? v : null };
     const nm = c[1].replace(/_/g,' ').replace(/[^A-Za-z0-9 -]/g,'').replace(/\s+/g,' ').trim().slice(0,32);
     const tz = c[4], fl = c[12];
-    /* Il minimo dei CV era 40, e scartava auto vere: il 18/09 la Fiat Cinquecento 899
+    /* TRE LIMITI ALLARGATI IL 20/09, e tutti e tre per lo stesso motivo: un solo campo
+       fuori intervallo non corregge quel campo, fa restituire `null` e butta il LINK
+       INTERO. Il tester si ritrova l'auto di ripiego e la frase «il link e' arrivato
+       tagliato», che e' falsa: il link e' intero, stretti siamo noi. Nessuno di questi
+       tre si sarebbe mai visto da qui — li ha trovati il Database facendo passare dal
+       decodificatore tutti i 162 profili veri, invece di fidarsi.
+         cv 10 -> 6 e kg 500 -> 350: i quadricicli leggeri. Due tester ce li hanno
+       (Citroen Ami 8 cv 551 kg, Ligier JS50 8 cv 463 kg) e nessuno dei due entrava.
+       Uno aveva il link in mano da un giorno e gli parlavamo come a una Fiesta ST-Line,
+       cioe' di curve che la sua macchina non puo' affrontare e di 200 all'ora quando ne
+       fa 45. Meglio poca voce e vera — un dosso, una buca, un limite — che tanta voce
+       e falsa.
+         inizio fascia 5000 -> 8000: un aspirato preparato ci sta sopra per natura. La
+       Honda Civic EK4 di un tester parte da 5.600 e arriva a 9.500; il limitatore
+       accanto accettava gia' 12.000, quindi il tetto basso era solo un'asimmetria.
+       `rl <= bo` continua a tenere l'ordine fra i due.
+       Il minimo dei CV era 40, e scartava auto vere: il 18/09 la Fiat Cinquecento 899
        del 1997 di un tester (39 CV) — il link intero buttato, e lui «non mette la
-       macchina». 10 copre anche le d'epoca che si guidano ancora: la 500 storica ha
-       13-18 CV, la 126 23, la 2CV da 9 in su. Kg e ref restano com'erano. */
-    const cv=num(c[2],10,1500), kg=num(c[3],500,3500), n=num(c[5],1,10),
+       macchina». 6 copre anche le d'epoca che si guidano ancora: la 500 storica ha
+       13-18 CV, la 126 23, la 2CV da 9 in su. `ref` resta com'era. */
+    const cv=num(c[2],6,1500),  kg=num(c[3],350,3500), n=num(c[5],1,10),
           gr=num(c[6],60,130),  cd=num(c[7],30,120),   cr=num(c[8],5,25),
-          bo=num(c[9],1,5000),  rl=num(c[10],3000,12000), rf=num(c[11],15,85),
+          bo=num(c[9],1,8000),  rl=num(c[10],3000,12000), rf=num(c[11],15,85),
           cs=num(c[13],0,1500), an=num(c[14],0,2030);
     if(!nm || cv===null||kg===null||n===null||gr===null||cd===null||cr===null||
        bo===null||rl===null||rf===null||cs===null||an===null) return null;
@@ -4802,7 +4832,7 @@ const T = {
     gpsDenied:'Permesso GPS negato. Se il browser non lo chiede nemmeno, controlla la localizzazione nelle impostazioni di sistema.',
     gpsErr:'GPS non disponibile: ', gpsNone:'Questo browser non espone il GPS.',
     outZone:'Sei fuori dalle mappe caricate.',
-    pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', load:'Attiva ora', active:'Attiva',
+    pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', spenta:'Disattivata', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
     paesi:{it:'Italia', be:'Belgio', fr:'Francia', gb:'Regno Unito', es:'Spagna', '?':'Altre regioni'},
     invSpieg:'Se l\'app è in schermata Home su iPhone, ha una memoria sua: il profilo della tua auto non passa da Safari. Incolla qui il link che ti hanno mandato e torna com\'era.',
@@ -4903,7 +4933,7 @@ const T = {
     gpsDenied:'GPS permission denied. If the browser never asks, check location in your system settings.',
     gpsErr:'GPS unavailable: ', gpsNone:'This browser does not expose GPS.',
     outZone:'You are outside the loaded maps.',
-    pickMap:'pick a map', maps:'Maps', dl:'Download', load:'Activate', active:'Active',
+    pickMap:'pick a map', maps:'Maps', dl:'Download', spenta:'Inactive', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
     paesi:{it:'Italy', be:'Belgium', fr:'France', gb:'United Kingdom', es:'Spain', '?':'Other regions'},
     invSpieg:'A web app on the iPhone Home Screen has its own storage: your car profile does not carry over from Safari. Paste the link you were sent and it comes back.',
@@ -5001,7 +5031,7 @@ const T = {
     gpsDenied:'Permission GPS refusée. Si le navigateur ne la demande même pas, vérifie la position dans les réglages système.',
     gpsErr:'GPS indisponible : ', gpsNone:'Ce navigateur n\'expose pas le GPS.',
     outZone:'Tu es en dehors des cartes chargées.',
-    pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', load:'Activer', active:'Active',
+    pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', spenta:'Désactivée', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
     paesi:{it:'Italie', be:'Belgique', fr:'France', gb:'Royaume-Uni', es:'Espagne', '?':'Autres régions'},
     invSpieg:'Sur l\'écran d\'accueil de l\'iPhone, l\'app a sa propre mémoire : le profil de ta voiture ne vient pas de Safari. Colle ici le lien qu\'on t\'a envoyé et tout revient.',
@@ -11532,8 +11562,11 @@ function rigaRegione(r){
     // scaricata ma non attiva: la riga resta in evidenza finché non la si accende
     if(inst && !att) row.classList.add('daattivare');
     const bt=document.createElement('button');
-    bt.className='rbt'+(att?' on':'')+(inst&&!att?' vai':'');
-    bt.textContent = inst ? (att?tr().active:tr().load) : tr().dl;
+    bt.className='rbt'+(att?' on':'')+(inst&&!att?' spenta':'');
+    /* Scaricata: si dice lo STATO. Non scaricata: «Scarica», che li' e' davvero
+       l'azione e non c'e' nessuno stato da raccontare. */
+    if(inst) bt.innerHTML = '<i class="seg"></i>' + (att ? tr().active : tr().spenta);
+    else bt.textContent = tr().dl;
     bt.onclick=async()=>{
       if(bt.disabled) return;
       if(!inst){
