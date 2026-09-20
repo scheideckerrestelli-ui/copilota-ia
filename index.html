@@ -951,8 +951,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   </div>
   <!-- 20/09/2026, ordine di Tiago: sotto i bottoni va un ringraziamento, non l'elenco di
        cosa parte. Quello che esce dal telefono resta scritto nei termini v5 e
-       nell'informativa v6, che sono il posto dove vale davvero. -->
-  <p class="disc segn-nota"><span data-lang="it">Grazie per la tua segnalazione!</span><span data-lang="en">Thanks for your report!</span><span data-lang="fr">Merci pour ton signalement !</span></p>
+       nell'informativa, che sono il posto dove vale davvero.
+       La parola «Informativa» invece TORNA, decisa da Tiago lo stesso giorno dopo che
+       Legale e io avevamo alzato la mano: non elencare i dati prima del tocco e' una
+       scelta, non avere nemmeno la porta per andarli a leggere e' un'altra cosa. -->
+  <p class="disc segn-nota"><span data-lang="it">Grazie per la tua segnalazione!</span><span data-lang="en">Thanks for your report!</span><span data-lang="fr">Merci pour ton signalement !</span>
+    <a href="https://codriver.pages.dev/beta#privacy" target="_blank" rel="noopener"><span data-lang="it">Informativa</span><span data-lang="en">Privacy</span><span data-lang="fr">Confidentialité</span></a></p>
   <button class="btn" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span><span data-lang="fr">Fermer</span></button>
 </div></div>
 
@@ -1148,7 +1152,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '286';
+const APPVER = '287';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4175,15 +4179,17 @@ try{
    di Cloudflare accanto al `t=`. Formato e vincoli:
    proposte/profilo-che-si-aggiorna/DAL-DATABASE.md e proposte/profilo-vivo/PROPOSTA.md.
 
-   L'INTERRUTTORE E' SPENTO finche' la riga dell'informativa non e' pubblicata
-   (legale/informativa-riga-profilo-pubblico.md, entra in una v7): con questa funzione il
-   garage di una persona sta anche su un indirizzo pubblico, e va detto prima, non dopo.
+   L'INTERRUTTORE E' ACCESO dal 20/09/2026. Era spento finche' la riga dell'informativa
+   non fosse pubblicata: con questa funzione il garage di una persona sta anche su un
+   indirizzo pubblico, e va detto prima, non dopo. L'informativa v7 e i 135 file sono
+   saliti nello stesso giro dello specchio, quindi non e' mai esistito un momento in cui
+   le schede erano online e il testo non le nominava.
 
    La regola che tiene insieme le tre sorgenti: il file vince sul garage salvato, il LINK
    vince sul file finche' il file non e' piu' recente del link. Se no chi incolla il link
    della macchina nuova se la vedrebbe tornare indietro al primo avvio, fino a quando il
    Database non rigenera il file. */
-const PROFILO_ON = false;
+const PROFILO_ON = true;
 const PK_K = 'copilota-pk', PK_AGG = 'copilota-pk-agg', PK_LETTO = 'copilota-pk-letto';
 const PK_MANO = 'copilota-link-mano';        // quando e' arrivato l'ultimo link, ISO
 const pkNelLink = (() => { try{
@@ -4273,6 +4279,21 @@ async function aggiornaProfilo(){
   let prima = null, extra = [];
   try{ prima = localStorage.getItem(PROF_CHIAVE);
        extra = JSON.parse(localStorage.getItem(PROF_EXTRA) || '[]') }catch(e){}
+  /* QUALE AUTO E' SCELTA ADESSO (20/09/2026, ordine di Tiago). Il file rimpiazza il
+     garage intero, e senza questo pezzo la prima auto del file diventerebbe quella in
+     uso: un tester con due auto che guidava la seconda si ritroverebbe sulla prima, e
+     in guida lo sentirebbe senza capire perche'. Si ricorda per NOME E ANNO, non per
+     posizione (`chiaveAuto`, lo stesso criterio con cui il garage riconosce la stessa
+     auto): il file puo' cambiare l'ordine, e la correzione cambia la stringa. */
+  let sceltaPrima = null;
+  try{
+    const k = (JSON.parse(localStorage.getItem('copilota2') || '{}')).car;
+    if(typeof k === 'string' && /^mio\d*$/.test(k)){
+      const i = k === 'mio' ? 0 : (+k.slice(3) - 1);
+      const tutte = (prima ? [prima] : []).concat(Array.isArray(extra) ? extra : []);
+      if(tutte[i]) sceltaPrima = chiaveAuto(tutte[i]);
+    }
+  }catch(e){}
   const vecchio = (prima ? [prima] : []).concat(Array.isArray(extra) ? extra : []).join('|');
   if(vecchio === buone.join('|')){                  // uguale: si segna e basta, niente ricarica
     try{ localStorage.setItem(PK_AGG, agg) }catch(e){}
@@ -4284,6 +4305,19 @@ async function aggiornaProfilo(){
     localStorage.setItem(PK_AGG, agg);
     localStorage.setItem('copilota-profilo-agg', (profiloDecodifica(buone[0]) || {}).nm || '');
   }catch(e){ return }                               // memoria piena: meglio il garage di prima
+  /* L'auto che era in uso torna in uso, dovunque sia finita nel file nuovo. Se nel file
+     non c'e' piu' non si scrive niente: il ripristino all'avvio vede che `CARS[st.car]`
+     non esiste e ricade sulla prima da solo, che e' la cosa giusta da fare. */
+  if(sceltaPrima){
+    try{
+      const i = buone.findIndex(g => chiaveAuto(g) === sceltaPrima);
+      if(i >= 0){
+        const st = JSON.parse(localStorage.getItem('copilota2') || '{}');
+        st.car = chiaveMia(i);
+        localStorage.setItem('copilota2', JSON.stringify(st));
+      }
+    }catch(e){}
+  }
   /* Come «Togli un'auto»: il garage si rilegge all'avvio, quindi si riapre. */
   location.reload();
 }
@@ -10914,7 +10948,13 @@ function oraConFuso(t){
          p(Math.floor(Math.abs(o)/60))+':'+p(Math.abs(o)%60);
 }
 /* Il formato della riga e' concordato con «CD · Database auto e link», che la verifica
-   prima che entri nelle mappe (proposte/segnala-strada/VERIFICA-DATABASE.md). */
+   prima che entri nelle mappe (proposte/segnala-strada/VERIFICA-DATABASE.md).
+
+   CHI CAMBIA QUESTI CAMPI AVVISA PRIMA CD · LEGALE E MERCATO (regola del 20/09, dopo che
+   la riga sotto i bottoni e' diventata un «grazie»): da allora la clausola 9 dei termini
+   v5 e l'informativa v6 sono l'UNICO posto dove il tester legge cosa parte dal suo
+   telefono. Un campo in piu' qui, senza aggiornare quei due testi nello stesso giro, vuol
+   dire mandare un dato che nessuno gli ha detto — e non si vede da nessuna parte. */
 function segnala(cosa){
   const f = SEGN_PUNTO; if(!f) return;
   const riga = {
