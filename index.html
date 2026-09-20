@@ -1152,7 +1152,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '288';
+const APPVER = '289';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4337,8 +4337,9 @@ async function aggiornaProfilo(){
       }
     }catch(e){}
   }
-  /* Come «Togli un'auto»: il garage si rilegge all'avvio, quindi si riapre. */
-  location.reload();
+  /* Come «Togli un'auto»: il garage si rilegge all'avvio, quindi si riapre — ma NON
+     mentre il telefono sta chiedendo il permesso di posizione. Vedi `ricaricaSicura`. */
+  ricaricaSicura();
 }
 
 /* IL DOPPIONE. Il catalogo ha otto auto fisse, e il profilo su misura arriva in
@@ -10588,6 +10589,48 @@ function avvisoAuto(){
   if(!mia && dalLink === S.car) return null;
   return tr().avvAuto(c.nm, mia);
 }
+/* LA RICARICA CHE HA TOLTO IL GPS A UN TESTER (20/09/2026, bug #28).
+   `aggiornaProfilo` riapriva l'app quando il file corregge il garage: serve, perche' le
+   auto si rileggono all'avvio. Ma all'avvio c'e' anche la domanda del permesso di
+   posizione, e su un'app in schermata Home quella domanda VALE UNA VOLTA SOLA: la
+   ricarica la chiudeva prima che la persona rispondesse, iOS la contava come un no, e
+   quel permesso e' legato all'icona e non compare in nessuna impostazione. Il tester
+   restava senza GPS, e l'unico rimedio e' togliere l'icona e rimetterla, cioe'
+   riscaricare le mappe. Capitato a un tester iPhone il 20/09, poche ore dopo che il
+   profilo vivo si e' acceso; stessa causa trovata da «CD · Correzioni e segnalazioni»
+   leggendo la pagina servita, e coerente col suo «ieri funzionava tutto».
+
+   La prima correzione aspettava che il GPS avesse risposto. Era ancora troppo furba: la
+   risposta arriva col primo punto, cioe' esattamente quando la persona e' gia' partita,
+   e una ricarica in marcia chiude il giro e fa ripartire il GPS da zero (lo ha fatto
+   notare Correzioni). La regola giusta e' piu' semplice e non ha momenti buoni da
+   indovinare: **col GPS acceso non si ricarica mai.** Non si perde niente, perche' il
+   garage nuovo e' GIA' scritto e vale al prossimo avvio; si perde solo un avvio di
+   attesa, che non se ne accorge nessuno. La ricarica resta dov'e' innocua: quando il
+   GPS non e' stato nemmeno chiesto, cioe' senza mappe attive. */
+function ricaricaSicura(){
+  if(S.watchId == null) location.reload();
+}
+/* LA DOMANDA DEL GPS NON SI FA SOTTO IL VELO DEI TERMINI (20/09/2026, bug #28).
+   Il boot gira sotto il velo apposta, cosi' la mappa e' pronta quando si accetta. Ma
+   in fondo al boot c'era `startGps()`, e quella non e' una cosa che carica: e' la
+   domanda di sistema per la posizione, che su un'app in schermata Home si puo' fare
+   UNA VOLTA SOLA. Compariva mentre la persona stava leggendo i termini, sopra il velo,
+   con un bottone «Ho letto e accetto» che chiede di essere toccato: chi la scansa per
+   leggere ha dato un no definitivo senza saperlo, e non c'e' nessuna impostazione dove
+   rimetterlo. Con la v5 dei termini (v284, 19/09 notte) TUTTI hanno dovuto riaccettare,
+   quindi tutti sono passati di li' — e il giorno dopo un tester iPhone ci ha scritto che
+   il GPS non funzionava piu' e che «ieri funzionava tutto».
+   C'e' anche una ragione che non e' tecnica: chiedere la posizione a chi non ha ancora
+   accettato i termini e' chiedere prima di aver spiegato.
+   Adesso il GPS parte quando sono vere tutte e due le cose — la mappa e' pronta E i
+   termini sono accettati — e non importa quale delle due arriva per ultima. */
+let BOOT_PRONTO = false;
+function avviaGpsSePronto(){
+  if(!BOOT_PRONTO) return;
+  if(document.getElementById('termini') && !terminiAccettati()) return;
+  startGps();
+}
 function startGps(){
   if(!('geolocation' in navigator)){toast(tr().gpsNone);return}
   /* Da quando il `watch` sopravvive all'esplorazione, questo bottone ha due lavori
@@ -12731,7 +12774,7 @@ async function boot(){
      bottone — startGps() — cosi' permessi, tolleranza ai buchi e wake lock sono gli
      stessi di sempre. Se il permesso e' negato, l'handler dentro startGps lo dice e
      si resta sulla vista di prima: il fallback sui preferiti qui sopra serve a quello. */
-  startGps();
+  BOOT_PRONTO = true; avviaGpsSePronto();
   let seen=false; try{seen=!!localStorage.getItem('copilota2seen')}catch(e){}
   if(!seen) openSheet('info');
   /* «UNA COSA CARINA» (Tiago, 19/09): un link che aggiunge un'auto al garage lo dice,
@@ -12772,6 +12815,7 @@ function mostraTermini(){
     el.remove();
     primaScelta();
     avvisoGarage();
+    avviaGpsSePronto();     // la domanda della posizione: dopo l'accettazione, mai prima
   };
 }
 /* Chi arriva senza un'auto — nessun `?a=` nel link, niente di salvato — si trova
