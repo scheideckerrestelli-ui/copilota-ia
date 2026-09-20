@@ -1252,7 +1252,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '292';
+const APPVER = '293';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -10631,6 +10631,18 @@ for(const ev of ['pointerdown','touchend','keydown'])
 const IN_FRAME = (()=>{ try{ return window.top!==window.self }catch(e){ return true } })();
 const INSTALLATA = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 async function gpsWhy(){
+  /* PRIMA DI TUTTO, SI SCRIVE COS'E' SUCCESSO. Il 20/09/2026 un tester ha visto
+     l'avviso del permesso su un'installazione appena fatta, e per capire se il no
+     venisse da iOS o dall'icona abbiamo dovuto DEDURLO da due screenshot, un'ora di
+     messaggi e un giro di ipotesi. Il telefono lo sapeva e non lo diceva a nessuno.
+     Da qui in poi lo scrive: lo stato del permesso, se l'app e' installata, e il
+     sistema. Costa una riga nel registro e non chiede niente a nessuno. */
+  let stato = 'non leggibile';
+  try{ stato = (await navigator.permissions.query({name:'geolocation'})).state }catch(e){}
+  nota('posizione negata · permesso: ' + stato +
+       ' · installata: ' + (INSTALLATA ? 'si' : 'no') +
+       ' · ' + (/Android/i.test(navigator.userAgent) ? 'Android' : 'non Android') +
+       (E.length ? ' · mappa caricata' : ' · nessuna mappa caricata'));
   if(IN_FRAME) return tr().gpsFrame;
   if(!window.isSecureContext) return tr().gpsInsecure;
   // Su iOS la app aggiunta alla schermata Home ha permessi PROPRI, separati da
@@ -10742,7 +10754,7 @@ function ricaricaSicura(){
    La regola giusta non e' «dopo i termini», e' **dopo che la persona e' arrivata alla
    mappa, senza niente davanti**. Scritta cosi' vale anche per il quarto velo che
    qualcuno aggiungera' senza pensare a questa riga. */
-let BOOT_PRONTO = false;
+let BOOT_PRONTO = false, GPS_PRIMO = false;
 function veloDavanti(){
   if(document.getElementById('termini') && !terminiAccettati()) return true;
   try{ for(const n in sheets){ if(sheets[n] && sheets[n].classList.contains('show')) return true } }
@@ -10763,8 +10775,18 @@ function startGps(){
      lascerebbe il vecchio a girare per sempre: `S.watchId` ne ricorda uno solo, e
      l'altro non lo chiuderebbe più nessuno. */
   const gia = S.watchId!=null;
-  setMode('follow'); S.said.clear(); S.scale=Math.max(S.scale,1.5); S.zoomLibero=false; wakeOn();
-  if(gia) return;
+  /* LO ZOOM SI STRINGE QUANDO SI SA DOVE SI E', NON QUANDO SI CHIEDE (20/09/2026).
+     Prima questa riga stringeva a ~100 m sullo schermo SUBITO, prima che arrivasse
+     qualunque posizione. Col permesso negato il risultato era una mappa vuota a 100 m
+     centrata su un punto qualunque — un preferito, o il centro della regione — e il
+     tester vedeva uno schermo nero e concludeva che l'app non funziona. E' quello che
+     ha visto per un'ora e mezza il tester del 20/09, in due schermate identiche.
+     Se stiamo GIA' seguendo la posizione ce l'abbiamo, e stringere ha senso ora; se la
+     stiamo chiedendo, si aspetta il primo punto. Senza posizione la vista resta quella
+     di partenza, che almeno inquadra le strade. */
+  setMode('follow'); S.said.clear(); S.zoomLibero=false; wakeOn();
+  if(gia){ S.scale=Math.max(S.scale,1.5); return }
+  GPS_PRIMO = true;
   /* Il giro della scatola nera si apre QUI: e' l'unico punto in cui si comincia
      davvero a localizzare. Sopra, col `watch` gia' vivo, questo bottone e' solo il
      ricentra — e un giro nuovo a ogni ricentra falserebbe tutti i conteggi. */
@@ -10774,6 +10796,8 @@ function startGps(){
   else toast(tr().gpsSearch,2500);
   gpsGuai=0; gpsUltimo=Date.now(); gpsPuliti=0; S.gpsBuco=false;
   S.watchId=navigator.geolocation.watchPosition(p=>{
+    /* il primo punto vero: adesso stringere vuol dire qualcosa */
+    if(GPS_PRIMO){ GPS_PRIMO = false; S.scale=Math.max(S.scale,1.5) }
     const [x,y]=toXY(p.coords.longitude,p.coords.latitude);
     let hd=null;
     if(p.coords.heading!=null&&!isNaN(p.coords.heading)&&(p.coords.speed||0)>1)
