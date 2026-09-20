@@ -1153,17 +1153,20 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   <div id="aiutoLista">
   <button class="gcap" type="button" aria-expanded="false"><span class="gnm"><span data-lang="it">Il GPS non parte, o la mappa non mi segue</span><span data-lang="en">GPS won't start, or the map doesn't follow me</span><span data-lang="fr">Le GPS ne démarre pas, ou la carte ne me suit pas</span></span><i class="gfre"></i></button>
   <div class="gbox" hidden><div data-lang="it"><p>Prima cosa, <b>chiudi l'app e riaprila</b>: le correzioni arrivano da sole e non c'è niente da installare.</p>
-<p><b>Su iPhone, con l'icona nella schermata Home:</b> quell'icona ha permessi suoi, separati da Safari, e <b>non compare</b> in Impostazioni, Privacy, Localizzazione. Non cercarla lì. Il permesso si chiede una volta sola: se la prima volta hai toccato «Non consentire», o hai chiuso la domanda senza rispondere, l'unico modo di rifarla comparire è togliere l'icona e rimetterla.</p>
+<p><b>Poi guarda iPhone, e guardalo prima di toccare l'icona.</b> Impostazioni, Privacy e sicurezza, Localizzazione: dev'essere accesa. Più in basso nella stessa schermata c'è <b>Safari</b>: dev'essere su «Mentre usi l'app». Se qui qualcosa è spento, l'app non può avere la posizione in nessun modo, e togliere l'icona non serve a niente.</p>
+<p><b>Solo se lì è tutto a posto:</b> l'icona nella schermata Home ha permessi suoi, separati da Safari, e <b>non compare</b> in quell'elenco. Non cercarla. Il permesso si chiede una volta sola: se hai toccato «Non consentire», o hai chiuso la domanda senza rispondere, l'unico modo di rifarla comparire è togliere l'icona e rimetterla.</p>
 <p class="attenzione">Attenzione: togliere l'icona cancella le mappe che hai scaricato. Fallo quando sei sotto wifi e hai tempo di riscaricarle, non prima di partire.</p>
 <p>Quando l'hai rimessa: apri, tocca «Ho letto e accetto», e alla domanda della posizione rispondi <b>Consenti</b> prima di fare altro.</p>
 <p><b>Su Android</b> l'app usa i permessi di Chrome: Impostazioni, App, Chrome, Autorizzazioni, Posizione.</p>
 <p><b>Se il GPS c'è ma la mappa non ti segue:</b> hai toccato la mappa e sei passato al modo libero. Il bottone in basso a destra ti riaggancia.</p></div><div data-lang="en"><p>First thing, <b>close the app and reopen it</b>: fixes arrive on their own, there is nothing to install.</p>
-<p><b>On iPhone, with the icon on the Home screen:</b> that icon has its own permissions, separate from Safari, and it <b>does not appear</b> under Settings, Privacy, Location Services. Don't look for it there. The permission is asked once only: if you tapped "Don't Allow" the first time, or dismissed the question without answering, the only way to get it back is to remove the icon and add it again.</p>
+<p><b>Then check the iPhone, before you touch the icon.</b> Settings, Privacy &amp; Security, Location Services: it must be on. Further down the same screen there is <b>Safari</b>: it must be set to "While Using the App". If something is off here, the app cannot get your position at all, and removing the icon does nothing.</p>
+<p><b>Only if all that is right:</b> the Home screen icon has its own permissions, separate from Safari, and it <b>does not appear</b> in that list. Don't look for it. The permission is asked once only: if you tapped "Don't Allow", or dismissed the question without answering, the only way to get it back is to remove the icon and add it again.</p>
 <p class="attenzione">Careful: removing the icon deletes the maps you downloaded. Do it on wifi, with time to download them again, not just before a drive.</p>
 <p>Once it's back: open it, tap "I have read and accept", and answer <b>Allow</b> to the location question before doing anything else.</p>
 <p><b>On Android</b> the app uses Chrome's permissions: Settings, Apps, Chrome, Permissions, Location.</p>
 <p><b>If GPS works but the map doesn't follow you:</b> you touched the map and switched to free mode. The button at the bottom right locks back on.</p></div><div data-lang="fr"><p>D'abord, <b>ferme l'app et rouvre-la</b> : les corrections arrivent toutes seules, il n'y a rien à installer.</p>
-<p><b>Sur iPhone, avec l'icône sur l'écran d'accueil :</b> cette icône a ses propres autorisations, séparées de Safari, et elle <b>n'apparaît pas</b> dans Réglages, Confidentialité, Service de localisation. Ne la cherche pas là. L'autorisation n'est demandée qu'une fois : si tu as touché « Refuser » la première fois, ou fermé la question sans répondre, le seul moyen est de retirer l'icône et de la remettre.</p>
+<p><b>Ensuite regarde l'iPhone, avant de toucher l'icône.</b> Réglages, Confidentialité et sécurité, Service de localisation : il doit être activé. Plus bas dans le même écran il y a <b>Safari</b> : il doit être sur « Lorsque l'app est active ». Si quelque chose est désactivé ici, l'app ne peut pas avoir ta position du tout, et retirer l'icône ne sert à rien.</p>
+<p><b>Seulement si tout cela est en ordre :</b> l'icône de l'écran d'accueil a ses propres autorisations, séparées de Safari, et elle <b>n'apparaît pas</b> dans cette liste. Ne la cherche pas. L'autorisation n'est demandée qu'une fois : si tu as touché « Refuser », ou fermé la question sans répondre, le seul moyen est de retirer l'icône et de la remettre.</p>
 <p class="attenzione">Attention : retirer l'icône efface les cartes que tu as téléchargées. Fais-le en wifi, avec le temps de les retélécharger, pas juste avant de partir.</p>
 <p>Une fois remise : ouvre, touche « J'ai lu et j'accepte », et réponds <b>Autoriser</b> à la question sur la position avant de faire autre chose.</p>
 <p><b>Sur Android</b> l'app utilise les autorisations de Chrome : Paramètres, Applications, Chrome, Autorisations, Localisation.</p>
@@ -1249,7 +1252,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '291';
+const APPVER = '292';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4802,7 +4805,7 @@ const T = {
     perf:(f,a)=>'Sta girando a '+f+' fotogrammi al secondo su '+a+' tratti caricati. Segue lo schermo: 120 su iPhone Pro con ProMotion, 60 sugli altri, meno da fermo o in risparmio energetico.',
     coda:n=>(n===1?'1 giro':n+' giri')+' della beta non '+(n===1?'è ancora partito':'sono ancora partiti')+' dal telefono. '+(n===1?'Parte':'Partono')+' da solo appena c\'è campo, oppure adesso:',
     ver:(v,pwa)=>'Versione '+v+(pwa?' · app installata':' · dal browser')+'. Se qui il numero non sale dopo un aggiornamento, la copia vecchia e\' rimasta in cache: chiudi del tutto l\'app dal selettore e riaprila.',
-    gpsPwa:'L\'app aggiunta alla schermata Home ha permessi PROPRI, separati da Safari, e NON compare fra le app in Impostazioni → Localizzazione: non cercarla li\'. L\'unico modo e\' rifarle chiedere il permesso: tieni premuta l\'icona → Rimuovi, riapri il sito in Safari, Condividi → Aggiungi a schermata Home, e alla prima richiesta tocca Consenti.',
+    gpsPwa:'Manca il permesso di posizione. PRIMA guarda iPhone: Impostazioni → Privacy e sicurezza → Localizzazione, dev\'essere accesa, e più in basso Safari su «Mentre usi l\'app». Solo se è già così serve togliere e rimettere l\'icona, e attenzione: quello cancella le mappe scaricate. Tocca qui per l\'Aiuto.',
     gpsAndroid:'Posizione non concessa. Su Android: 1) accendi la Localizzazione (tendina in alto, icona Posizione); 2) Impostazioni → App → Chrome → Autorizzazioni → Posizione → Consenti solo mentre l\'app è in uso, con «Usa posizione precisa» attivo; 3) apri codriver.pages.dev in Chrome, tocca l\'icona a sinistra dell\'indirizzo → Autorizzazioni → Posizione → Consenti. Vale anche per l\'app sulla schermata Home. Poi riapri l\'app.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
     dlFail:'Scaricamento fallito: ',
@@ -4897,7 +4900,7 @@ const T = {
     perf:(f,a)=>'Running at '+f+' frames per second over '+a+' loaded segments. It follows the display: 120 on ProMotion iPhones, 60 elsewhere, less when parked or in low power mode.',
     coda:n=>(n===1?'1 beta drive has':n+' beta drives have')+' not left the phone yet. '+(n===1?'It goes':'They go')+' by itself as soon as there is signal, or right now:',
     ver:(v,pwa)=>'Version '+v+(pwa?' · installed app':' · from the browser')+'. If this number does not go up after an update, the old copy is still cached: close the app from the switcher and reopen it.',
-    gpsPwa:'The app added to your Home Screen has its OWN permissions, separate from Safari, and does NOT appear among the apps in Settings → Location Services: do not look for it there. The only way is to make it ask again: hold the icon → Remove, reopen the site in Safari, Share → Add to Home Screen, and tap Allow the first time it asks.',
+    gpsPwa:'Location permission is missing. FIRST check the iPhone: Settings → Privacy & Security → Location Services must be on, and further down Safari set to «While Using the App». Only if that is already right does removing and re-adding the icon help, and careful: that deletes your downloaded maps. Tap here for Help.',
     gpsAndroid:'Location not allowed. On Android: 1) turn Location on (pull down from the top, Location icon); 2) Settings → Apps → Chrome → Permissions → Location → Allow only while using the app, with "Use precise location" on; 3) open codriver.pages.dev in Chrome, tap the icon left of the address → Permissions → Location → Allow. This also covers the app on your Home screen. Then reopen the app.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
     dlFail:'Download failed: ',
@@ -4989,7 +4992,7 @@ const T = {
     perf:(f,a)=>'Tourne à '+f+' images par seconde sur '+a+' tronçons chargés. Ça suit l\'écran : 120 sur iPhone Pro avec ProMotion, 60 sur les autres, moins à l\'arrêt ou en mode économie d\'énergie.',
     coda:n=>(n===1?'1 trajet':n+' trajets')+' de la bêta '+(n===1?'n\'est pas encore parti':'ne sont pas encore partis')+' du téléphone. '+(n===1?'Il part':'Ils partent')+' tout seul dès qu\'il y a du réseau, ou tout de suite :',
     ver:(v,pwa)=>'Version '+v+(pwa?' · application installée':' · depuis le navigateur')+'. Si ce numéro n\'augmente pas après une mise à jour, l\'ancienne copie est restée en cache : ferme complètement l\'app depuis le sélecteur et rouvre-la.',
-    gpsPwa:'L\'application ajoutée à l\'écran d\'accueil a SES PROPRES permissions, séparées de Safari, et n\'apparaît PAS parmi les apps dans Réglages → Position : ne la cherche pas là. La seule solution est de lui faire redemander la permission : maintiens l\'icône → Supprimer, rouvre le site dans Safari, Partager → Sur l\'écran d\'accueil, et appuie sur Autoriser à la première demande.',
+    gpsPwa:'L\'autorisation de position manque. D\'ABORD regarde l\'iPhone : Réglages → Confidentialité et sécurité → Service de localisation doit être activé, et plus bas Safari sur «Lorsque l\'app est active». Seulement si c\'est déjà le cas il faut retirer et remettre l\'icône, et attention : cela efface les cartes téléchargées. Touche ici pour l\'Aide.',
     gpsAndroid:'Position non autorisée. Sur Android : 1) active la Localisation (volet du haut, icône Position) ; 2) Paramètres → Applications → Chrome → Autorisations → Position → Autoriser seulement si l\'appli est en cours d\'utilisation, avec « Utiliser la position exacte » activé ; 3) ouvre codriver.pages.dev dans Chrome, touche l\'icône à gauche de l\'adresse → Autorisations → Position → Autoriser. Cela vaut aussi pour l\'appli sur l\'écran d\'accueil. Puis rouvre l\'appli.',
     onDevice:'cartes sur le téléphone', onDevice1:'carte sur le téléphone', freeSpace:'espace disponible', delMap:'Supprimer',
     dlFail:'Échec du téléchargement : ',
@@ -8953,7 +8956,16 @@ function guardiaVoce(){
     }
     if(st === 'closed' || !S.audio || document.hidden) return;
     if(!VOCE_MUTA){ VOCE_MUTA = st; nota('voce muta: audio '+st+' dal sistema'); contaAnomalia('voce-interrotta') }
-    const p = c.resume(); if(p && p.catch) p.catch(()=>{});
+    /* Il RIFIUTO di iOS e' la notizia piu' importante che questo codice possa dare, e
+       fino al 20/09/2026 la buttavamo via con un `catch` vuoto. `resume()` fuori da un
+       gesto dell'utente iOS lo nega, e in macchina nessuno tocca lo schermo: quindi
+       «la voce non e' tornata da sola» e' esattamente il caso che ci serve vedere nei
+       rapporti, e senza questa riga non lascia traccia da nessuna parte. */
+    const p = c.resume();
+    if(p && p.catch) p.catch(() => {
+      nota('la sveglia della voce e\' stata rifiutata dal sistema (serve un tocco)');
+      contaAnomalia('voce-sveglia-negata');
+    });
   };
 }
 document.addEventListener('visibilitychange', () => {
@@ -10721,12 +10733,25 @@ function ricaricaSicura(){
    il GPS non funzionava piu' e che «ieri funzionava tutto».
    C'e' anche una ragione che non e' tecnica: chiedere la posizione a chi non ha ancora
    accettato i termini e' chiedere prima di aver spiegato.
-   Adesso il GPS parte quando sono vere tutte e due le cose — la mappa e' pronta E i
-   termini sono accettati — e non importa quale delle due arriva per ultima. */
+   CORRETTA POCHE ORE DOPO, e la lezione sta qui. La prima versione diceva «dopo i
+   termini»: ma i veli prima della mappa sono TRE — i termini, la scelta dell'auto, e il
+   «Come funziona» col bottone «Si parte» che al primo avvio si apre da solo. Sistemato
+   solo il primo, la domanda compariva dietro il secondo e il terzo, e un tester ci e'
+   cascato lo stesso mezz'ora dopo che avevamo pubblicato la cura. Aveva pure cancellato
+   e rimesso l'icona, perdendo le mappe, per niente.
+   La regola giusta non e' «dopo i termini», e' **dopo che la persona e' arrivata alla
+   mappa, senza niente davanti**. Scritta cosi' vale anche per il quarto velo che
+   qualcuno aggiungera' senza pensare a questa riga. */
 let BOOT_PRONTO = false;
+function veloDavanti(){
+  if(document.getElementById('termini') && !terminiAccettati()) return true;
+  try{ for(const n in sheets){ if(sheets[n] && sheets[n].classList.contains('show')) return true } }
+  catch(e){ return true }          // `sheets` non c'e' ancora: meglio aspettare
+  return false;
+}
 function avviaGpsSePronto(){
-  if(!BOOT_PRONTO) return;
-  if(document.getElementById('termini') && !terminiAccettati()) return;
+  if(!BOOT_PRONTO || S.watchId != null) return;
+  if(veloDavanti()) return;
   startGps();
 }
 function startGps(){
@@ -10794,7 +10819,9 @@ function startGps(){
          dura pochi secondi e viene buttato prima di diventare una riga nel foglio. */
       contaAnomalia('gps-negato');
       stopGps(); setMode('free'); S.gpsBuco=false;
-      gpsWhy().then(m=>toast(m, 14000));
+      /* Il toast apre l'Aiuto: in quattordici secondi non ci sta tutto, e la voce
+         del GPS li' dentro dice le stesse cose nello stesso ordine. */
+      gpsWhy().then(m=>toast(m, 14000, () => openSheet('aiuto')));
       return;
     }
     gpsGuai++;
@@ -11237,6 +11264,9 @@ function closeSheets(subito){
   }
   veloFoglio.classList.remove('on');
   if(eraMappe) applicaMappe();
+  /* Chiuso l'ultimo pannello, la persona e' davanti alla mappa: e' QUESTO il momento in
+     cui si puo' chiedere la posizione senza che la domanda finisca sopra un velo. */
+  avviaGpsSePronto();
 }
 /* su iOS Safari `position:fixed;bottom:0` finisce sotto la barra del browser: riservo lo
    spazio solo quando NON siamo nella PWA installata (lì la barra non c'è). */
