@@ -1127,7 +1127,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '284';
+const APPVER = '285';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4146,6 +4146,127 @@ try{
   grezzi.forEach((g, i) => { CARS[chiaveMia(i)] = profiloDecodifica(g); MIEI.push(chiaveMia(i)) });
 }catch(e){}
 
+/* ============ IL PROFILO CHE SI AGGIORNA DA SOLO ============
+   Ordine di Tiago del 20/09: «un tester che aggiorna la macchina non ha bisogno di un
+   link nuovo». Il Database dà a ogni persona un codice a caso di 22 caratteri (`pk`) e
+   pubblica il suo garage in `/p/<pk>.json`. Il codice viaggia nel FRAMMENTO del link
+   (`#k=<pk>&p=...`): dopo il `#` non arriva al server, quindi non finisce nei registri
+   di Cloudflare accanto al `t=`. Formato e vincoli:
+   proposte/profilo-che-si-aggiorna/DAL-DATABASE.md e proposte/profilo-vivo/PROPOSTA.md.
+
+   L'INTERRUTTORE E' SPENTO finche' la riga dell'informativa non e' pubblicata
+   (legale/informativa-riga-profilo-pubblico.md, entra in una v7): con questa funzione il
+   garage di una persona sta anche su un indirizzo pubblico, e va detto prima, non dopo.
+
+   La regola che tiene insieme le tre sorgenti: il file vince sul garage salvato, il LINK
+   vince sul file finche' il file non e' piu' recente del link. Se no chi incolla il link
+   della macchina nuova se la vedrebbe tornare indietro al primo avvio, fino a quando il
+   Database non rigenera il file. */
+const PROFILO_ON = false;
+const PK_K = 'copilota-pk', PK_AGG = 'copilota-pk-agg', PK_LETTO = 'copilota-pk-letto';
+const PK_MANO = 'copilota-link-mano';        // quando e' arrivato l'ultimo link, ISO
+const pkNelLink = (() => { try{
+  const h = location.hash || '';
+  const k = new URLSearchParams(h.charAt(0)==='#' ? h.slice(1) : h).get('k');
+  return (k && /^[a-z0-9]{22}$/.test(k)) ? k : null }catch(e){ return null } })();
+try{
+  if(pkNelLink) localStorage.setItem(PK_K, pkNelLink);
+  /* Un link aperto adesso e' un gesto della persona: batte il file finche' il file non
+     porta una data piu' recente. Vale sia per il link aperto sia per quello incollato. */
+  if(linkNuovo) localStorage.setItem(PK_MANO, new Date().toISOString());
+}catch(e){}
+
+/* I telefoni con un link VECCHIO non hanno il `k=` nel frammento: non sanno quale file
+   leggere. Lo chiedono una volta sola alla funzione del sito, che traduce il codice
+   tester nel codice del profilo (functions/k.js). Il codice tester viaggia nel CORPO di
+   una POST, mai nell'indirizzo: cosi' non finisce nei registri del server (condizione di
+   «CD · Legale e mercato», 20/09). Chiesto una volta e basta: se la risposta e' «non ho
+   niente per te» non si richiede mai piu'; se e' la rete a mancare si riprova al
+   prossimo avvio, se no chi installa l'app in metropolitana resterebbe fuori per sempre. */
+const PK_CHIESTO = 'copilota-pk-chiesto';
+async function chiediPk(){
+  let pk = null, chiesto = '';
+  try{ pk = localStorage.getItem(PK_K); chiesto = localStorage.getItem(PK_CHIESTO) || '' }catch(e){}
+  if(pk || chiesto) return pk;
+  let t = null; try{ t = localStorage.getItem(TESTER_K) }catch(e){}
+  if(!t || !/^[a-z2-9]{6}$/.test(t)) return null;
+  let r;
+  try{
+    r = await fetch('https://codriver.pages.dev/k', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({t: t})
+    });
+  }catch(e){ return null }                        // niente rete: si riprova al prossimo avvio
+  if(r.status === 429 || r.status >= 500) return null;   // occupato o guasto: si riprova
+  /* Deve rispondere la NOSTRA funzione, non il sito. Se l'app esce prima che la funzione
+     sia pubblicata, Pages serve la pagina dell'app con un 200 pieno di HTML: senza questo
+     controllo il telefono si segnerebbe «gia' chiesto» per sempre, e la migrazione non
+     ripartirebbe mai piu'. Silenzioso e definitivo, il peggior tipo di guasto. */
+  let d = null;
+  try{ d = await r.json() }catch(e){ return null }
+  if(!d || d.v !== 1) return null;
+  const k = typeof d.k === 'string' && /^[a-z0-9]{22}$/.test(d.k) ? d.k : null;
+  /* Risposta vera, con o senza codice: la domanda e' fatta e non si ripete. */
+  try{ localStorage.setItem(PK_CHIESTO, '1'); if(k) localStorage.setItem(PK_K, k) }catch(e){}
+  return k;
+}
+async function aggiornaProfilo(){
+  if(!PROFILO_ON) return;
+  let pk = null, letto = 0, aggFatto = '', mano = '';
+  try{
+    pk = localStorage.getItem(PK_K);
+    letto = +localStorage.getItem(PK_LETTO) || 0;
+    aggFatto = localStorage.getItem(PK_AGG) || '';
+    mano = localStorage.getItem(PK_MANO) || '';
+  }catch(e){}
+  /* Senza pk si prova la migrazione silenziosa, una volta sola per telefono. */
+  if(!pk) pk = await chiediPk();
+  if(!pk) return;                                   // niente da fare: l'app resta come prima
+  /* Non piu' di una volta ogni 6 ore, tranne subito dopo un link, che e' il momento in
+     cui il garage cambia davvero. */
+  if(!linkNuovo && Date.now() - letto < 6*3600*1000) return;
+  let d;
+  try{
+    const r = await fetch('https://codriver.pages.dev/p/' + pk + '.json', {cache:'no-cache'});
+    if(!r.ok) return;                               // 404 compreso: non si tocca niente
+    d = await r.json();
+  }catch(e){ return }                               // niente rete, niente avvisi
+  try{ localStorage.setItem(PK_LETTO, String(Date.now())) }catch(e){}
+  if(!d || d.v !== 1 || !Array.isArray(d.auto)) return;
+  const agg = typeof d.agg === 'string' ? d.agg : '';
+  /* Le date si confrontano come ISTANTI, non come testo. Il Database scrive `agg` senza
+     fuso («2026-09-20T01:00»), che JavaScript legge come ora locale; il momento del link
+     lo scrivo io in UTC. Come stringhe, «2026-09-20T01:00» sembrerebbe piu' recente di
+     «2026-09-19T23:30Z» anche quando e' due ore prima. */
+  const istante = t => { const n = Date.parse(t); return isNaN(n) ? null : n };
+  const tAgg = istante(agg), tFatto = istante(aggFatto), tMano = istante(mano);
+  /* Piu' vecchio (o uguale) di quello gia' applicato: niente da fare. */
+  if(tAgg != null && tFatto != null && tAgg <= tFatto) return;
+  if(agg && aggFatto && tAgg == null && agg === aggFatto) return;
+  /* Il link vince finche' il file non e' stato rigenerato DOPO di lui. Se una delle due
+     date non si legge, comanda il gesto della persona per un giorno. */
+  if(tMano != null){
+    if(tAgg != null ? tAgg <= tMano : (Date.now() - tMano < 24*3600*1000)) return;
+  }
+  const buone = d.auto.filter(g => typeof g === 'string' && profiloDecodifica(g)).slice(0, MAX_AUTO);
+  if(!buone.length) return;                         // vuoto o tutto illeggibile: si tiene il garage
+  let prima = null, extra = [];
+  try{ prima = localStorage.getItem(PROF_CHIAVE);
+       extra = JSON.parse(localStorage.getItem(PROF_EXTRA) || '[]') }catch(e){}
+  const vecchio = (prima ? [prima] : []).concat(Array.isArray(extra) ? extra : []).join('|');
+  if(vecchio === buone.join('|')){                  // uguale: si segna e basta, niente ricarica
+    try{ localStorage.setItem(PK_AGG, agg) }catch(e){}
+    return;
+  }
+  try{
+    localStorage.setItem(PROF_CHIAVE, buone[0]);
+    localStorage.setItem(PROF_EXTRA, JSON.stringify(buone.slice(1)));
+    localStorage.setItem(PK_AGG, agg);
+    localStorage.setItem('copilota-profilo-agg', (profiloDecodifica(buone[0]) || {}).nm || '');
+  }catch(e){ return }                               // memoria piena: meglio il garage di prima
+  /* Come «Togli un'auto»: il garage si rilegge all'avvio, quindi si riapre. */
+  location.reload();
+}
+
 /* IL DOPPIONE. Il catalogo ha otto auto fisse, e il profilo su misura arriva in
    piu': per chi guida una macchina che nel catalogo c'e' gia' (Emanuele con la
    Fiesta) il pannello ne mostrava DUE, quasi uguali, e non si capiva quale fosse
@@ -4521,6 +4642,7 @@ const T = {
     tooMuch:mb=>'Molte mappe accese: con tante regioni l\'app può chiudersi da sola mentre guidi. Tieni accese solo quelle dove vai: spegnerle non le cancella, restano sul telefono.',
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
+    profAgg:n=>'La scheda della tua '+(n||'auto')+' è stata aggiornata.',
     segnNoGps:'Serve la posizione: accendi il GPS e aspetta l\'aggancio.',
     segnFatto:'✓ Segnalato, grazie! · Tocca per annullare',
     segnAnnullata:'Segnalazione annullata.',
@@ -4615,6 +4737,7 @@ const T = {
     tooMuch:mb=>'Many maps switched on: with lots of regions the app can close by itself while you drive. Keep on only the ones you are heading to: switching them off does not delete them, they stay on the phone.',
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
+    profAgg:n=>'Your '+(n||'car')+' profile has been updated.',
     segnNoGps:'Position needed: turn the GPS on and wait for a fix.',
     segnFatto:'✓ Reported, thanks! · Tap to undo',
     segnAnnullata:'Report cancelled.',
@@ -4706,6 +4829,7 @@ const T = {
     tooMuch:mb=>'Beaucoup de cartes allumées : avec beaucoup de régions, l\'app peut se fermer toute seule pendant que tu conduis. N\'allume que celles où tu vas : les éteindre ne les supprime pas, elles restent sur le téléphone.',
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
+    profAgg:n=>'La fiche de ta '+(n||'voiture')+' a été mise à jour.',
     segnNoGps:'La position est nécessaire : active le GPS et attends le point.',
     segnFatto:'✓ Signalé, merci ! · Touche pour annuler',
     segnAnnullata:'Signalement annulé.',
@@ -8332,13 +8456,18 @@ function buildAhead(){
       const jv = dir>0 ? e.j1 : e.j0;
       const rot = ROTONDA.has(e.id) || (JUN.get(jv)||[]).some(id => ROTONDA.has(id));
       for(let q=0; !rot && q<e.stp.length; q+=2){
-        const o = e.stp[q], cod = e.stp[q+1], vs = cod%3;
+        const o = e.stp[q], cod = e.stp[q+1], vs = cod%3, tp = (cod/3)|0;
         if(vs===1 ? dir<0 : vs===2 ? dir>0 : false) continue;
+        /* I SEMAFORI (tipo 3) non hanno una parola: servono solo a far tacere le curve
+           larghe nei 60 m dopo, e solo FUORI DAI PAESI (scelte di Tiago, 20/09, con la
+           misura davanti: il 96% dei semafori sta in paese, e li' dire qualcosa a ogni
+           semaforo sarebbe il rumore che ha fatto togliere agli incroci il 18/09). */
+        if(tp===3 && inPaese(e)) continue;
         if(arrivo!=null && (dir>0 ? o>arrivo : o<arrivo)) continue;
         const ahead = dir>0 ? o-d0 : d0-o;
         if(ahead < 0) continue;
         const dist = acc + ahead;
-        if(dist <= HORIZON) S.aheadStop.push({dist, tipo:(cod/3)|0, key:'stp'+e.id+':'+o});
+        if(dist <= HORIZON) S.aheadStop.push({dist, tipo:tp, key:'stp'+e.id+':'+o});
       }
     }
     /* Precedenza DEDOTTA in fondo a quest'arco (vedi `precedenzaDedotta`): si mette solo
@@ -8434,7 +8563,10 @@ function buildAhead(){
      generarla) le curve tacerebbero senza che nessuno abbia detto perche'. */
   const saStop = !!(VOCE.idx[L] && VOCE.idx[L]['h.stop']);
   for(const st of S.aheadStop){
-    if(st.tipo !== 0 || !saStop) continue;
+    /* Il semaforo zittisce senza spiegare, ed e' voluto: dopo un rosso riparti a passo
+       d'uomo e una curva larga non e' una curva, e' la strada. Lo stop invece zittisce
+       solo se la voce sa dire «stop», se no la curva sparirebbe senza motivo. */
+    if(st.tipo === 3 ? false : (st.tipo !== 0 || !saStop)) continue;
     for(const a of S.ahead)
       if(!a.inside && a.c.c >= STOP_MUTO_CLS && a.dist >= st.dist-5 && a.dist-st.dist <= STOP_MUTO_M)
         (S.stopMuti || (S.stopMuti = new Set())).add(a.key);
@@ -8518,7 +8650,7 @@ const CACHE_VOCE = 'copilota-voce-v1';
    nuovo, la cache lo manca e lo scarica.
    Indice e sprite vanno SEMPRE insieme e con la stessa versione: un indice nuovo sopra
    uno sprite vecchio fa dire parole sbagliate senza nessun errore. */
-const VOCE_VER = '2';
+const VOCE_VER = '3';   // 20/09/2026: stop, dai la precedenza, incrocio in it/en/fr
 async function prendi(url){
   if(self.caches){
     try{
@@ -9558,7 +9690,9 @@ function updateNote(){
      davanti): nella prima stesura stava in fondo, e uno stop in fondo a un rettilineo
      senza curve non veniva mai detto (9 cartelli su 63 in Valle d'Aosta). */
   let stopDetto = false;
-  const st0 = S.aheadStop && S.aheadStop.find(z => !S.said.has(z.key));
+  /* `tipo 3` (semaforo) non ha parola: si salta qui, se no un semaforo davanti a uno stop
+     terrebbe muto anche lo stop — il primo della lista blocca tutti gli altri. */
+  const st0 = S.aheadStop && S.aheadStop.find(z => z.tipo !== 3 && !S.said.has(z.key));
   const parolaStop = st0 ? (st0.tipo===2 ? 'h.incrocio' : st0.tipo ? 'h.precedenza' : 'h.stop') : null;
   const ixV = VOCE.idx[L];
   if(st0 && ixV && ixV[parolaStop] && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()){
@@ -11304,6 +11438,14 @@ function montaInvito(){
            deve restare riconosciuto come «gia' visto» — se no al prossimo avvio da
            freddo il vecchio link rivincerebbe su quello appena incollato. */
         if(mt) localStorage.setItem(TESTER_K, mt[1]);
+        /* Anche l'incollato vale come link arrivato a mano, e puo' portare un `pk`
+           nuovo: il file del Database non deve riportare indietro quello che la
+           persona ha appena incollato (vedi aggiornaProfilo). */
+        try{
+          localStorage.setItem(PK_MANO, new Date().toISOString());
+          const mk = testo.match(/[#&?]k=([a-z0-9]{22})\b/);
+          if(mk) localStorage.setItem(PK_K, mk[1]);
+        }catch(_){}
         const st = JSON.parse(localStorage.getItem('copilota2') || '{}');
         st.car = chiaveMia(iLink >= 0 ? iLink : 0);
         /* Stessa regola del link: veicolo nuovo, taratura da rifare. Lasciare quella
@@ -12245,6 +12387,8 @@ function avvisoGarage(){
   /* E sotto lo splash, se si accetta mentre la mappa carica: allora ci pensa la fine di boot(). */
   if(!splash.classList.contains('hide')) return;
   try{
+    const agg = localStorage.getItem('copilota-profilo-agg');
+    if(agg !== null){ localStorage.removeItem('copilota-profilo-agg'); toast(tr().profAgg(agg), 6000); return }
     const nuova = localStorage.getItem('copilota-garage-nuova');
     if(nuova !== null){ localStorage.removeItem('copilota-garage-nuova'); toast(tr().garNuova(nuova), 6000) }
     else if(autoDalLink && !MIEI.length) toast(tr().garRipiego(CARS[autoDalLink] ? CARS[autoDalLink].nm : ''), 12000);
@@ -12519,4 +12663,8 @@ function primaScelta(){
 }
 mostraTermini();
 setTimeout(boot,30);
+/* Il profilo curato dal Database: FUORI da boot(), perche' boot esce prima dalla strada
+   «prima apertura senza mappe» — che e' proprio quella di chi ha appena ricevuto il link.
+   Non blocca niente e, se non ha un pk o non c'e' rete, non fa niente. */
+setTimeout(aggiornaProfilo, 1200);
 </script>
