@@ -1284,7 +1284,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '300';
+const APPVER = '301';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -10291,7 +10291,30 @@ function updateNote(){
      curva gia' sotto le ruote: non si annuncia piu' da solo, nemmeno quando la voce non
      ha fatto in tempo a dirla prima perche' era occupata. */
   for(const z of S.ahead) if(z.inside && z.pezzi) z.pezzi.forEach(k => S.said.add(k));
-  const el = catenaNota();
+  let el = catenaNota();
+  /* LA FRASE SI ACCORCIA A QUELLO CHE CI STA (21/09/2026, scelta di Tiago: «il ritmo da
+     copilota lo voglio, pero' se secondo i calcoli non fa in tempo a dirle, magari dice
+     le prime due, e mentre sta facendo quelle li' al momento giusto gli dice la terza che
+     e' subito dopo — per non fare un messaggio da tre curve che e' difficile da seguire»).
+
+     MISURATO PRIMA (300 km di Valle d'Aosta a 90 all'ora fissi, `--distanze` del banco):
+     il 28% delle note finiva di parlare quando eri gia' DENTRO la prima curva, mediana 35 m
+     oltre l'inizio, peggiore 122. Spaccato per lunghezza: le frasi da una curva sforavano
+     nel 4% dei casi, quelle da due nel 42%, quelle da tre nel 77%.
+
+     E NON ERA LA VOCE OCCUPATA: solo il 4% di quelle che sforavano era stato rifiutato
+     prima perche' ne stava dicendo un'altra. La causa vera e' che quelle curve diventano
+     la testa della catena quando la macchina e' gia' a un terzo della distanza che
+     servirebbe (0,31 dell'anticipo che l'app si e' calcolata): seguono la curva appena
+     annunciata, e un momento buono PRIMA non e' mai esistito. Quindi non si puo' parlare
+     prima — si puo' solo dire di meno.
+
+     La catena si accorcia dalla CODA finche' la frase non finisce entro l'inizio della
+     prima curva. Le curve tolte non vengono segnate come dette: restano libere, e si
+     annunciano da sole al giro dopo, che e' esattamente il momento loro. */
+  if(el && el.length > 1){
+    while(el.length > 1 && S.v*durataFrase(chiaviNota(el)) > el[0].dist) el = el.slice(0, -1);
+  }
   const ch = el ? chiaviNota(el) : null;
   const av = el && el[0];
   const vRif = av ? curveKmh(av.c.r, av.e, av.dir, av.c.d0)/3.6 : 0;
