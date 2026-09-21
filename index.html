@@ -1332,7 +1332,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '305';
+const APPVER = '306';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -5321,6 +5321,34 @@ try{
   if(D3_ON && st.d3)S.d3=true;   // col 3D spento l'impostazione salvata non torna
   if(st.lang&&T[st.lang])L=st.lang;
 }catch(e){}
+/* LA LINGUA NEL LINK (21/09, richiesta di Tiago per il primo tester olandese, ma pensata
+   per tutto quello che esce dall'Italia). `?l=en` o `?l=fr` nell'indirizzo apre l'app in
+   quella lingua.
+   L'ORDINE DI CHI COMANDA, dal piu' forte al piu' debole:
+     1. la scelta SALVATA, che vince sempre: se uno ha gia' toccato il pulsante della
+        lingua, un link non deve ribaltargliela ogni volta che lo riapre;
+     2. il `?l=` del link, quando una scelta salvata non c'e' ancora;
+     3. la lingua del TELEFONO, se e' una che parliamo: chi ha l'iPhone in inglese e
+        riceve un link nudo non merita di leggere in italiano;
+     4. italiano.
+   Il parametro sta nella QUERY e non nel frammento apposta: e' l'unica parte del link che
+   non contiene niente di personale, e stando prima del `#` non disturba `p=` e `k=`.
+   Non serve salvarlo a mano: chi apre un link d'invito passa da `save()` poche righe piu'
+   giu' (`if(autoDalLink || profiloDalLink) save()`), e da li' in poi la lingua e' sua. */
+if(!(() => { try{ return !!(JSON.parse(localStorage.getItem('copilota2')||'{}').lang) }catch(e){ return false } })()){
+  let scelta = null;
+  try{
+    const q = new URLSearchParams(location.search).get('l');
+    if(q && T[q]) scelta = q;
+  }catch(e){}
+  if(!scelta){
+    try{
+      const tel = (navigator.language || '').slice(0, 2).toLowerCase();
+      if(T[tel]) scelta = tel;
+    }catch(e){}
+  }
+  if(scelta) L = scelta;
+}
 /* La rapportatura e' un dato dell'auto come gli altri, e cambiando veicolo va
    rifatta: la 9a di un cambio a nove marce non vuol dire niente su un cinque
    marce. E' la stessa cosa che fa il click su una chip in renderCar — solo che
