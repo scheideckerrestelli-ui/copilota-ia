@@ -1325,7 +1325,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '303';
+const APPVER = '304';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -9911,7 +9911,22 @@ const inPaese = e => e.ms !== 0 && Math.abs(e.ms) <= 50;
 function allIncrocio(a){
   const gj = a.gj; if(!gj || !gj.length) return false;
   if(S.aheadSvolte && gj.some(j => S.aheadSvolte.has(j))) return true;
-  return inPaese(a.e);
+  /* IN PAESE LA CURVA STRETTA VINCE LO STESSO (21/09/2026, scelta di Tiago dopo la
+     segnalazione del tester Federico Casal: «se c'e' un incrocio prima della curva mi
+     chiama l'incrocio ma non la curva»).
+
+     Fuori dai paesi la regola c'era gia' dal 20/09: dove la parola «incrocio» andrebbe al
+     posto della nota, se la curva e' di classe 3 o piu' stretta parla la curva. Dentro i
+     paesi no: qui si zittiva qualsiasi curva che toccasse un incrocio, senza guardare
+     quanto e' stretta. Misurato su 300 km di Valle d'Aosta (`--incroci 1` del banco):
+     204 curve zittite in paese, 6,8 ogni 10 km, fra cui 11 TORNANTI, 19 di classe 1 e 26
+     di classe 2 — mentre la regola di fuori, nello stesso giro, ne zittiva 32 ed erano
+     tutte di classe 4, 5 o 6.
+
+     Questa non e' una regola nuova: e' la stessa di Tiago, applicata dove non arrivava.
+     Le curve larghe in paese restano mute come prima — li' la curva e' la manovra
+     dell'incrocio, e dirla due volte e' il rumore che lui ha fatto togliere il 18/09. */
+  return inPaese(a.e) && a.c.c > DEDOTTA_CLS;
 }
 const mutoQui = a => !!a.e && ((CLSARCO.get(a.e.id)|0) === 2
                                || ROTONDA.has(a.e.id)
