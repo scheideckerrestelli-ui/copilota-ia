@@ -80,7 +80,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     --velo:rgba(20,26,32,.97); --velo2:rgba(20,26,32,.98);
     --suaccento:#0c1013; --linea2:#1e262e; --bordo2:#2b3640;
     --fondo2:#151b22; --fondo3:#1a2129; --pericolo:#ff5a5a;
-    --sw-on:#34c759; --sw-off:#39393d;   /* interruttore stile iOS: verde acceso, grigio spento */
+    --sw-on:#0a84ff; --sw-off:#39393d;   /* interruttore: blu acceso, grigio spento (Tiago, 21/09) */
     --evidenza:rgba(79,214,255,.06);
   }
   /* ============ tema chiaro ============
@@ -107,7 +107,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     --velo:rgba(255,255,255,.97); --velo2:rgba(255,255,255,.98);
     --suaccento:#ffffff; --linea2:#dde5ec; --bordo2:#c2ccd6;
     --fondo2:#eef2f6; --fondo3:#e2eaf1; --pericolo:#c62828;
-    --sw-on:#34c759; --sw-off:#e9e9ea;
+    --sw-on:#007aff; --sw-off:#e9e9ea;
     --evidenza:rgba(11,111,208,.09);
   }
   /* Nella app aggiunta alla schermata Home, sull'iPhone, la striscia subito sotto
@@ -552,9 +552,12 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     font:inherit;font-size:12.5px;background:var(--fondo2);color:var(--ink);cursor:pointer;
     min-width:104px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
   .rrow .rbt:disabled{opacity:.6;cursor:default}
-  .rrow .rdel{flex:none;width:34px;height:34px;border:0;background:none;color:var(--ink2);
-    cursor:pointer;font-size:17px;line-height:1;border-radius:8px}
-  .rrow .rdel:hover{color:var(--pericolo);background:var(--fondo3)}
+  .rrow .rdel{flex:none;width:34px;height:34px;border:0;background:none;
+    color:var(--pericolo);cursor:pointer;line-height:1;border-radius:8px;
+    display:grid;place-items:center}
+  .rrow .rdel svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round}
+  .rrow .rdel:hover{background:var(--fondo3)}
   .rrow.daattivare{background:var(--evidenza);border-radius:9px;padding-left:8px;padding-right:8px}
   /* LO STATO, NON L'AZIONE (20/09, ordine di Tiago dopo il caso di peppetummy).
      La mappa spenta portava scritto «Attiva ora», cioe' quello che sarebbe successo
@@ -570,10 +573,14 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* L'INTERRUTTORE, stile iOS (21/09, richiesta di Tiago: «piu' intuitivo»). Prende il
      posto del bottone testuale, ma NON cambia la regola che l'ha generato: dice com'e'
      messa la mappa adesso, non cosa succede toccandolo.
-     TRE SEGNALI, non uno. Il verde e' il terzo, non l'unico: c'e' la PAROLA
+     TRE SEGNALI, non uno. Il colore e' il terzo, non l'unico: c'e' la PAROLA
      («Attiva»/«Disattivata») e c'e' la POSIZIONE del pallino, a destra quando e' acceso e
-     a sinistra quando e' spento. Chi non distingue il verde dal grigio legge la parola e
-     vede da che parte sta il pallino. Misure di Apple: pillola 51x31, pallino 27. */
+     a sinistra quando e' spento. Chi non distingue il blu dal grigio legge la parola e
+     vede da che parte sta il pallino. Misure di Apple: pillola 51x31, pallino 27.
+     IL BLU E' SCELTA DI TIAGO (21/09) al posto del verde di sistema. Non e' l'azzurro
+     dell'app (`--accent`, #4fd6ff nel tema scuro): quello e' troppo chiaro sotto un
+     pallino bianco e i due si impastano. Questo e' il blu con cui iOS accende le sue
+     caselle, che col bianco sopra si legge. */
   .rrow .rsw{flex:none;display:flex;align-items:center;gap:8px;border:0;background:none;
     padding:6px 0 6px 4px;cursor:pointer;font:inherit;font-size:11.5px;color:var(--ink2);
     min-height:44px}
@@ -1325,7 +1332,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '304';
+const APPVER = '305';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -11873,7 +11880,21 @@ function rigaRegione(r){
 
     if(inst){
       const del=document.createElement('button');
-      del.className='rdel'; del.textContent='🗑'; del.title=tr().delMap;
+      /* IL CESTINO E' DISEGNATO COME GLI ALTRI COMANDI (21/09, richiesta di Tiago).
+         Prima era l'emoji 🗑, che ogni sistema disegna a modo suo — su iOS grigia e
+         piena, sul Mac un'altra cosa — e accanto a icone tutte a linea sottile si vedeva
+         che era arrivata da fuori. Questa e' un tratto come quelle in alto: stessa
+         gabbia 24x24, stesso spessore, stesse punte arrotondate.
+         E' ROSSA perche' e' l'unico comando di questo pannello che toglie qualcosa per
+         sempre: gli altri accendono e spengono, questo cancella 63 MB e te li fa
+         riscaricare. Il rosso e' quello dell'app (`--pericolo`), non un rosso nuovo. */
+      del.className='rdel'; del.title=tr().delMap;
+      del.setAttribute('aria-label', tr().delMap);
+      del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+        '<path d="M4.5 6.5h15"/>' +
+        '<path d="M9.5 6.5V5.2c0-.7.5-1.2 1.2-1.2h2.6c.7 0 1.2.5 1.2 1.2v1.3"/>' +
+        '<path d="M6.4 6.5l.9 11.9c.06.9.8 1.6 1.7 1.6h6c.9 0 1.64-.7 1.7-1.6l.9-11.9"/>' +
+        '<path d="M10.3 10.2v6M13.7 10.2v6"/></svg>';
       del.onclick=async()=>{
         // anche cancellare una regione attiva aspetta l'uscita: si sta ancora
         // sistemando la lista, non è il momento di ripartire
