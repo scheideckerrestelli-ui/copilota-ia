@@ -1284,7 +1284,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '299';
+const APPVER = '300';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -9595,6 +9595,38 @@ function clipDist(m){
   const k='d.'+best;
   return (VOCE.idx[L] && VOCE.idx[L][k]) ? k : null;
 }
+/* IL NUMERO DEV'ESSERE VERO QUANDO LO SENTI, NON QUANDO PARTE (21/09/2026, scelta di
+   Tiago dopo la segnalazione del tester Michael Botti: «chiama 80 metri quando ce ne
+   sono 20»).
+
+   `clipDist` riceve la distanza dell'ISTANTE in cui si decide di parlare, e quel numero
+   e' giusto: misurato su 1474 annunci in Valle d'Aosta, lo scarto fra numero detto e
+   distanza vera alla decisione ha mediana -1 m (e' solo l'arrotondamento qui sopra).
+   Il difetto viene dopo: la voce ci mette del tempo a dirlo, e in quel tempo la macchina
+   cammina. Alla fine della frase il numero detto vale 2,2 volte i metri che restano
+   davvero (p90 3,5; a 90 all'ora p90 6,9). L'80 contro 20 di Michael e' la coda di questa
+   distribuzione, e il suo orecchio e' tarato bene: lui confronta col parabrezza quando ha
+   finito di ascoltare.
+
+   Si corregge togliendo la strada percorsa fino al momento in cui QUEL numero finisce di
+   uscire: `prima` sono i secondi di frase che lo precedono, e la durata del numero stesso
+   si somma qui perche' dipende da quale clip esce — che e' la cosa che stiamo scegliendo.
+   Da qui i due giri: si sceglie una clip, si ricalcola con la sua durata, e se cambia si
+   riprova una volta. Due giri bastano perche' le clip dei numeri durano tutte quasi
+   uguale, e un giro in piu' non sposterebbe la scelta.
+
+   NON si tocca il numero fra due curve («sessanta, sinistra quattro»): quello e' la
+   LUNGHEZZA di un dritto, non la distanza da un punto, e non invecchia mentre si guida. */
+function clipDistDetta(m, prima, conMetri){
+  const v = S.v || 0;
+  let k = clipDist(m - v*prima);
+  for(let n=0; n<2 && k; n++){
+    const k2 = clipDist(m - v*(prima + durataFrase(conMetri ? [k,'d.metri'] : [k])));
+    if(k2 === k) break;
+    k = k2;
+  }
+  return k;
+}
 /* Quali curve entrano nella nota. Separata dal comporre le parole perche' la catena
    serve PRIMA di decidere se parlare: da lei dipende la durata della frase, e dalla
    durata l'anticipo. Non tocca `S.said`: segnare il gia'-detto qui vorrebbe dire
@@ -9656,7 +9688,7 @@ function catenaNota(){
    («destra tre, cinquanta») e il contesto lo disambigua da solo. */
 function chiaviNota(el){
   let ch = chiaviCurva(el[0], !S.pace);
-  if(S.pace){ const dk=clipDist(el[0].dist); if(dk) ch=[dk,'d.metri'].concat(ch) }
+  if(S.pace){ const dk=clipDistDetta(el[0].dist, 0, true); if(dk) ch=[dk,'d.metri'].concat(ch) }
   for(let n=1;n<el.length;n++){
     /* LO STACCO E' IL DRITTO VERO, dalla FINE di una curva all'INIZIO dell'altra
        (17/09/2026, Tiago guidando in rally: il «poi» non si sente, «scattoso e non si
@@ -10084,7 +10116,9 @@ function updateNote(){
     if(dr && ixD && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()){
       const k = 'drt'+S.snap.e.id+':'+Math.round(distAlong(S.snap.e, S.snap.i, S.snap.t));
       if(!S.said.has(k)){
-        const dk = dr.oltre ? null : clipDist(dr.dist);
+        /* qui il numero sta in CODA («dritto, quattrocento»), quindi invecchia di tutta
+           la parola che lo precede: vedi `clipDistDetta`. */
+        const dk = dr.oltre ? null : clipDistDetta(dr.dist, durataFrase(['r.dritto']), false);
         const ch = S.pace ? ['r.dritto'].concat(dk ? [dk] : []) : ['r.lungo'];
         if(ch.every(x => ixD[x]) && performance.now()-S.lastSaid > 900 && dilo(ch, false) > 0){
           S.said.add(k); S.lastSaid = performance.now();
@@ -10123,7 +10157,7 @@ function updateNote(){
         /* la distanza con le stesse regole delle curve (`clipDist`): il valore tondo
            piu' vicino fra quelli registrati, niente sotto i 40 m o se sbaglia troppo.
            Prima stesura: multipli di 50, e a 73 m diceva «cinquanta». */
-        const dk = clipDist(st0.dist);
+        const dk = clipDistDetta(st0.dist, 0, true);   // vero quando lo senti: vedi `clipDistDetta`
         if(dk && ixV['d.metri']) chS = [dk, 'd.metri', parolaStop];
       }
       const stS = stileAttivo(), reazS = Math.max(0.6, stS.reaz + (S.antic||0));   // come `reaz` piu' sotto
