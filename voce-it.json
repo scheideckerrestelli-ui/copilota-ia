@@ -678,8 +678,18 @@
 "d": 1.3784,
 "w": "prendi l'uscita"
 },
-"x.attivo": {
+"r.dritto": {
 "t": 137.9438,
+"d": 0.579,
+"w": "dritto"
+},
+"r.lungo": {
+"t": 138.6428,
+"d": 0.4904,
+"w": "lungo"
+},
+"x.attivo": {
+"t": 139.2532,
 "d": 1.3875,
 "w": "copilota attivo"
 }

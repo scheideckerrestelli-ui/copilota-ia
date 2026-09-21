@@ -682,8 +682,18 @@
 "d": 0.9133,
 "w": "take the exit"
 },
-"x.attivo": {
+"r.dritto": {
 "t": 116.1229,
+"d": 0.6731,
+"w": "straight"
+},
+"r.lungo": {
+"t": 116.916,
+"d": 0.3875,
+"w": "long"
+},
+"x.attivo": {
+"t": 117.4234,
 "d": 1.4777,
 "w": "co-driver active"
 }

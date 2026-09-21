@@ -2,8 +2,8 @@
    Una cache per la shell (cambia a ogni build) e una per ogni regione scaricata
    (cambia solo col dataset), cosi' "elimina la mappa X" e' selettivo e un fix di
    codice non fa riscaricare niente. */
-/* sorgente: c8b65b7e52 */
-const APP = 'copilota-app-v298';
+/* sorgente: 87641e59d3 */
+const APP = 'copilota-app-v299';
 const DATA_PREFIX = 'copilota-data-';
 // niente './index.html' nella SHELL: su Cloudflare Pages risponde 308 (pretty URL)
 // e cache.addAll rifiuta le risposte redirette — l'install del SW fallirebbe intera.

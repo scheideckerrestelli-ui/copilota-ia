@@ -1284,7 +1284,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '298';
+const APPVER = '299';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -8679,6 +8679,7 @@ function buildAhead(){
   const sn=S.snap; if(!sn){ S.pend=0; S.quota=null; return }
   const HORIZON = Math.max(420, Math.min(1100, S.v*11 + 260));
   let e=sn.e, dir=sn.dir, d0=distAlong(e,sn.i,sn.t), acc=0, hops=0;
+  let ultE=null, ultDir=0, accFine=0, ultD0=0;   // dove il ciclo si e' fermato: serve al rettilineo
   /* Pendenza e quota sotto le ruote: si aggiornano qui perché qui si sa già dove
      siamo (arco, punto, verso) e a che frequenza serve. Da queste due dipendono il
      tetto di velocità dell'auto e la decelerazione utile, non il percorso. */
@@ -8693,6 +8694,10 @@ function buildAhead(){
      ruote, e senza questa riga tornerebbe a parlare un attimo dopo aver girato. */
   if(kk>0) segnaSvolta(S.nav.archi[kk-1].e, S.nav.archi[kk-1].verso, e, dir);
   while(acc<HORIZON && hops<9){
+    // dove siamo entrati in QUESTO arco: serve al rettilineo, che riparte da qui quando
+    // l'orizzonte finisce senza curve. Va preso PRIMA che `acc` avanzi, se no il tratto
+    // gia' percorso si conta due volte (e il dritto sembrava sempre oltre i 2,5 km).
+    ultE=e; ultDir=dir; accFine=acc; ultD0=d0;
     /* Prima rotatoria davanti: all'inizio dell'iterazione `acc` e' la distanza
        all'IMBOCCO dell'arco corrente (per hops>0), quindi e' gia' la distanza
        giusta da annunciare. `hops>0` esclude l'arco sotto le ruote: se sei GIA'
@@ -8823,6 +8828,21 @@ function buildAhead(){
   }
   S.ahead.sort((a,b)=>(a.inside?-1:0)-(b.inside?-1:0) || a.dist-b.dist);
   S.aheadCams.sort((a,b)=>a.dist-b.dist);
+  /* IL RETTILINEO DAVANTI (21/09/2026, funzione approvata da Tiago: «quanto dura il
+     dritto fino alla prossima curva»). Il dato c'e' gia' — e' la distanza alla prossima
+     curva — ma NON quando serve: il lookahead arriva a 535 m a 90 all'ora, e misurando
+     250 km per regione i dritti oltre i 600 m erano visibili all'uscita della curva ZERO
+     volte su 39. Cioe' proprio quelli che varrebbe la pena dire.
+     Quindi quando davanti non c'e' nessuna curva si continua a camminare sulla strada
+     fino a DRITTO_VISTA, SENZA calcolare altro: costa qualche arco in piu' per posizione
+     e solo nei tratti dritti, dove oggi il lookahead non ha niente da fare. Oltre quel
+     limite si dice «lungo» senza numero: meglio nessun numero che uno inventato. */
+  S.dritto = null;
+  if(!S.ahead.some(z => z.inside)){
+    const p = S.ahead.find(z => !z.inside);
+    if(p) S.dritto = {dist:p.dist, oltre:false};
+    else if(ultE) S.dritto = curvaOltre(ultE, ultDir, ultD0, accFine);
+  }
   S.aheadStop.sort((a,b)=>a.dist-b.dist);
   /* DOPO UNO STOP LE CURVE LARGHE TACCIONO (scelta di Tiago, 19/09): ripartendo da
      fermo una classe 4 non e' una curva, e' la strada. Si segnano per CHIAVE mentre lo
@@ -8855,6 +8875,32 @@ function buildAhead(){
         (S.stopMuti || (S.stopMuti = new Set())).add(a.key);
   }
   if(S.stopMuti && S.stopMuti.size > 200){ let n=100; for(const k of S.stopMuti){ if(n--<=0) break; S.stopMuti.delete(k) } }
+}
+
+/* Cerca la prossima curva OLTRE l'orizzonte, camminando sulla strada e basta. Non tocca
+   `S.ahead`: torna solo quanto manca, e se ha smesso di cercare. Segue la prosecuzione
+   piu' dritta anche col percorso attivo: su un rettilineo lungo il percorso ci sta sopra,
+   e chiedere al navigatore costerebbe piu' di quanto serve. */
+const DRITTO_VISTA = 2500;
+function curvaOltre(e, dir, d0, acc){
+  /* Si riparte dall'arco e dal punto in cui il lookahead si e' fermato, NON dall'arco
+     dopo: la curva successiva puo' stare sullo stesso arco appena oltre l'orizzonte, e
+     saltarla faceva dire «dritto» senza numero proprio dove il numero c'era (trovato
+     dalla prova sintetica, 600 m di dritto su un arco solo). */
+  let hops = 0;
+  for(;;){
+    const list = dir>0 ? e.curves : [...e.curves].reverse();
+    for(const c of list){
+      const cs = dir>0 ? c.d0 : c.d1;
+      const av = dir>0 ? cs-d0 : d0-cs;
+      if(av >= 0) return {dist:acc + av, oltre:false};
+    }
+    acc += dir>0 ? (e.len-d0) : d0;
+    if(acc >= DRITTO_VISTA || ++hops > 30) return {dist:acc, oltre:true};
+    const nx = nextEdge(e, dir);
+    if(!nx) return {dist:acc, oltre:false, fine:true};   // la strada finisce: il dritto muore li'
+    e = nx.e; dir = nx.dir; d0 = dir>0 ? 0 : e.len;
+  }
 }
 
 /* ============ nota + voce ============ */
@@ -8933,7 +8979,7 @@ const CACHE_VOCE = 'copilota-voce-v1';
    nuovo, la cache lo manca e lo scarica.
    Indice e sprite vanno SEMPRE insieme e con la stessa versione: un indice nuovo sopra
    uno sprite vecchio fa dire parole sbagliate senza nessun errore. */
-const VOCE_VER = '3';   // 20/09/2026: stop, dai la precedenza, incrocio in it/en/fr
+const VOCE_VER = '4';   // 21/09/2026: «dritto» e «lungo» del rettilineo   // 20/09/2026: stop, dai la precedenza, incrocio in it/en/fr
 async function prendi(url){
   if(self.caches){
     try{
@@ -9727,6 +9773,32 @@ const INCROCIO_VMIN = 15.3, INCROCIO_CEDE_M = 150;      // m/s (55 km/h) e metri
 /* Quanta pendenza in SALITA si lascia accorciare l'anticipo. In discesa nessun tetto:
    li' l'errore allunga, e allungare non fa male. */
 const SALITA_MAX = 0.06;
+/* IL RETTILINEO (21/09/2026, funzione approvata da Tiago). «Da qui puoi spingere»: si dice
+   all'USCITA di una curva, una volta, legata a quel punto della strada.
+   - soglia: DRITTO_M metri, ma almeno DRITTO_S secondi di strada, se no a 130 all'ora un
+     dritto da 250 m dura sette secondi e non e' un rettilineo, e' un collegamento. La
+     soglia in metri e' un parametro perche' Tiago deve ancora scegliere fra 250 e 400;
+   - MUTO se dentro il dritto c'e' uno stop, una precedenza, un incrocio annunciato o un
+     semaforo: «puoi spingere» prima di uno stop non e' un fastidio, e' un errore grave.
+     Vale anche per il banner: mai scrivere via libera dove c'e' da fermarsi;
+   - muto in autostrada e superstrada (li' e' tutto dritto e diventerebbe un tormentone)
+     e muto in paese (li' 300 m di dritto non sono un via libera);
+   - in esperto il numero («dritto quattrocento»), in normale una parola sola («lungo»).
+     Oltre DRITTO_VISTA la lunghezza non si sa: si dice la parola senza numero. */
+const DRITTO_M = 250, DRITTO_S = 9;
+function drittoOra(){
+  const d = S.dritto; if(!d || !(d.dist > 0)) return null;
+  /* Una strada che FINISCE non e' un rettilineo: e' un vicolo cieco, e «puoi spingere»
+     li' e' il peggior consiglio possibile. Lo faceva: la prova sintetica lo ha preso in
+     fondo al tracciato, dove la strada smette e non c'e' nessuna curva dopo. */
+  if(d.fine) return null;
+  const sn = S.snap; if(!sn || !sn.e) return null;
+  if(d.dist < Math.max(DRITTO_M, S.v*DRITTO_S)) return null;
+  if((CLSARCO.get(sn.e.id)|0) === 2 || (sn.e.rank|0) === RANGO.veloce) return null;
+  if(inPaese(sn.e)) return null;
+  if(S.aheadStop && S.aheadStop.some(z => z.dist <= d.dist)) return null;
+  return d;
+}
 function incrocioSemplice(e, dir, jn){
   if(inPaese(e) || S.v < INCROCIO_VMIN) return false;
   const l = JUN.get(jn)||[]; if(l.length < 3) return false;
@@ -10001,6 +10073,26 @@ function updateNote(){
       }
     }
   }
+  /* ---- il rettilineo: si dice all'USCITA della curva, una volta sola ----
+     Il momento e' la transizione «ero dentro una curva» -> «non piu'», che e' esattamente
+     il punto che Tiago ha chiesto: cosi' la frase non cade dentro la finestra di anticipo
+     della curva dopo e non le ruba l'aria. */
+  const dentroOra = S.ahead.some(z => z.inside);
+  if(S.eraDentro && !dentroOra){
+    const dr = drittoOra();
+    const ixD = VOCE.idx[L];
+    if(dr && ixD && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()){
+      const k = 'drt'+S.snap.e.id+':'+Math.round(distAlong(S.snap.e, S.snap.i, S.snap.t));
+      if(!S.said.has(k)){
+        const dk = dr.oltre ? null : clipDist(dr.dist);
+        const ch = S.pace ? ['r.dritto'].concat(dk ? [dk] : []) : ['r.lungo'];
+        if(ch.every(x => ixD[x]) && performance.now()-S.lastSaid > 900 && dilo(ch, false) > 0){
+          S.said.add(k); S.lastSaid = performance.now();
+        }
+      }
+    }
+  }
+  S.eraDentro = dentroOra;
   /* ---- stop e dare precedenza (19/09/2026, scelte di Tiago) ----
      Vedi STOP_LEGA_M. L'anticipo e' quello di una curva, con la frenata fino a ZERO:
      frase + reazione dello stile + spazio per fermarsi con la decelerazione dello stile.
@@ -10062,6 +10154,22 @@ function updateNote(){
     nDist.textContent=d<35?t0.now:String(Math.round(d/10)*10);
     nLab.textContent=d<35?'':t0.m;
     drawCamIcon();
+    return;
+  }
+  /* IL RETTILINEO ANCHE A SCHERMO (richiesta di Tiago, 21/09): quando la voce dice il
+     dritto, il banner scrive la stessa cosa, come fa con le curve. Finche' il dritto dura
+     prende il posto della curva lontana; appena la curva rientra sotto la soglia torna
+     lei, che e' l'informazione piu' utile da li' in poi.
+     Se il dritto e' MUTO perche' dentro c'e' uno stop o un incrocio, `drittoOra()` torna
+     null e qui non si scrive niente: mai un via libera scritto dove c'e' da fermarsi. */
+  const drB = drittoOra();
+  if(drB && (!a || (!a.inside && a.dist >= drB.dist - 1))){
+    mostra('show'); nCall.style.color=CLS[6].col;
+    nCall.textContent=t0.straight; nSub.textContent='';
+    nGear.hidden=true;
+    nDist.textContent = drB.oltre ? '—' : String(Math.round(drB.dist/10)*10);
+    nLab.textContent = drB.oltre ? '' : t0.m;
+    ni.setTransform(2,0,0,2,0,0); ni.clearRect(0,0,64,64);
     return;
   }
   if(!a){

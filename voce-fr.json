@@ -682,8 +682,18 @@
 "d": 1.2774,
 "w": "prends la sortie"
 },
-"x.attivo": {
+"r.dritto": {
 "t": 139.7186,
+"d": 0.8213,
+"w": "tout droit"
+},
+"r.lungo": {
+"t": 140.6599,
+"d": 0.3891,
+"w": "long"
+},
+"x.attivo": {
+"t": 141.169,
 "d": 1.2671,
 "w": "copilote actif"
 }
