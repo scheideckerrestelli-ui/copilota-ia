@@ -80,6 +80,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     --velo:rgba(20,26,32,.97); --velo2:rgba(20,26,32,.98);
     --suaccento:#0c1013; --linea2:#1e262e; --bordo2:#2b3640;
     --fondo2:#151b22; --fondo3:#1a2129; --pericolo:#ff5a5a;
+    --sw-on:#34c759; --sw-off:#39393d;   /* interruttore stile iOS: verde acceso, grigio spento */
     --evidenza:rgba(79,214,255,.06);
   }
   /* ============ tema chiaro ============
@@ -106,6 +107,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
     --velo:rgba(255,255,255,.97); --velo2:rgba(255,255,255,.98);
     --suaccento:#ffffff; --linea2:#dde5ec; --bordo2:#c2ccd6;
     --fondo2:#eef2f6; --fondo3:#e2eaf1; --pericolo:#c62828;
+    --sw-on:#34c759; --sw-off:#e9e9ea;
     --evidenza:rgba(11,111,208,.09);
   }
   /* Nella app aggiunta alla schermata Home, sull'iPhone, la striscia subito sotto
@@ -527,7 +529,6 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .rrow .rbt{flex:none;border:1px solid var(--bordo2);border-radius:9px;padding:8px 12px;
     font:inherit;font-size:12.5px;background:var(--fondo2);color:var(--ink);cursor:pointer;
     min-width:104px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .rrow .rbt.on{background:var(--accent);color:var(--suaccento);border-color:var(--accent);font-weight:600}
   .rrow .rbt:disabled{opacity:.6;cursor:default}
   .rrow .rdel{flex:none;width:34px;height:34px;border:0;background:none;color:var(--ink2);
     cursor:pointer;font-size:17px;line-height:1;border-radius:8px}
@@ -544,10 +545,28 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      IL ROSSO NON E' L'UNICO SEGNO: c'e' la parola, e davanti un cerchio vuoto contro
      il cerchio pieno della mappa accesa. Chi non distingue il rosso legge le stesse
      due cose lo stesso. */
-  .rrow .rbt.spenta{border-color:var(--pericolo);color:var(--pericolo);font-weight:600}
-  .rrow .rbt .seg{display:inline-block;width:8px;height:8px;border-radius:50%;
-    margin-right:6px;border:1.6px solid currentColor}
-  .rrow .rbt.on .seg{background:currentColor}
+  /* L'INTERRUTTORE, stile iOS (21/09, richiesta di Tiago: «piu' intuitivo»). Prende il
+     posto del bottone testuale, ma NON cambia la regola che l'ha generato: dice com'e'
+     messa la mappa adesso, non cosa succede toccandolo.
+     TRE SEGNALI, non uno. Il verde e' il terzo, non l'unico: c'e' la PAROLA
+     («Attiva»/«Disattivata») e c'e' la POSIZIONE del pallino, a destra quando e' acceso e
+     a sinistra quando e' spento. Chi non distingue il verde dal grigio legge la parola e
+     vede da che parte sta il pallino. Misure di Apple: pillola 51x31, pallino 27. */
+  .rrow .rsw{flex:none;display:flex;align-items:center;gap:8px;border:0;background:none;
+    padding:6px 0 6px 4px;cursor:pointer;font:inherit;font-size:11.5px;color:var(--ink2);
+    min-height:44px}
+  /* La parola ha una larghezza fissa perche' le pillole delle righe restino incolonnate:
+     e' quello che le fa sembrare quelle delle Impostazioni invece di tre bottoni sparsi. */
+  .rrow .rsw .rsw-t{min-width:66px;text-align:right;line-height:1.2}
+  .rrow .rsw[aria-checked="true"] .rsw-t{color:var(--ink);font-weight:600}
+  .rrow .rsw .pil{position:relative;width:51px;height:31px;border-radius:15.5px;
+    background:var(--sw-off);transition:background .22s ease;flex:none}
+  .rrow .rsw[aria-checked="true"] .pil{background:var(--sw-on)}
+  .rrow .rsw .kn{position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;
+    background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.28);transition:transform .22s ease}
+  .rrow .rsw[aria-checked="true"] .kn{transform:translateX(20px)}
+  .rrow .rsw:disabled{opacity:.6;cursor:default}
+  @media (prefers-reduced-motion:reduce){ .rrow .rsw .pil,.rrow .rsw .kn{transition:none} }
   .rrow.here .rnm b::after{content:' ●';color:var(--accent);font-size:11px;vertical-align:2px}
   #invitoBox{margin:10px 0 4px;padding:12px 13px;border:1px solid var(--bordo2);
     border-radius:11px;background:var(--fondo2)}
@@ -1284,7 +1303,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '301';
+const APPVER = '302';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -11770,11 +11789,21 @@ function rigaRegione(r){
     // scaricata ma non attiva: la riga resta in evidenza finché non la si accende
     if(inst && !att) row.classList.add('daattivare');
     const bt=document.createElement('button');
-    bt.className='rbt'+(att?' on':'')+(inst&&!att?' spenta':'');
-    /* Scaricata: si dice lo STATO. Non scaricata: «Scarica», che li' e' davvero
-       l'azione e non c'e' nessuno stato da raccontare. */
-    if(inst) bt.innerHTML = '<i class="seg"></i>' + (att ? tr().active : tr().spenta);
-    else bt.textContent = tr().dl;
+    bt.type='button';
+    /* Scaricata: un INTERRUTTORE, che dice lo stato. Non scaricata: «Scarica», che li' e'
+       davvero l'azione e non c'e' nessuno stato da raccontare — un interruttore per
+       «scarica 63 MB» sarebbe una promessa sbagliata, perche' quella non e' una cosa che
+       si accende e si spegne. */
+    if(inst){
+      bt.className='rsw';
+      bt.setAttribute('role','switch');
+      bt.setAttribute('aria-checked', att ? 'true' : 'false');
+      bt.innerHTML = '<span class="rsw-t">' + (att ? tr().active : tr().spenta) +
+                     '</span><span class="pil"><span class="kn"></span></span>';
+    }else{
+      bt.className='rbt';
+      bt.textContent = tr().dl;
+    }
     bt.onclick=async()=>{
       if(bt.disabled) return;
       if(!inst){
@@ -11792,7 +11821,7 @@ function rigaRegione(r){
           }
           renderMaps(); showStore();
         }catch(err){
-          bt.disabled=false; bt.textContent=tr().dl;
+          bt.disabled=false; bt.className='rbt'; bt.textContent=tr().dl;
           toast(tr().dlFail+err.message, 4500);
         }
         return;
