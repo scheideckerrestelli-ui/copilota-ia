@@ -375,9 +375,31 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   /* l'accento si chiede, non si prende: `.sheet h2 span` colorava anche i wrapper
      [data-lang], quindi i titoli tradotti uscivano tutti azzurri */
   .sheet h2 .ac{color:var(--accent);font-style:normal}
-  .opt{display:flex;align-items:center;gap:9px;margin-top:14px;font-size:13px;
-    color:var(--ink);cursor:pointer}
-  .opt input{accent-color:var(--accent);width:18px;height:18px;flex:none}
+  /* LE OPZIONI SONO INTERRUTTORI, come le mappe (21/09, richiesta di Tiago: lo stesso
+     comando dappertutto, «in modo ordinato»). Ordinato vuol dire lista alla Apple:
+     ETICHETTA A SINISTRA, INTERRUTTORE ALLINEATO A DESTRA, stessa altezza per tutte le
+     righe e il comando sempre sullo stesso bordo — cosi' l'occhio scende dritto e non
+     cerca dove sta il controllo riga per riga.
+     RESTA UNA CASELLA VERA. Cambia solo il vestito: e' sempre un `input[type=checkbox]`,
+     quindi `.checked` continua a valere, il salvataggio non cambia, e chi naviga da
+     tastiera o con lo schermo a voce ha lo stesso identico comando di prima. Costruire un
+     bottone al suo posto avrebbe voluto dire rifare a mano quello che il browser regala,
+     e romperlo in un posto che nessuno prova (il consenso degli autovelox sta qui).
+     L'ordine nel markup non si tocca: la casella resta prima delle etichette, e `order`
+     la manda a destra. Meno cose da sbagliare in un file di 14.000 righe. */
+  .opt{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-top:14px;font-size:13px;color:var(--ink);cursor:pointer;min-height:44px}
+  .opt > span{flex:1}
+  .opt input{appearance:none;-webkit-appearance:none;order:2;flex:none;margin:0;
+    position:relative;width:51px;height:31px;border-radius:15.5px;background:var(--sw-off);
+    transition:background .22s ease;cursor:pointer}
+  .opt input::after{content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;
+    border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.28);
+    transition:transform .22s ease}
+  .opt input:checked{background:var(--sw-on)}
+  .opt input:checked::after{transform:translateX(20px)}
+  .opt input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){ .opt input,.opt input::after{transition:none} }
   #gearBox[hidden]{display:none}
   .sheet h3{font-family:var(--font-d);font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
     font-weight:600;margin:16px 0 7px;color:var(--accent)}
@@ -1303,7 +1325,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '302';
+const APPVER = '303';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
