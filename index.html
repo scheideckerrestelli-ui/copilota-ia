@@ -1332,7 +1332,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '307';
+const APPVER = '308';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4918,6 +4918,8 @@ const T = {
     gpsDenied:'Permesso GPS negato. Se il browser non lo chiede nemmeno, controlla la localizzazione nelle impostazioni di sistema.',
     gpsErr:'GPS non disponibile: ', gpsNone:'Questo browser non espone il GPS.',
     outZone:'Sei fuori dalle mappe caricate.',
+    primaIcona:'Stai usando Co-Driver in una scheda del browser. Aggiungi prima l\'icona alla schermata Home e scarica da lì: l\'app in Home ha una memoria sua, e queste mappe non ci passerebbero.',
+    primaIconaCome:'Come si fa',
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', spenta:'Disattivata', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
     paesi:{it:'Italia', be:'Belgio', nl:'Paesi Bassi', fr:'Francia', gb:'Regno Unito', es:'Spagna', '?':'Altre regioni'},
@@ -5018,6 +5020,8 @@ const T = {
     gpsDenied:'GPS permission denied. If the browser never asks, check location in your system settings.',
     gpsErr:'GPS unavailable: ', gpsNone:'This browser does not expose GPS.',
     outZone:'You are outside the loaded maps.',
+    primaIcona:'You are using Co-Driver in a browser tab. Add the icon to your Home Screen first and download from there: the Home Screen app has its own storage, and these maps would not carry over.',
+    primaIconaCome:'How to do it',
     pickMap:'pick a map', maps:'Maps', dl:'Download', spenta:'Inactive', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
     paesi:{it:'Italy', be:'Belgium', nl:'Netherlands', fr:'France', gb:'United Kingdom', es:'Spain', '?':'Other regions'},
@@ -5115,6 +5119,8 @@ const T = {
     gpsDenied:'Permission GPS refusée. Si le navigateur ne la demande même pas, vérifie la position dans les réglages système.',
     gpsErr:'GPS indisponible : ', gpsNone:'Ce navigateur n\'expose pas le GPS.',
     outZone:'Tu es en dehors des cartes chargées.',
+    primaIcona:'Tu utilises Co-Driver dans un onglet du navigateur. Ajoute d\'abord l\'icône à l\'écran d\'accueil et télécharge depuis là : l\'app de l\'écran d\'accueil a sa propre mémoire, et ces cartes n\'y passeraient pas.',
+    primaIconaCome:'Comment faire',
     pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', spenta:'Désactivée', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
     paesi:{it:'Italie', be:'Belgique', nl:'Pays-Bas', fr:'France', gb:'Royaume-Uni', es:'Espagne', '?':'Autres régions'},
@@ -11879,6 +11885,10 @@ function rigaRegione(r){
     bt.onclick=async()=>{
       if(bt.disabled) return;
       if(!inst){
+        /* Lo stesso avviso, ma nel momento del tocco: chi scorre un elenco lungo
+           l'intestazione in cima non la rilegge. Non blocca, il download parte. */
+        if(!INSTALLATA && matchMedia('(max-width:820px)').matches)
+          toast(tr().primaIcona, 9000, () => openSheet('aiuto'));
         bt.disabled=true;
         try{
           await installRegion(r, (got,tot)=>{ bt.textContent=Math.round(got/(tot||r.bytes)*100)+'%' });
@@ -11937,6 +11947,28 @@ function rigaRegione(r){
 function renderMaps(){
   if(!mapList) return;
   mapList.innerHTML='';
+
+  /* SCARICARE DALLA SCHEDA DEL BROWSER E' TEMPO BUTTATO, e lo diciamo PRIMA (22/09).
+     Su iPhone ci sono TRE memorie separate — Safari, l'app aggiunta alla schermata Home,
+     e il browser dentro Instagram o Telegram — e le mappe scaricate in una non esistono
+     nelle altre. Chi scarica in Safari e poi installa l'icona si ritrova a zero e deve
+     rifare 63 MB col telefono in giro; a Lorenzo e' costato un giro chiuso, e il caso 25
+     («scarico, attivo, e dice che non e' disponibile») ha tutta l'aria di essere lo
+     stesso visto da fuori. Il video di Enrico del 2/09 e' la prova.
+     NON BLOCCA NIENTE: chi sta provando dal computer scarica lo stesso. Dice solo la
+     cosa che serve nel momento in cui serve, che e' prima del tocco e non dopo. */
+  if(!INSTALLATA && matchMedia('(max-width:820px)').matches){
+    const av = document.createElement('p');
+    av.className = 'disc';
+    av.style.cssText = 'color:#ff8a1e;margin:2px 0 10px;line-height:1.45';
+    av.textContent = tr().primaIcona + ' ';
+    const come = document.createElement('a');
+    come.href = '#'; come.textContent = tr().primaIconaCome;
+    come.style.cssText = 'color:inherit;text-decoration:underline';
+    come.onclick = e => { e.preventDefault(); openSheet('aiuto') };
+    av.appendChild(come);
+    mapList.appendChild(av);
+  }
 
   /* Diciotto regioni una sotto l'altra erano un muro: si scorreva a lungo per
      trovare la propria. Qui si raggruppano per paese, e ogni gruppo si apre e si
