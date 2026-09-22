@@ -1332,7 +1332,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '308';
+const APPVER = '309';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4919,6 +4919,8 @@ const T = {
     gpsErr:'GPS non disponibile: ', gpsNone:'Questo browser non espone il GPS.',
     outZone:'Sei fuori dalle mappe caricate.',
     primaIcona:'Stai usando Co-Driver in una scheda del browser. Aggiungi prima l\'icona alla schermata Home e scarica da lì: l\'app in Home ha una memoria sua, e queste mappe non ci passerebbero.',
+    installaInvito:'Aggiungi Co-Driver alla schermata Home: tocca qui.',
+    installaFatto:'Fatto. Adesso apri Co-Driver dall\'icona: le mappe vanno scaricate lì.',
     primaIconaCome:'Come si fa',
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', spenta:'Disattivata', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
@@ -5021,6 +5023,8 @@ const T = {
     gpsErr:'GPS unavailable: ', gpsNone:'This browser does not expose GPS.',
     outZone:'You are outside the loaded maps.',
     primaIcona:'You are using Co-Driver in a browser tab. Add the icon to your Home Screen first and download from there: the Home Screen app has its own storage, and these maps would not carry over.',
+    installaInvito:'Add Co-Driver to your Home Screen: tap here.',
+    installaFatto:'Done. Now open Co-Driver from the icon: maps have to be downloaded there.',
     primaIconaCome:'How to do it',
     pickMap:'pick a map', maps:'Maps', dl:'Download', spenta:'Inactive', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
@@ -5120,6 +5124,8 @@ const T = {
     gpsErr:'GPS indisponible : ', gpsNone:'Ce navigateur n\'expose pas le GPS.',
     outZone:'Tu es en dehors des cartes chargées.',
     primaIcona:'Tu utilises Co-Driver dans un onglet du navigateur. Ajoute d\'abord l\'icône à l\'écran d\'accueil et télécharge depuis là : l\'app de l\'écran d\'accueil a sa propre mémoire, et ces cartes n\'y passeraient pas.',
+    installaInvito:'Ajoute Co-Driver à l\'écran d\'accueil : touche ici.',
+    installaFatto:'C\'est fait. Ouvre maintenant Co-Driver depuis l\'icône : les cartes se téléchargent là.',
     primaIconaCome:'Comment faire',
     pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', spenta:'Désactivée', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
@@ -11002,6 +11008,57 @@ for(const ev of ['pointerdown','touchend','keydown'])
    oppure permesso bloccato per il sito. Il messaggio generico non aiutava. */
 const IN_FRAME = (()=>{ try{ return window.top!==window.self }catch(e){ return true } })();
 const INSTALLATA = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+/* ===== chiedere noi di installare, invece di sperare nel menu di Chrome =====
+   Aggiunto il 22/09/2026 dopo il caso #33: su un Android con Chrome 151 la voce
+   «Aggiungi a schermata Home» non c'era ne' nei tre puntini ne' nella condivisione,
+   pur essendo l'app installabile (manifest, icone e service worker verificati).
+   Chrome manda `beforeinstallprompt` proprio perche' sia il SITO a chiedere: se
+   nessuno lo raccoglie, installare dipende da dove quel menu e' finito in quella
+   versione e su quella marca, e le istruzioni scritte invecchiano da sole.
+
+   Non si costruisce niente di nuovo: si usa il `toast` che c'e' gia', con il suo
+   terzo argomento (il tocco). Se l'evento non arriva non succede nulla, come prima.
+
+   L'evento su iPhone NON ESISTE: li' l'aggiunta resta manuale da Safari, ed e'
+   giusto che sia cosi', non e' un buco da tappare qui.
+
+   Un effetto utile: se questo avviso non compare mai su un telefono Android, vuol
+   dire che l'app e' GIA' installata. Prima non si sapeva e si finiva a chiedere
+   schermate al tester. */
+let promptInstalla = null;
+addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();               // niente banner automatico: lo mostriamo noi, quando serve
+  promptInstalla = e;
+  nota('installabile: Chrome ha offerto l\'installazione');
+  if(INSTALLATA) return;            // gia' dentro l'app: non si chiede niente
+  /* si aspetta che la mappa sia in piedi: un invito sparato sul caricamento si
+     legge male e si tocca per sbaglio */
+  setTimeout(invitaAInstallare, 6000);
+});
+function invitaAInstallare(){
+  if(!promptInstalla || INSTALLATA) return;
+  /* Non sopra i termini e non sopra un pannello aperto: e' la stessa regola del GPS
+     (`veloDavanti`), e nasce dallo stesso guasto — una domanda importante sparata
+     mentre davanti c'e' un velo viene toccata per sbaglio o non viene vista affatto.
+     Se ora non e' il momento si riprova fra un minuto: l'evento resta in mano nostra. */
+  if(veloDavanti()){ setTimeout(invitaAInstallare, 60000); return }
+  toast(tr().installaInvito, 12000, async () => {
+    const p = promptInstalla;
+    if(!p) return;
+    promptInstalla = null;          // si puo' usare UNA VOLTA SOLA
+    try{
+      p.prompt();
+      const scelta = await p.userChoice;
+      nota('installazione: ' + (scelta && scelta.outcome));
+    }catch(err){ nota('installazione non riuscita: ' + err) }
+  });
+}
+addEventListener('appinstalled', () => {
+  promptInstalla = null;
+  nota('app installata sulla schermata Home');
+  toast(tr().installaFatto, 9000);
+});
 async function gpsWhy(){
   /* PRIMA DI TUTTO, SI SCRIVE COS'E' SUCCESSO. Il 20/09/2026 un tester ha visto
      l'avviso del permesso su un'installazione appena fatta, e per capire se il no
