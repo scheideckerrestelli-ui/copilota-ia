@@ -483,6 +483,23 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
   .segn-stato{color:var(--ink2);font-size:13px;margin-top:6px}
   .segn-nota a{color:var(--accent)}
   @media (prefers-reduced-motion:reduce){ .segn-b{transition:none} .segn-b:active{transform:none} }
+  .instpop{position:fixed;left:50%;transform:translateX(-50%);
+    bottom:max(14px,calc(env(safe-area-inset-bottom) + 10px));
+    width:min(92vw,430px);background:var(--panel2);border:1px solid var(--line);
+    border-radius:14px;padding:13px 15px 11px;z-index:29;
+    box-shadow:0 8px 28px rgba(0,0,0,.4)}
+  .instpop[hidden]{display:none}
+  .instpop-t{margin:0 22px 8px 0;font-size:13px;line-height:1.4;color:var(--ink)}
+  .instpop-l{margin:0;padding-left:19px;display:flex;flex-direction:column;gap:5px}
+  .instpop-l li{font-size:12.5px;line-height:1.45;color:var(--ink2)}
+  .instpop-l b{color:var(--ink);font-weight:600}
+  /* Il tasto Condividi disegnato: e' quello che la gente non trova, e nominarlo
+     non basta perche' sull'iPhone non ha un'etichetta scritta. */
+  .instpop .cond{display:inline-block;width:13px;height:16px;vertical-align:-3px;
+    margin:0 2px;fill:none;stroke:currentColor;stroke-width:1.6;
+    stroke-linecap:round;stroke-linejoin:round}
+  .instpop-x{position:absolute;top:6px;right:8px;width:30px;height:30px;border:0;
+    background:none;color:var(--ink2);font-size:20px;line-height:1;cursor:pointer}
   .toast{position:fixed;left:50%;top:max(62px,calc(var(--alto) + 54px));
     transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);
     border-radius:10px;padding:9px 14px;font-size:12.5px;width:max-content;max-width:88vw;display:none;z-index:30;
@@ -828,6 +845,15 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
 
 <div class="scalebar"><div id="scaleLabel">—</div><div class="bar" id="scaleBar"></div></div>
 <div class="toast" id="toast"></div>
+<!-- IL PANNELLINO DELL'ICONA, su iPhone. NON e' un `.sheet` apposta: i fogli, quando
+     sono aperti, tengono fermo l'avvio del GPS (`veloDavanti`), e uno che ignora questo
+     pannello si ritroverebbe senza posizione senza capire perche'. Questo sta per conto
+     suo, non blocca niente e si chiude da solo con la X. -->
+<div class="instpop" id="instPop" hidden>
+  <button class="instpop-x" id="instPopX" type="button" aria-label="Chiudi">&times;</button>
+  <p class="instpop-t" id="instPopT"></p>
+  <ol class="instpop-l" id="instPopL"></ol>
+</div>
 
 <!-- pannello Impostazioni -->
 <!-- Raccoglie tutto quello che NON si tocca guidando: lingua, mappe, legenda,
@@ -1332,7 +1358,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '309';
+const APPVER = '310';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4919,6 +4945,14 @@ const T = {
     gpsErr:'GPS non disponibile: ', gpsNone:'Questo browser non espone il GPS.',
     outZone:'Sei fuori dalle mappe caricate.',
     primaIcona:'Stai usando Co-Driver in una scheda del browser. Aggiungi prima l\'icona alla schermata Home e scarica da lì: l\'app in Home ha una memoria sua, e queste mappe non ci passerebbero.',
+    instSafariT:'Su iPhone conviene aggiungere l\'icona: l\'app in schermata Home ha una memoria sua, e le mappe vanno scaricate da lì.',
+    instSafari:['tocca il tasto Condividi in basso <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
+                'scorri e tocca <b>Aggiungi a Home</b>',
+                'poi apri Co-Driver <b>dall\'icona</b>: le mappe si scaricano lì'],
+    instDentroT:'Stai aprendo Co-Driver dentro un\'altra app: da qui «Aggiungi a Home» non c\'è, e la posizione spesso non passa.',
+    instDentro:['apri questo indirizzo in <b>Safari</b>',
+                'da lì aggiungilo alla <b>schermata Home</b>',
+                'e apri Co-Driver dall\'icona: le mappe si scaricano lì'],
     installaInvito:'Aggiungi Co-Driver alla schermata Home: tocca qui.',
     installaFatto:'Fatto. Adesso apri Co-Driver dall\'icona: le mappe vanno scaricate lì.',
     primaIconaCome:'Come si fa',
@@ -5023,6 +5057,14 @@ const T = {
     gpsErr:'GPS unavailable: ', gpsNone:'This browser does not expose GPS.',
     outZone:'You are outside the loaded maps.',
     primaIcona:'You are using Co-Driver in a browser tab. Add the icon to your Home Screen first and download from there: the Home Screen app has its own storage, and these maps would not carry over.',
+    instSafariT:'On iPhone it is worth adding the icon: the Home Screen app has its own storage, and maps have to be downloaded there.',
+    instSafari:['tap the Share button at the bottom <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
+                'scroll and tap <b>Add to Home Screen</b>',
+                'then open Co-Driver <b>from the icon</b>: maps download there'],
+    instDentroT:'You are opening Co-Driver inside another app: from here there is no «Add to Home Screen», and location often does not work.',
+    instDentro:['open this address in <b>Safari</b>',
+                'from there add it to the <b>Home Screen</b>',
+                'and open Co-Driver from the icon: maps download there'],
     installaInvito:'Add Co-Driver to your Home Screen: tap here.',
     installaFatto:'Done. Now open Co-Driver from the icon: maps have to be downloaded there.',
     primaIconaCome:'How to do it',
@@ -5124,6 +5166,14 @@ const T = {
     gpsErr:'GPS indisponible : ', gpsNone:'Ce navigateur n\'expose pas le GPS.',
     outZone:'Tu es en dehors des cartes chargées.',
     primaIcona:'Tu utilises Co-Driver dans un onglet du navigateur. Ajoute d\'abord l\'icône à l\'écran d\'accueil et télécharge depuis là : l\'app de l\'écran d\'accueil a sa propre mémoire, et ces cartes n\'y passeraient pas.',
+    instSafariT:'Sur iPhone mieux vaut ajouter l\'icône : l\'app de l\'écran d\'accueil a sa propre mémoire, et les cartes se téléchargent là.',
+    instSafari:['touche le bouton Partager en bas <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
+                'fais défiler et touche <b>Sur l\'écran d\'accueil</b>',
+                'puis ouvre Co-Driver <b>depuis l\'icône</b> : les cartes se téléchargent là'],
+    instDentroT:'Tu ouvres Co-Driver dans une autre app : ici «Sur l\'écran d\'accueil» n\'existe pas, et la position passe mal.',
+    instDentro:['ouvre cette adresse dans <b>Safari</b>',
+                'ajoute-la à l\'<b>écran d\'accueil</b>',
+                'et ouvre Co-Driver depuis l\'icône : les cartes se téléchargent là'],
     installaInvito:'Ajoute Co-Driver à l\'écran d\'accueil : touche ici.',
     installaFatto:'C\'est fait. Ouvre maintenant Co-Driver depuis l\'icône : les cartes se téléchargent là.',
     primaIconaCome:'Comment faire',
@@ -11059,6 +11109,49 @@ addEventListener('appinstalled', () => {
   nota('app installata sulla schermata Home');
   toast(tr().installaFatto, 9000);
 });
+
+/* ===== e su iPhone, dove quell'evento non esiste e non esistera' =====
+   Apple non lascia che una pagina faccia partire l'installazione: il tocco singolo
+   della v309 li' non e' ottenibile, e va bene cosi'. Quello che si puo' fare e'
+   smettere di lasciare le istruzioni dentro un messaggio letto tre giorni fa e
+   mostrarle nell'app, a chi serve e quando serve. Specifica di Tiago del 22/09,
+   in proposte/installa-in-app/IPHONE.md.
+
+   TRE CASI, E IL TERZO E' QUELLO CHE CI COSTA DI PIU'.
+   1. iPhone in Safari, non installata -> i tre passaggi, col disegno di Condividi.
+   2. gia' installata -> niente, mai.
+   3. DENTRO il browser di Instagram o Telegram -> NON i tre passaggi: da li'
+      «Aggiungi a Home» NON C'E', e mandarceli e' una presa in giro. Si dice l'unica
+      cosa che serve: aprire l'indirizzo in Safari. E' il giro chiuso di Lorenzo
+      Pucci, e il sospetto numero uno per parecchi degli otto tester che risultano
+      con la posizione negata — nel browser dentro un'app la posizione spesso non
+      passa e le mappe finiscono in una memoria che poi sparisce. */
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const DENTRO_APP = /Instagram|FBAN|FBAV|Telegram/i.test(navigator.userAgent);
+let iconaDetta = false;                 // una volta per avvio, non a ogni giro
+function proponiIcona(){
+  if(iconaDetta || INSTALLATA || !IOS) return;
+  const pop = document.getElementById('instPop');
+  if(!pop) return;
+  /* stessa guardia del GPS e della v309: non sopra i termini, non sopra un pannello */
+  if(veloDavanti()){ setTimeout(proponiIcona, 60000); return }
+  iconaDetta = true;
+  const t = tr();
+  document.getElementById('instPopT').textContent = DENTRO_APP ? t.instDentroT : t.instSafariT;
+  const ol = document.getElementById('instPopL');
+  ol.innerHTML = '';
+  for(const riga of (DENTRO_APP ? t.instDentro : t.instSafari)){
+    const li = document.createElement('li');
+    li.innerHTML = riga;
+    ol.appendChild(li);
+  }
+  pop.hidden = false;
+  nota('pannellino icona mostrato (' + (DENTRO_APP ? 'dentro un\'altra app' : 'safari') + ')');
+}
+document.getElementById('instPopX').onclick = () => {
+  document.getElementById('instPop').hidden = true;
+};
 async function gpsWhy(){
   /* PRIMA DI TUTTO, SI SCRIVE COS'E' SUCCESSO. Il 20/09/2026 un tester ha visto
      l'avviso del permesso su un'installazione appena fatta, e per capire se il no
@@ -13476,6 +13569,10 @@ async function boot(){
      stessi di sempre. Se il permesso e' negato, l'handler dentro startGps lo dice e
      si resta sulla vista di prima: il fallback sui preferiti qui sopra serve a quello. */
   BOOT_PRONTO = true; avviaGpsSePronto();
+  /* Il pannellino dell'icona DOPO il GPS e dopo sei secondi: prima parte quello che
+     serve a guidare, poi si parla di installazione. Se in quel momento c'e' un velo
+     davanti — i termini, il benvenuto qui sotto — si ridà appuntamento da solo. */
+  setTimeout(proponiIcona, 6000);
   let seen=false; try{seen=!!localStorage.getItem('copilota2seen')}catch(e){}
   if(!seen) openSheet('info');
   /* «UNA COSA CARINA» (Tiago, 19/09): un link che aggiunge un'auto al garage lo dice,
