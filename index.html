@@ -40,6 +40,34 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
      frammento. Con un og:url fisso la scheda dell'anteprima punterebbe alla radice e
      chi tocca l'anteprima invece del link si ritroverebbe l'app senza la sua auto. -->
 <link rel="manifest" href="manifest.webmanifest">
+<!-- DUE MANIFESTI, e il motivo sta tutto in `start_url` (22/09).
+     Chrome NON offre l'installazione se il manifesto non ha `start_url`: e' fra i
+     requisiti, e senza di quello `beforeinstallprompt` non arriva mai — cioe' il
+     pulsante di v309 non poteva comparire e nessun tester Android e' mai riuscito
+     a installarla davvero (23 ripartenze del contatore = gente che cancellava i
+     dati del sito per provarci).
+     Ma `start_url` fissa l'indirizzo di partenza dell'icona, e su iPhone quello
+     porta via il profilo: la schermata Home ha una memoria separata da Safari, e
+     l'UNICO modo in cui l'auto del tester ci arriva e' che l'icona riparta
+     dall'indirizzo con cui e' stata installata, frammento `#p=` compreso. Con
+     `start_url` torna il difetto del video di Enrico (2/09): app installata, auto
+     di partenza, e niente che lo dica.
+     I due sistemi vogliono cose opposte, quindi ricevono manifesti diversi. La
+     pagina dice quale leggere, e questa riga la scriviamo noi: su iPhone resta
+     quello di sempre, su tutto il resto si passa a quello con `start_url`.
+     Va QUI nel <head> e non nell'app: Chrome legge il manifesto quando decide se
+     e' installabile, e quella decisione non aspetta il resto del codice. -->
+<script>
+(function(){
+  try{
+    var ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
+              || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if(ios) return;
+    var l = document.querySelector('link[rel="manifest"]');
+    if(l) l.href = 'manifest-a.webmanifest';
+  }catch(e){}
+})();
+</script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -1358,7 +1386,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '310';
+const APPVER = '311';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
