@@ -877,6 +877,18 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
      sono aperti, tengono fermo l'avvio del GPS (`veloDavanti`), e uno che ignora questo
      pannello si ritroverebbe senza posizione senza capire perche'. Questo sta per conto
      suo, non blocca niente e si chiude da solo con la X. -->
+<!-- SPIEGA PRIMA DI CHIEDERE (23/09/2026, scelta di Tiago). La domanda di sistema per
+     la posizione, su un'app in schermata Home, si puo' fare UNA VOLTA SOLA: un «no»
+     dato per fretta non si rimette da nessuna parte dentro l'app. Dal 20 al 22/09 la
+     scatola nera ha contato 217 giri col permesso negato su 21 tester, e 15 di loro non
+     hanno mai guidato. Quindi prima si dice a cosa serve, e la domanda vera esce al
+     tocco del tasto, cioe' quando la persona ha capito e ha deciso lei. -->
+<div class="instpop" id="posPop" hidden>
+  <button class="instpop-x" id="posPopX" type="button" aria-label="Chiudi">&times;</button>
+  <p class="instpop-t" id="posPopT"></p>
+  <button class="rbt vai" id="posPopB" type="button"></button>
+</div>
+
 <div class="instpop" id="instPop" hidden>
   <button class="instpop-x" id="instPopX" type="button" aria-label="Chiudi">&times;</button>
   <p class="instpop-t" id="instPopT"></p>
@@ -1386,7 +1398,7 @@ if ('serviceWorker' in navigator) addEventListener('load', () => {
    scaricata una volta e poi tenuta dal service worker. Così un aggiornamento del
    codice non rifà scaricare la mappa, e JSON.parse su una stringa è molto più
    veloce che far digerire al motore JS un letterale da megabyte. */
-const APPVER = '311';
+const APPVER = '312';
 let RAW = null;
 /* Meta di OGNI regione caricata, non solo dell'ultima: serve a sapere, regione per
    regione, se i campi in coda all'arco esistono. La scelta non può essere globale —
@@ -4419,10 +4431,17 @@ try{
     CHIAVE_LINK = chiaveMia(iLink >= 0 ? iLink : 0);
     /* Un'auto che prima nel garage non c'era: all'avvio si dice, una volta sola. */
     if(!prima.some(g => chiaveAuto(g) === chiaveAuto(profiliNelLink[0])))
-      localStorage.setItem('copilota-garage-nuova', (profiloDecodifica(profiliNelLink[0])||{}).nm || '');
-    localStorage.setItem(PROF_CHIAVE, grezzi[0]);
-    localStorage.setItem(PROF_EXTRA, JSON.stringify(grezzi.slice(1)));
-    localStorage.setItem(PROF_VISTO, profiliNelLink.join('|'));
+      try{ localStorage.setItem('copilota-garage-nuova', (profiloDecodifica(profiliNelLink[0])||{}).nm || '') }catch(e){}
+    /* Le scritture hanno un `try` loro (23/09/2026). Prima stavano nello stesso blocco
+       che riempie CARS qui sotto: una sola scrittura rifiutata (memoria piena, Safari
+       che nega lo spazio) saltava anche quella riga, e il tester guidava con l'auto di
+       ripiego pur avendo il profilo giusto nel link. Non salvato vuol dire che al
+       prossimo avvio il link va riaperto; non caricato vuol dire note sbagliate adesso. */
+    try{
+      localStorage.setItem(PROF_CHIAVE, grezzi[0]);
+      localStorage.setItem(PROF_EXTRA, JSON.stringify(grezzi.slice(1)));
+      localStorage.setItem(PROF_VISTO, profiliNelLink.join('|'));
+    }catch(e){ nota('profilo del link non salvato sul telefono: '+e.message) }
   }else if(profiloPrima && profiloDecodifica(profiloPrima)){
     grezzi = [profiloPrima].concat(extraPrima.filter(g => profiloDecodifica(g))).slice(0, MAX_AUTO);
   }else{
@@ -4997,6 +5016,10 @@ const T = {
     coda:n=>(n===1?'1 giro':n+' giri')+' della beta non '+(n===1?'è ancora partito':'sono ancora partiti')+' dal telefono. '+(n===1?'Parte':'Partono')+' da solo appena c\'è campo, oppure adesso:',
     ver:(v,pwa)=>'Versione '+v+(pwa?' · app installata':' · dal browser')+'. Se qui il numero non sale dopo un aggiornamento, la copia vecchia e\' rimasta in cache: chiudi del tutto l\'app dal selettore e riaprila.',
     gpsPwa:'Manca il permesso di posizione. PRIMA guarda iPhone: Impostazioni → Privacy e sicurezza → Localizzazione, dev\'essere accesa, e più in basso Safari su «Mentre usi l\'app». Solo se è già così serve togliere e rimettere l\'icona, e attenzione: quello cancella le mappe scaricate. Tocca qui per l\'Aiuto.',
+    posPre:'Co-Driver ha bisogno della posizione per dirti le curve mentre guidi. Il telefono te la chiederà appena tocchi qui: scegli «Consenti».',
+    posPreB:'Attiva la posizione',
+    posNeg:'La posizione è bloccata per Co-Driver, e il telefono non la chiede più. Si rimette dalle impostazioni: tocca qui e ti dico come.',
+    posNegB:'Come si rimette',
     gpsTastoChiedi:'Chiedi il permesso di posizione',
     gpsTastoRiprova:'Il permesso è negato: cosa posso fare',
     gpsTastoOk:'Il permesso c\'è già: riaggancia la posizione',
@@ -5109,6 +5132,10 @@ const T = {
     coda:n=>(n===1?'1 beta drive has':n+' beta drives have')+' not left the phone yet. '+(n===1?'It goes':'They go')+' by itself as soon as there is signal, or right now:',
     ver:(v,pwa)=>'Version '+v+(pwa?' · installed app':' · from the browser')+'. If this number does not go up after an update, the old copy is still cached: close the app from the switcher and reopen it.',
     gpsPwa:'Location permission is missing. FIRST check the iPhone: Settings → Privacy & Security → Location Services must be on, and further down Safari set to «While Using the App». Only if that is already right does removing and re-adding the icon help, and careful: that deletes your downloaded maps. Tap here for Help.',
+    posPre:'Co-Driver needs your location to call the corners while you drive. Your phone will ask as soon as you tap here: choose "Allow".',
+    posPreB:'Turn on location',
+    posNeg:'Location is blocked for Co-Driver and your phone will not ask again. It can be restored in settings: tap here and I will show you how.',
+    posNegB:'How to restore it',
     gpsTastoChiedi:'Ask for location permission',
     gpsTastoRiprova:'Permission is denied: what can I do',
     gpsTastoOk:'Permission is already there: lock on again',
@@ -5218,6 +5245,10 @@ const T = {
     coda:n=>(n===1?'1 trajet':n+' trajets')+' de la bêta '+(n===1?'n\'est pas encore parti':'ne sont pas encore partis')+' du téléphone. '+(n===1?'Il part':'Ils partent')+' tout seul dès qu\'il y a du réseau, ou tout de suite :',
     ver:(v,pwa)=>'Version '+v+(pwa?' · application installée':' · depuis le navigateur')+'. Si ce numéro n\'augmente pas après une mise à jour, l\'ancienne copie est restée en cache : ferme complètement l\'app depuis le sélecteur et rouvre-la.',
     gpsPwa:'L\'autorisation de position manque. D\'ABORD regarde l\'iPhone : Réglages → Confidentialité et sécurité → Service de localisation doit être activé, et plus bas Safari sur «Lorsque l\'app est active». Seulement si c\'est déjà le cas il faut retirer et remettre l\'icône, et attention : cela efface les cartes téléchargées. Touche ici pour l\'Aide.',
+    posPre:'Co-Driver a besoin de ta position pour annoncer les virages en conduisant. Le téléphone te la demandera dès que tu touches ici : choisis « Autoriser ».',
+    posPreB:'Activer la position',
+    posNeg:'La position est bloquée pour Co-Driver et le téléphone ne la demande plus. Elle se rétablit dans les réglages : touche ici et je t\'explique.',
+    posNegB:'Comment la rétablir',
     gpsTastoChiedi:'Demander l\'autorisation de position',
     gpsTastoRiprova:'L\'autorisation est refusée : que faire',
     gpsTastoOk:'L\'autorisation est déjà là : se raccrocher',
@@ -5560,7 +5591,11 @@ if(autoDalLink || profiloDalLink) save();
   var PRECISIONE_MAX_M = 50;     // oltre questa la fix non contribuisce ai km
   var TIPI_ANOMALIA = ['voce-interrotta', 'dati-ko', 'gps-perso',
                        'sidecar-scartato', 'ripresa-a-freddo', 'voce-ripresa',
-                       'gps-negato'];
+                       'gps-negato', 'voce-sveglia-negata'];
+  /* `voce-sveglia-negata` mancava (23/09/2026): guardiaVoce() la contava dal 20/09, ma
+     `anomalia()` scarta in silenzio ogni tipo che non sta qui, quindi il rifiuto di iOS
+     a risvegliare la voce — il caso che quel commento chiama la notizia piu' importante
+     — non e' mai arrivato in un rapporto. Il cruscotto a valle accetta qualunque nome. */
   var CODA = 'codriver-bb-coda-v1';
   /* Il trasporto e' INIETTATO: il modulo non sa se dietro c'e' un Google Form, un
      Worker o altro. Cosi' la scelta resta di Tiago e qui non si riscrive niente.
@@ -8127,6 +8162,9 @@ function disegnaFrecce(){
     n++;
   }
 }
+/* Come LBLFONT e VIAFONT: `getComputedStyle` ricalcola gli stili, e qui stava dentro il
+   ciclo degli autovelox, cioe' una volta per autovelox visibile a ogni fotogramma. */
+let CAMFONT='';
 function disegnaSopra(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   if(S.nav) disegnaFrecce();
@@ -8141,7 +8179,7 @@ function disegnaSopra(){
       ctx.fillStyle='#101418'; ctx.beginPath(); ctx.arc(sx,sy-r*0.1,r*0.45,0,7); ctx.fill();
       ctx.fillStyle='#e8edf2'; ctx.beginPath(); ctx.arc(sx+r*0.16,sy-r*0.26,r*0.16,0,7); ctx.fill();
       if(c.ms&&S.scale>0.8){
-        ctx.font='600 9px '+getComputedStyle(document.body).fontFamily;
+        ctx.font=CAMFONT||(CAMFONT='600 9px '+getComputedStyle(document.body).fontFamily);
         ctx.textAlign='center';
         ctx.fillStyle='#e8edf2'; ctx.fillText(String(c.ms),sx,sy+r+9);
         ctx.textAlign='left';
@@ -8208,7 +8246,9 @@ function disegnaSopra(){
     ctx.fillText(tr().emptyHint, W/2, H/2+12);
     ctx.textAlign='left'; ctx.textBaseline='alphabetic';
   }
-  updateScale(); document.getElementById('compassArrow').style.transform='rotate('+(S.rot*180/Math.PI)+'deg)';
+  updateScale();
+  const rotBussola='rotate('+(S.rot*180/Math.PI).toFixed(1)+'deg)';
+  if(rotBussola!==BUSSOLA_ULTIMA){ BUSSOLA_ULTIMA=rotBussola; document.getElementById('compassArrow').style.transform=rotBussola }
 }
 /* Fra un fix GPS e l'altro passa circa un secondo. Ridisegnando solo quando arriva
    il fix, la mappa avanza a scatti di un secondo e la rotazione salta di colpo: in
@@ -8605,11 +8645,18 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
+/* SI SCRIVE SOLO QUELLO CHE CAMBIA (23/09/2026). Questa funzione e la bussola girano a
+   ogni disegno, cioe' a ogni fotogramma mentre si guida. Riassegnare `textContent` anche
+   con lo stesso testo sostituisce il nodo e fa rifare l'impaginazione al telefono: 60 o
+   120 volte al secondo per un'etichetta che a zoom fermo non cambia mai. */
+let SCALA_ULTIMA='', SCALA_W='', BUSSOLA_ULTIMA='';
 function updateScale(){
   const t=90/S.scale;
   const n=[10,20,50,100,200,500,1000,2000,5000,10000,20000].find(v=>v>=t)||20000;
-  document.getElementById('scaleLabel').textContent = n>=1000?(n/1000)+' km':n+' m';
-  document.getElementById('scaleBar').style.width=(n*S.scale)+'px';
+  const lab = n>=1000?(n/1000)+' km':n+' m';
+  if(lab!==SCALA_ULTIMA){ SCALA_ULTIMA=lab; document.getElementById('scaleLabel').textContent=lab }
+  const w=(n*S.scale).toFixed(1)+'px';
+  if(w!==SCALA_W){ SCALA_W=w; document.getElementById('scaleBar').style.width=w }
 }
 
 /* ============ map matching ============ */
@@ -11162,8 +11209,10 @@ function proponiIcona(){
   if(iconaDetta || INSTALLATA || !IOS) return;
   const pop = document.getElementById('instPop');
   if(!pop) return;
-  /* stessa guardia del GPS e della v309: non sopra i termini, non sopra un pannello */
-  if(veloDavanti()){ setTimeout(proponiIcona, 60000); return }
+  /* stessa guardia del GPS e della v309: non sopra i termini, non sopra un pannello.
+     E non mentre si guida: sta in basso, cioe' sopra la striscia della curva e sopra
+     la velocita', e per toglierlo serve un dito. */
+  if(veloDavanti() || S.v > 3){ setTimeout(proponiIcona, 60000); return }
   iconaDetta = true;
   const t = tr();
   document.getElementById('instPopT').textContent = DENTRO_APP ? t.instDentroT : t.instSafariT;
@@ -11177,8 +11226,18 @@ function proponiIcona(){
   pop.hidden = false;
   nota('pannellino icona mostrato (' + (DENTRO_APP ? 'dentro un\'altra app' : 'safari') + ')');
 }
+/* Se si parte con il pannellino aperto, si toglie da solo: in basso copre la curva
+   e la velocita', e la X non si tocca guidando. Una volta per avvio, come la proposta. */
+function chiudiIconaInMoto(){
+  const ip = document.getElementById('instPop');
+  if(ip && !ip.hidden){ ip.hidden = true; nota('pannellino icona chiuso da solo: si guida') }
+}
 document.getElementById('instPopX').onclick = () => {
   document.getElementById('instPop').hidden = true;
+  /* Chiuso il pannellino, davanti non c'e' piu' niente: e' il momento del riquadro
+     della posizione, se serve. Senza questa riga chi lo chiude resta senza la domanda
+     fino alla riapertura dell'app. */
+  avviaGpsSePronto();
 };
 async function gpsWhy(){
   /* PRIMA DI TUTTO, SI SCRIVE COS'E' SUCCESSO. Il 20/09/2026 un tester ha visto
@@ -11307,14 +11366,89 @@ function ricaricaSicura(){
 let BOOT_PRONTO = false, GPS_PRIMO = false;
 function veloDavanti(){
   if(document.getElementById('termini') && !terminiAccettati()) return true;
-  try{ for(const n in sheets){ if(sheets[n] && sheets[n].classList.contains('show')) return true } }
+  /* IL QUARTO VELO, quello che il commento qui sopra aveva previsto: il pannellino
+     dell'icona (`instPop`, 22/09) non e' un foglio di `sheets` e quindi non veniva
+     visto. Non e' un velo a tutto schermo, ma sta davanti in basso proprio al primo
+     avvio, cioe' quando la domanda di sistema sarebbe uscita. */
+  const ip = document.getElementById('instPop');
+  if(ip && !ip.hidden) return true;
+  /* Il riquadro della posizione (`posPop`) sta nello STESSO punto del pannellino
+     dell'icona: per chi aspetta il suo turno — l'icona su iPhone, l'invito su Android —
+     e' un velo come gli altri. Prima la posizione, poi l'installazione. */
+  const pp = document.getElementById('posPop');
+  if(pp && !pp.hidden) return true;
+  /* UN PANNELLO CHE STA SCENDENDO NON E' PIU' DAVANTI (23/09/2026). `closeSheets()`
+     toglie `show` solo dopo i 220 ms della discesa (ergonomia del 19/09), e chiama
+     `avviaGpsSePronto()` SUBITO: contando `show` e basta, il pannello risultava ancora
+     aperto, la partenza si fermava e nessuno la richiamava piu'. Effetto, online dal
+     20/09: al primo avvio si chiude il benvenuto con la X e il GPS non parte, senza una
+     parola. Provato sul codice vero, non su una copia: `proposte/revisione-23-09/`. */
+  try{ for(const n in sheets){ const el = sheets[n];
+         if(el && el.classList.contains('show') && !el.classList.contains('esce')) return true } }
   catch(e){ return true }          // `sheets` non c'e' ancora: meglio aspettare
   return false;
 }
-function avviaGpsSePronto(){
+async function avviaGpsSePronto(){
   if(!BOOT_PRONTO || S.watchId != null) return;
   if(veloDavanti()) return;
-  startGps();
+  const pop = document.getElementById('posPop');
+  if(pop && !pop.hidden) return;                 // il riquadro e' gia' li': tocca a lui
+  /* Con il permesso gia' dato si parte come sempre. Senza, la domanda di sistema NON
+     si fa qui: si spiega e la si fa uscire al tocco. Safari non espone sempre lo stato
+     (`ignoto`), e in quel caso si spiega comunque: costa un tocco, e il no definitivo
+     costa il tester. */
+  const st = await statoPermesso();
+  /* SI RICONTROLLA DOPO L'ATTESA (23/09/2026). La domanda sul permesso e' asincrona, e
+     all'avvio nel frattempo succede di tutto: la riga dopo `avviaGpsSePronto()` nel boot
+     apre il benvenuto. Il controllo di sopra l'aveva visto libero, e il riquadro usciva
+     sopra il benvenuto. Stessa guardia, un'altra volta, adesso che la risposta c'e'. */
+  if(!BOOT_PRONTO || S.watchId != null || veloDavanti()) return;
+  /* `ignoto` e' Safari che non dice lo stato (iOS 15 e i browser dentro le app). Se su
+     questo telefono una posizione e' GIA' arrivata (`DOVE`, salvata alla prima fix), il
+     permesso c'era: si parte come prima. Senza, il riquadro comparirebbe a OGNI avvio e
+     un tester che apre l'app e la mette nel supporto guiderebbe senza GPS. La
+     spiegazione resta per chi la posizione non l'ha mai data, cioe' per chi serve. */
+  if(st === 'granted' || (st === 'ignoto' && DOVE)){ startGps(); return }
+  if(st === 'denied') contaNegato();
+  mostraPosPop(st === 'denied');
+}
+/* IL NEGATO SI CONTA ANCORA (23/09/2026). Prima del riquadro, col permesso negato si
+   passava da `startGps()`: si apriva un giro della scatola nera, l'errore contava
+   `gps-negato` e il giro si chiudeva e partiva. E' cosi' che sono stati contati i 217
+   giri negati del 20-22/09. Col riquadro `startGps()` non si chiama piu', e senza
+   questa funzione il conteggio sarebbe sceso a zero da solo il giorno dell'uscita:
+   sembrerebbe la cura riuscita, e invece sarebbe il contatore spento. Stesso giro,
+   stesso tipo, una volta per avvio. */
+let negatoContato = false;
+function contaNegato(){
+  if(negatoContato) return;
+  negatoContato = true;
+  try{
+    snAvvia();
+    contaAnomalia('gps-negato');
+    window.SN.chiudi();
+    /* Lo svuotamento aperto da `snAvvia` e' ancora in volo in questo stesso istante, e
+       `svuota()` lo restituirebbe invece di partire: il rapporto aspetterebbe la chiusura
+       dell'app. Un giro di orologio dopo quello e' finito, e questo parte adesso. */
+    setTimeout(() => { try{ window.SN.svuota() }catch(e){} }, 0);
+  }catch(e){}
+}
+/* Il riquadro: due casi, «non l'ho ancora chiesto» e «e' bloccato». Nel primo il tasto
+   fa uscire la domanda vera dentro il gesto; nel secondo porta all'Aiuto, dove ci sono
+   i passi per rimetterlo e il tasto che lo richiede. */
+function mostraPosPop(negato){
+  const pop = document.getElementById('posPop'); if(!pop) return;
+  const t = document.getElementById('posPopT'), b = document.getElementById('posPopB');
+  t.textContent = negato ? tr().posNeg : tr().posPre;
+  b.textContent = negato ? tr().posNegB : tr().posPreB;
+  b.onclick = () => {
+    pop.hidden = true;
+    if(negato) openSheet('aiuto');
+    else startGps();                              // dentro il gesto: la domanda esce adesso
+  };
+  const x = document.getElementById('posPopX');
+  if(x) x.onclick = () => { pop.hidden = true };
+  pop.hidden = false;
 }
 function startGps(){
   if(!('geolocation' in navigator)){toast(tr().gpsNone);return}
@@ -11362,6 +11496,7 @@ function startGps(){
     ricordaDove(p.coords.latitude, p.coords.longitude);
     suggestRegion(p.coords.latitude, p.coords.longitude);
     feed(x,y,hd,p.coords.speed||0,p.coords.accuracy||0);
+    if(S.v > 3) chiudiIconaInMoto();
     /* SEGNALAZIONI: l'unica copia della posizione in gradi, in memoria e solo con
        l'interruttore acceso. La direzione viene dal GPS quando c'e'; da fermi non
        c'e', e allora resta nulla invece di inventarne una (il Database la tratta
@@ -11795,9 +11930,14 @@ function openSheet(k){
 }
 /* Aggiorna il dato mentre il pannello è aperto: da fermi il sistema rallenta i
    fotogrammi apposta, quindi il numero che conta è quello che si legge muovendosi. */
+/* Un giro solo alla volta (23/09/2026): chi chiudeva e riapriva Info entro un secondo
+   trovava il giro vecchio ancora vivo — vedeva `show` e ripartiva — piu' quello nuovo, e
+   ogni riapertura ne aggiungeva uno. Il numero di giro fa morire i vecchi. */
+let perfGiro = 0;
 function mostraPerf(){
   const el=document.getElementById('infoPerf'); if(!el) return;
-  const scrivi=()=>{ if(!sheets.info.classList.contains('show')) return;
+  const giro = ++perfGiro;
+  const scrivi=()=>{ if(giro!==perfGiro || !sheets.info.classList.contains('show')) return;
     el.textContent = tr().perf(fpsVisto||'—', E.length.toLocaleString('it-IT'));
     const v=document.getElementById('infoVer');
     if(v) v.textContent = tr().ver(APPVER, INSTALLATA);
