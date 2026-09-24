@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v324';
+  const VERSIONE = 'copilota-app-v325';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -800,6 +800,14 @@ if ('serviceWorker' in navigator) {
     <label class="soglia-b" data-c="2"><input type="radio" name="cmin" value="2"><canvas width="128" height="128" aria-hidden="true"></canvas><b aria-hidden="true">2</b><small aria-hidden="true"></small></label>
   </div>
   <p style="margin-top:6px;font-size:11.5px" id="cminDesc"></p>
+  <label class="opt"><input type="checkbox" id="incrociChk">
+    <span data-lang="it">Avviso agli incroci</span>
+    <span data-lang="en">Junction calls</span><span data-lang="fr">Annonce des carrefours</span></label>
+  <p style="margin-top:6px;font-size:11.5px" id="incrociDesc"></p>
+  <label class="opt"><input type="checkbox" id="rotatorieChk">
+    <span data-lang="it">Avviso alle rotatorie</span>
+    <span data-lang="en">Roundabout calls</span><span data-lang="fr">Annonce des giratoires</span></label>
+  <p style="margin-top:6px;font-size:11.5px" id="rotatorieDesc"></p>
   <label class="opt"><input type="checkbox" id="legalChk">
     <span data-lang="it">Non superare mai il limite della strada</span>
     <span data-lang="en">Never exceed the road speed limit</span><span data-lang="fr">Ne jamais dépasser la limite de la route</span></label>
@@ -906,8 +914,10 @@ if ('serviceWorker' in navigator) {
       curve davanti a te, anche attraverso gli incroci — segue la strada più dritta, oppure il
       <b>percorso</b> se ne hai impostato uno.</li>
     <li>Ogni tratto è colorato per <b>raggio di curva</b> misurato sulla geometria reale.</li>
-    <li>Con l'audio attivo le curve vengono <b>annunciate</b> circa 4 secondi prima, alla tua
-      velocità, con la <b>marcia</b> giusta per l'auto che hai scelto: più vai forte, più l'annuncio anticipa.</li>
+    <li>Con l'audio attivo le curve vengono <b>annunciate</b> in tempo per finire la frase, reagire e
+      frenare fino alla velocità della curva: il conto usa la tua velocità, il tuo stile di guida e
+      l'auto che hai scelto, quindi più vai forte, più l'annuncio anticipa. Con il cambio manuale, in
+      modalità normale, la voce dice anche la <b>marcia</b> per le curve in cui devi rallentare.</li>
     <li>La voce è <b>generata con intelligenza artificiale</b>: non è una voce umana.</li>
     <li>La voce parla <b>solo con la suoneria attiva</b>: se il telefono è in silenzioso o in
       vibrazione non la senti. Su iPhone guarda l'interruttore laterale (o il tasto Azione).</li>
@@ -927,8 +937,10 @@ if ('serviceWorker' in navigator) {
       through junctions too — it follows the straightest continuation, or your <b>route</b> if you
       set one.</li>
     <li>Every stretch is coloured by <b>corner radius</b> measured on the real geometry.</li>
-    <li>With audio on, corners are <b>called</b> about 4 seconds ahead at your current speed, with
-      the right <b>gear</b> for the car you picked: the faster you go, the earlier the call.</li>
+    <li>With audio on, corners are <b>called</b> early enough to finish the sentence, react and brake
+      down to the corner speed: the timing uses your speed, your driving style and the car you picked,
+      so the faster you go, the earlier the call. With a manual gearbox, in normal mode, the voice also
+      gives the <b>gear</b> for the corners where you need to slow down.</li>
     <li>The voice is <b>AI-generated</b>: it is not a human voice.</li>
     <li>The voice only speaks <b>with the ringer on</b>: if your phone is on silent or vibrate
       you won't hear it. On iPhone, check the side switch (or the Action button).</li>
@@ -947,9 +959,10 @@ if ('serviceWorker' in navigator) {
       virages devant toi, même à travers les intersections — elle suit la continuation la plus
       directe, ou ton <b>itinéraire</b> si tu en as défini un.</li>
     <li>Chaque tronçon est coloré selon le <b>rayon de virage</b> mesuré sur la géométrie réelle.</li>
-    <li>Avec le son activé, les virages sont <b>annoncés</b> environ 4 secondes à l'avance, à ta
-      vitesse actuelle, avec la <b>vitesse</b> qu'il faut pour la voiture choisie : plus tu vas vite,
-      plus tôt vient l'annonce.</li>
+    <li>Avec le son activé, les virages sont <b>annoncés</b> assez tôt pour finir la phrase, réagir et
+      freiner jusqu'à la vitesse du virage : le calcul tient compte de ta vitesse, de ton style de
+      conduite et de la voiture choisie, donc plus tu vas vite, plus tôt vient l'annonce. Avec une boîte
+      manuelle, en mode normal, la voix donne aussi le <b>rapport</b> pour les virages où tu dois ralentir.</li>
     <li>La voix est <b>générée par intelligence artificielle</b> : ce n'est pas une voix humaine.</li>
     <li>La voix ne parle <b>qu'avec la sonnerie activée</b> : si le téléphone est en silencieux
       ou en vibreur, tu ne l'entends pas. Sur iPhone, regarde le bouton latéral (ou le bouton Action).</li>
@@ -1138,7 +1151,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '324';
+const APPVER = '325';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -3269,6 +3282,12 @@ const T = {
     gpsDenied:'Permesso GPS negato. Se il browser non lo chiede nemmeno, controlla la localizzazione nelle impostazioni di sistema.',
     gpsErr:'GPS non disponibile: ', gpsNone:'Questo browser non espone il GPS.',
     outZone:'Sei fuori dalle mappe caricate.',
+    fuoriScarica:(n,v)=>'Sei fuori dalle mappe caricate. '+(v?'La più vicina è ':'Qui serve ')+n+': scaricala dal pannello Mappe.',
+    fuoriAttiva:(n,v)=>'Sei fuori dalle mappe caricate. '+(v?'La più vicina è ':'Qui serve ')+n+': attivala dal pannello Mappe.',
+    incrociOn:'Dice «incrocio» dove la precedenza è degli altri. Stop e dai la precedenza li dice sempre.',
+    incrociOff:'Nessun «incrocio». Stop e dai la precedenza li dice sempre.',
+    rotatorieOn:'Dice «alla rotatoria» prima di ogni rotatoria. Con un percorso parla il navigatore.',
+    rotatorieOff:'Zitta alle rotatorie quando non segui un percorso. Con un percorso parla il navigatore.',
     primaIcona:'Stai usando Co-Driver in una scheda del browser. Aggiungi prima l\'icona alla schermata Home e scarica da lì: l\'app in Home ha una memoria sua, e queste mappe non ci passerebbero.',
     instSafariT:'Su iPhone conviene aggiungere l\'icona: l\'app in schermata Home ha una memoria sua, e le mappe vanno scaricate da lì.',
     instSafari:['tocca il tasto Condividi in basso <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
@@ -3397,6 +3416,12 @@ const T = {
     gpsDenied:'GPS permission denied. If the browser never asks, check location in your system settings.',
     gpsErr:'GPS unavailable: ', gpsNone:'This browser does not expose GPS.',
     outZone:'You are outside the loaded maps.',
+    fuoriScarica:(n,v)=>'You are outside the loaded maps. '+(v?'The nearest map is ':'You need ')+n+': download it from the Maps panel.',
+    fuoriAttiva:(n,v)=>'You are outside the loaded maps. '+(v?'The nearest map is ':'You need ')+n+': turn it on in the Maps panel.',
+    incrociOn:'Says «junction» where others have right of way. Stop and give-way signs are always called.',
+    incrociOff:'No «junction» calls. Stop and give-way signs are always called.',
+    rotatorieOn:'Says «roundabout» before every roundabout. With a route, the navigator speaks.',
+    rotatorieOff:'Quiet at roundabouts when you are not following a route. With a route, the navigator speaks.',
     primaIcona:'You are using Co-Driver in a browser tab. Add the icon to your Home Screen first and download from there: the Home Screen app has its own storage, and these maps would not carry over.',
     instSafariT:'On iPhone it is worth adding the icon: the Home Screen app has its own storage, and maps have to be downloaded there.',
     instSafari:['tap the Share button at the bottom <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
@@ -3525,6 +3550,12 @@ const T = {
     gpsDenied:'Permission GPS refusée. Si le navigateur ne la demande même pas, vérifie la position dans les réglages système.',
     gpsErr:'GPS indisponible : ', gpsNone:'Ce navigateur n\'expose pas le GPS.',
     outZone:'Tu es en dehors des cartes chargées.',
+    fuoriScarica:(n,v)=>'Tu es en dehors des cartes chargées. '+(v?'La plus proche est ':'Il te faut ')+n+' : télécharge-la depuis le panneau Cartes.',
+    fuoriAttiva:(n,v)=>'Tu es en dehors des cartes chargées. '+(v?'La plus proche est ':'Il te faut ')+n+' : active-la depuis le panneau Cartes.',
+    incrociOn:'Annonce «carrefour» là où la priorité est aux autres. Stop et cédez le passage sont toujours annoncés.',
+    incrociOff:'Aucun «carrefour». Stop et cédez le passage sont toujours annoncés.',
+    rotatorieOn:'Annonce «giratoire» avant chaque giratoire. Avec un itinéraire, c\'est le navigateur qui parle.',
+    rotatorieOff:'Muette aux giratoires quand tu ne suis pas d\'itinéraire. Avec un itinéraire, c\'est le navigateur qui parle.',
     primaIcona:'Tu utilises Co-Driver dans un onglet du navigateur. Ajoute d\'abord l\'icône à l\'écran d\'accueil et télécharge depuis là : l\'app de l\'écran d\'accueil a sa propre mémoire, et ces cartes n\'y passeraient pas.',
     instSafariT:'Sur iPhone mieux vaut ajouter l\'icône : l\'app de l\'écran d\'accueil a sa propre mémoire, et les cartes se téléchargent là.',
     instSafari:['touche le bouton Partager en bas <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
@@ -3640,7 +3671,7 @@ const S = {
   dp:null, dhd:null, avanti:0,
   dvx:0, dvy:0, dvh:0, dva:0,
   fixT:0, vx:0, vy:0,
-  car:'m5', cal:36, calG:0, style:'strada', legal:true, cams:true,
+  car:'m5', cal:36, calG:0, style:'strada', legal:true, cams:true, incroci:true, rotatorie:false,
   accel:true,
   cmin:6,
   antic:0,
@@ -3689,6 +3720,8 @@ try{
   if(typeof st.accel==='boolean')S.accel=st.accel;
   if(st.cmin>=2 && st.cmin<=6)S.cmin=st.cmin|0;
   if(typeof st.cams==='boolean')S.cams=st.cams;
+  if(typeof st.incroci==='boolean')S.incroci=st.incroci;
+  if(typeof st.rotatorie==='boolean')S.rotatorie=st.rotatorie;
   if(typeof st.autoMode==='boolean')S.autoMode=st.autoMode;
   if(typeof st.pace==='boolean')S.pace=st.pace;
   if(st.audio)S.audio=true;
@@ -3730,7 +3763,7 @@ if(aNelLink || testerDalLink || profiloDalLink){
        window.history.replaceState(null, '', u.pathname + (u.search||'') + u.hash) }catch(e){}
 }
 const save=()=>{try{ricordaCal();localStorage.setItem('copilota2',JSON.stringify(
-  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 if(autoDalLink || profiloDalLink) save();
 
 (function (globale) {
@@ -4163,6 +4196,7 @@ function marciaRif(){
   return 1;
 }
 const kmhRif = g => Math.round(CARS[S.car].g[g-1]*S.cal*rpmRif()/1000);
+const PRIMA_MAX_KMH = 15;
 function bestGear(kmh){
   kmh=Math.min(kmh, vTop(S.pend||0));
   const t=gearKmh(), n=t.length, lo=boostOf()-50, hi=rpmLimOf()-600;
@@ -4173,6 +4207,7 @@ function bestGear(kmh){
   if(pick==null) pick = 1;
   else if(rpmAt(kmh,pick)>hi && pick<n) pick+=1;
   if(pick===1 && rpmAt(kmh,2)>=boostOf()*0.81) pick=2;
+  if(pick===1 && n>=2 && !isMoto() && kmh > PRIMA_MAX_KMH) pick=2;
   return pick;
 }
 const GEAR_SLANCIO = 1.35;
@@ -5813,7 +5848,7 @@ function buildAhead(){
       const jv = dir>0 ? e.j1 : e.j0, fine = acc + (dir>0 ? e.len-d0 : d0);
       if(fine>=0 && fine<=HORIZON && arrivo==null && !ROTONDA.has(e.id)
          && !S.aheadStop.some(z => Math.abs(z.dist-fine) <= STOP_VICINO_M)
-         && (precedenzaDedotta(e, dir, jv) || incrocioSemplice(e, dir, jv)))
+         && S.incroci !== false && precedenzaDedotta(e, dir, jv))
         S.aheadStop.push({dist:fine, tipo:2, jn:jv, key:'ded'+e.id+':'+jv});
     }
     const list = dir>0 ? e.curves : [...e.curves].reverse();
@@ -6195,6 +6230,7 @@ function dilo(chiavi, urgente){
   if(!svegliaVoce() && !VOCE_MUTA && !document.hidden){
     VOCE_MUTA = VOCE.ctx.state; nota('voce muta: nota su audio '+VOCE.ctx.state); contaAnomalia('voce-interrotta');
   }
+  if(!urgente && VOCE.ctx.state !== 'running') return 0;
   if(urgente && VOCE.sorgente){
     const ora = VOCE.ctx.currentTime;
     for(const s of VOCE.sorgente){
@@ -6271,7 +6307,7 @@ function catenaNota(){
   const cand = S.ahead.filter(z => !z.inside && !S.said.has(z.key)
                                 && !piatta(z) && !mutoQui(z) && !troppoAmpia(z) && !sottoSoglia(z));
   const a=cand[0]; if(!a) return null;
-  const el=[a], max = S.pace ? 3 : 2;
+  const el=[a], max = 2;
   for(let n=1; n<max; n++){
     const b=cand[n], prev=el[el.length-1];
     if(!b || piatta(b) || mutoQui(b) || troppoAmpia(b) || sottoSoglia(b)) break;
@@ -6313,6 +6349,8 @@ const dopoStop = a => !!(S.stopMuti && S.stopMuti.has(a.key));
 const INCROCIO_VMIN = 15.3, INCROCIO_CEDE_M = 150;
 const SALITA_MAX = 0.06;
 const DRITTO_M = 250, DRITTO_S = 9;
+const DRITTO_RIPROVA_MS = 4000;
+const ROTA_S = 10, ROTA_PAUSA_MS = 800;
 function drittoOra(){
   const d = S.dritto; if(!d || !(d.dist > 0)) return null;
   if(d.fine) return null;
@@ -6421,7 +6459,8 @@ function updateNote(){
   nEl.classList.remove('off');
   const a=S.ahead[0];
   const cam0=S.aheadCams&&S.aheadCams[0];
-  if(cam0){
+  const versoNoto = S.hd != null;
+  if(cam0 && versoNoto){
     const leadCam=Math.max(250, S.v*15);
     if(cam0.dist<=leadCam && !S.said.has(cam0.key)){
       S.said.add(cam0.key);
@@ -6431,33 +6470,43 @@ function updateNote(){
       dilo(ch, true);
     }
   }
-  if(typeof dossoAvanti === 'function' && S.snap && !S.gpsBuco){
+  if(S.rotatorie === true && S.aheadRot && !S.nav && !S.gpsBuco && versoNoto && !S.said.has(S.aheadRot.key)){
+    const leadRot=Math.max(180, S.v*6.5);
+    if(S.aheadRot.dist<=leadRot && VOCE.idx[L] && VOCE.idx[L]['n.rot']){
+      if(dilo(['n.rot'], false) > 0) S.said.add(S.aheadRot.key);
+    }
+  }
+  if(typeof dossoAvanti === 'function' && S.snap && !S.gpsBuco && versoNoto){
     const ds = dossoAvanti(S.snap.e, S.v);
     if(ds && ds.dist != null){
       const leadD = Math.max(60, S.v*5.5);
       const kD = 'dos'+(ds.key != null ? ds.key : Math.round(ds.dist));
-      if(ds.dist <= leadD && !S.said.has(kD)){
-        S.said.add(kD);
+      if(ds.dist <= leadD && ds.dist >= S.v*1.5 && !S.said.has(kD)){
         const molti = (ds.n|0) > 1;
-        const d50 = 'd.'+Math.round(Math.max(20, ds.dist)/50)*50;
+        const dk = clipDistDetta(ds.dist, 0, true);
         const ch = [];
-        if(VOCE.idx[L] && VOCE.idx[L][d50] && ds.dist >= 45) ch.push(d50, 'd.metri');
+        if(dk && VOCE.idx[L] && VOCE.idx[L]['d.metri']) ch.push(dk, 'd.metri');
         ch.push(molti ? 'h.dossi' : 'h.dosso');
-        dilo(ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]), false);
+        if(dilo(ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]), false) > 0) S.said.add(kD);
       }
     }
   }
   const dentroOra = S.ahead.some(z => z.inside);
-  if(S.eraDentro && !dentroOra){
+  if(S.eraDentro && !dentroOra && S.snap){
+    S.drittoK = 'drt'+S.snap.e.id+':'+Math.round(distAlong(S.snap.e, S.snap.i, S.snap.t));
+    S.drittoT = performance.now();
+  }
+  if(S.drittoK && (dentroOra || performance.now() - S.drittoT > DRITTO_RIPROVA_MS)) S.drittoK = null;
+  if(S.drittoK){
     const dr = drittoOra();
     const ixD = VOCE.idx[L];
     if(dr && ixD && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()){
-      const k = 'drt'+S.snap.e.id+':'+Math.round(distAlong(S.snap.e, S.snap.i, S.snap.t));
+      const k = S.drittoK;
       if(!S.said.has(k)){
         const dk = dr.oltre ? null : clipDistDetta(dr.dist, durataFrase(['r.dritto']), false);
         const ch = S.pace ? ['r.dritto'].concat(dk ? [dk] : []) : ['r.lungo'];
         if(ch.every(x => ixD[x]) && performance.now()-S.lastSaid > 900 && dilo(ch, false) > 0){
-          S.said.add(k); S.lastSaid = performance.now();
+          S.said.add(k); S.lastSaid = performance.now(); S.drittoK = null;
         }
       }
     }
@@ -6559,12 +6608,18 @@ function updateNote(){
   const dicibile = !!av && !av.inside && !S.said.has(av.key) && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()
                    && !mutoQui(av) && !piatta(av) && !troppoAmpia(av) && !sottoSoglia(av);
   if(dicibile && av.dist <= lead + S.v) musicaPreavvisa(av.key);
-  if(dicibile && av.dist<=lead && !stopDetto){
-    const now=performance.now();
+  const now=performance.now();
+  const rotaIn = !!(S.rotaEl && S.rotaEl.length && (() => {
+    const primo = S.ahead.find(z => z.key === S.rotaEl[0]), ultimo = S.ahead.find(z => z.key === S.rotaEl[S.rotaEl.length-1]);
+    return (!primo || primo.inside) && !!ultimo;
+  })());
+  const presto = dicibile && rotaIn && av.dist <= S.v*ROTA_S && now >= (S.fineNota||0) + ROTA_PAUSA_MS;
+  if(dicibile && (av.dist<=lead || presto) && !stopDetto){
     if(now-S.lastSaid>900){
-      if(dilo(ch, false) > 0){
+      const durN = dilo(ch, false);
+      if(durN > 0){
         el.forEach(x => { S.said.add(x.key); if(x.pezzi) x.pezzi.forEach(k => S.said.add(k)) });
-        S.lastSaid=now;
+        S.lastSaid=now; S.fineNota = now + durN*1000; S.rotaEl = el.map(x => x.key);
       }
     }
   }
@@ -6685,6 +6740,11 @@ function tempoRestante(fatto){
   s -= costo(a.e)*Math.min(1,Math.max(0,(fatto-nv.c0[nv.k])/Math.max(1,a.e.len)));
   return Math.max(0,s);
 }
+function eSvincolo(nv, mn){
+  const eDopo = nv.archi[mn.k] && nv.archi[mn.k].e, ePrima = nv.archi[mn.k-1] && nv.archi[mn.k-1].e;
+  return !!(eDopo && ePrima && (CLSARCO.get(eDopo.id)|0) === 1
+            && (CLSARCO.get(ePrima.id)|0) !== 1 && ePrima.rank <= RANGO.veloce);
+}
 function tickNav(){
   const nv=S.nav; if(!nv) return;
   const t0=tr();
@@ -6714,7 +6774,9 @@ function tickNav(){
   while(nv.man[iv] && nv.man[iv].silente) iv++;
   const mv = nv.man[iv] || null;
   const dv = mv ? Math.max(0, mv.cum - pr.fatto) : pr.restano;
-  const uscOrd = mn && mn.rot && mn.uscita>=1 ? t0.navUscite[Math.min(mn.uscita,6)-1] : null;
+  const uscOrd = mn && mn.rot && mn.uscita>=1
+    ? (mn.uscita <= 6 ? t0.navUscite[mn.uscita-1] : mn.uscita + (L==='it' ? 'ª' : L==='fr' ? 'e' : 'th'))
+    : null;
   const frase = mn ? (uscOrd ? t0.navRot+' '+t0.navUscitaPre+uscOrd+t0.navUscitaPost
                              : (mn.rot ? t0.navRot+' ' : '') + t0.navTurn[mn.tipo])
                      + (mn.via ? ' '+t0.navInto+' '+mn.via : '') : '';
@@ -6730,21 +6792,52 @@ function tickNav(){
     const kf='nf'+nv.sn+':'+iv, kv='nv'+nv.sn+':'+iv;
     const mn = mv, dm = dv;
     const now=performance.now();
-    const clsArco = (mn.e && CLSARCO.get(mn.e.id)) || 0;
     let ch;
-    if(mn.rot && mn.uscita>=1) ch=['n.rot','n.usc.'+Math.min(mn.uscita,6)];
+    if(mn.rot && mn.uscita>=1) ch = mn.uscita <= 6 ? ['n.rot','n.usc.'+mn.uscita] : ['n.rot','n.uscita'];
     else if(mn.rot)            ch=['n.rot', 'n.'+mn.tipo];
-    else if(clsArco===1)       ch=['n.svincolo','n.uscita'];
+    else if(eSvincolo(nv, mn)) ch=['n.svincolo','n.uscita'];
     else                       ch=['n.'+mn.tipo];
     ch = ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]);
     if(dm<=vicino && !S.said.has(kv)){
-      S.said.add(kv); S.said.add(kf); S.lastSaid=now;
-      dilo(ch, false);
+      if(dilo(ch, false) > 0){ S.said.add(kv); S.said.add(kf); S.lastSaid=now; }
     } else if(dm<=lontano && !S.said.has(kf) && now-S.lastSaid>900){
-      S.said.add(kf); S.lastSaid=now;
-      const d50='d.'+Math.round(dm/50)*50;
-      dilo((VOCE.idx[L]&&VOCE.idx[L][d50] ? [d50,'d.metri'] : []).concat(ch), false);
+      const dk = clipDistDetta(dm, 0, true);
+      if(dilo((dk && VOCE.idx[L]['d.metri'] ? [dk,'d.metri'] : []).concat(ch), false) > 0){ S.said.add(kf); S.lastSaid=now; }
     }
+  }
+  parlaTraffico(nv, pr);
+}
+const TRAFFICO_CODA_S = 120, TRAFFICO_LAVORI_S = 60;
+const TRAFFICO_LONTANO_M = 1000, TRAFFICO_VICINO_M = 300, TRAFFICO_VECCHIO_MS = 5*60*1000;
+function trafficoDaDire(ev){
+  if(ev.tipo === 'chiusa' || ev.tipo === 'incidente' || ev.tipo === 'fermo') return true;
+  if(ev.tipo === 'coda')   return ev.ritardo >= TRAFFICO_CODA_S;
+  if(ev.tipo === 'lavori') return ev.ritardo >= TRAFFICO_LAVORI_S;
+  return false;
+}
+function parlaTraffico(nv, pr){
+  const T = S.traffico, ix = VOCE.idx[L];
+  if(!T || !T.eventi || !pr || !ix || T.sn !== nv.sn) return;
+  if(!(Date.now() - T.t <= TRAFFICO_VECCHIO_MS) || navigator.onLine === false) return;
+  const now = performance.now();
+  if(now - S.lastSaid <= 900) return;
+  for(const ev of T.eventi){
+    if(!trafficoDaDire(ev)) continue;
+    const dist = ev.s - pr.fatto, parola = 't.'+ev.tipo;
+    if(!(dist >= 0) || !ix[parola]) continue;
+    const pericolo = ev.tipo === 'incidente' || ev.tipo === 'fermo';
+    const kL = 'trl'+nv.sn+':'+ev.id, kV = 'trv'+nv.sn+':'+ev.id;
+    let ch = null, segna = null;
+    if(pericolo && dist <= TRAFFICO_VICINO_M && !S.said.has(kV)){
+      const dk = clipDistDetta(dist, 0, true);
+      ch = (dk && ix['d.metri'] ? [dk, 'd.metri'] : []).concat([parola]); segna = [kV, kL];
+    } else if(dist <= TRAFFICO_LONTANO_M && dist > TRAFFICO_VICINO_M && !S.said.has(kL)){
+      const dk = dist >= 800 ? (ix['d.1000'] ? 'd.1000' : null) : clipDistDetta(dist, 0, true);
+      ch = (dk === 'd.1000' ? [dk] : dk && ix['d.metri'] ? [dk, 'd.metri'] : []).concat([parola]); segna = [kL];
+    }
+    if(!ch) continue;
+    if(dilo(ch, false) > 0){ segna.forEach(k => S.said.add(k)); S.lastSaid = now; }
+    return;
   }
 }
 navX.onclick=()=>fermaNav();
@@ -7161,7 +7254,7 @@ function startGps(){
     if(p.coords.heading!=null&&!isNaN(p.coords.heading)&&(p.coords.speed||0)>1)
       hd=Math.PI/2-p.coords.heading*Math.PI/180;
     if(x<BB[0]-30000||x>BB[2]+30000||y<BB[1]-30000||y>BB[3]+30000){
-      toast(tr().outZone,6000);
+      avvisoFuori(p.coords.latitude, p.coords.longitude);
     }
     window.SN.passo(p.coords.latitude, p.coords.longitude, p.coords.accuracy||null);
     ricordaDove(p.coords.latitude, p.coords.longitude);
@@ -7814,9 +7907,45 @@ async function showStore(){
   mapStore.textContent=txt;
 }
 
+const FUORI_KM = 100;
+let fuoriDetto = '', fuoriT = 0;
+function regioneQui(la, lo){
+  let mig = null, dmig = Infinity;
+  for(const r of REG){
+    if(!r.bbox || !inBox(r.bbox, la, lo)) continue;
+    const d = Math.hypot((r.bbox[0] + r.bbox[2]) / 2 - la, ((r.bbox[1] + r.bbox[3]) / 2 - lo) * Math.cos(la * Math.PI / 180));
+    if(d < dmig){ dmig = d; mig = r }
+  }
+  return mig;
+}
+function regionePiuVicina(la, lo){
+  const kx = 111.32 * Math.cos(la * Math.PI / 180), ky = 110.57;
+  let mig = null, dmig = Infinity;
+  for(const r of REG){
+    const b = r.bbox; if(!b) continue;
+    const dy = la < b[0] ? b[0] - la : la > b[2] ? la - b[2] : 0;
+    const dx = lo < b[1] ? b[1] - lo : lo > b[3] ? lo - b[3] : 0;
+    const d = Math.hypot(dx * kx, dy * ky);
+    if(d < dmig){ dmig = d; mig = r }
+  }
+  return dmig <= FUORI_KM ? mig : null;
+}
+function avvisoFuori(la, lo){
+  let r = regioneQui(la, lo), vicina = false;
+  if(!r){ r = regionePiuVicina(la, lo); vicina = !!r }
+  if(r && RSTATE.att.includes(r.id)) r = null;
+  const chiave = r ? r.id : '-', ora = Date.now();
+  if(chiave === fuoriDetto && ora - fuoriT < 10 * 60 * 1000) return;
+  fuoriDetto = chiave; fuoriT = ora;
+  suggerita = true;
+  const t0 = tr();
+  const msg = !r ? t0.outZone : (RSTATE.inst.includes(r.id) ? t0.fuoriAttiva : t0.fuoriScarica)(r.nm, vicina);
+  toast(msg, 8000, () => openSheet('maps'));
+}
+
 let suggerita=false;
 function suggestRegion(la,lo){
-  const hit=REG.find(r=>inBox(r.bbox,la,lo));
+  const hit=regioneQui(la,lo);
   if(!hit) return;
   if(hit.id!==hereId){ hereId=hit.id; if(sheets.maps&&sheets.maps.classList.contains('show')) renderMaps() }
   if(suggerita||RSTATE.att.includes(hit.id)) return;
@@ -7884,7 +8013,9 @@ const carChips=document.getElementById('carChips'), motoChips=document.getElemen
       legalDesc=document.getElementById('legalDesc'),
       cminSel=document.getElementById('cminSel'), cminDesc=document.getElementById('cminDesc'),
       accDesc=document.getElementById('accDesc'),
-      camChk=document.getElementById('camChk'), camDesc=document.getElementById('camDesc');
+      camChk=document.getElementById('camChk'), camDesc=document.getElementById('camDesc'),
+      incrociChk=document.getElementById('incrociChk'), incrociDesc=document.getElementById('incrociDesc'),
+      rotatorieChk=document.getElementById('rotatorieChk'), rotatorieDesc=document.getElementById('rotatorieDesc');
 function gearTableHtml(){
   const t=gearKmh(), lo=boostOf(), hi=rpmLimOf(), top=vTop(0);
   const celle=t.map((v,i)=>{
@@ -8036,6 +8167,10 @@ function renderCar(){
   legalDesc.textContent=tr()[S.legal?'legalOn':'legalOff'];
   camChk.checked=S.cams;
   camDesc.textContent=tr()[S.cams?'camsOn':'camsOff'];
+  incrociChk.checked = S.incroci !== false;
+  incrociDesc.textContent = tr()[S.incroci !== false ? 'incrociOn' : 'incrociOff'];
+  rotatorieChk.checked = S.rotatorie === true;
+  rotatorieDesc.textContent = tr()[S.rotatorie === true ? 'rotatorieOn' : 'rotatorieOff'];
 }
 function renderCal(){
   const c=CARS[S.car], gr=marciaRif();
@@ -8110,6 +8245,8 @@ function renderAcc(){
 setInterval(() => { if(accDesc && accDesc.offsetParent !== null) renderAcc() }, 2000);
 camChk.onchange=()=>{S.cams=camChk.checked; save(); renderCar(); S.said.clear();
                      S.aheadCams=[]; updateNote(); S.need=true};
+incrociChk.onchange=()=>{ S.incroci=incrociChk.checked; save(); renderCar(); S.said.clear(); updateNote(); S.need=true };
+rotatorieChk.onchange=()=>{ S.rotatorie=rotatorieChk.checked; save(); renderCar(); S.said.clear(); updateNote(); S.need=true };
 autoChk.onchange=()=>{S.autoMode=autoChk.checked; S.said.clear(); save(); renderCar();
   updateNote(); S.need=true};
 const paceChk=document.getElementById('paceChk');
