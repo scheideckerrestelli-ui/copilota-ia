@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v325';
+  const VERSIONE = 'copilota-app-v326';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -802,11 +802,11 @@ if ('serviceWorker' in navigator) {
   <p style="margin-top:6px;font-size:11.5px" id="cminDesc"></p>
   <label class="opt"><input type="checkbox" id="incrociChk">
     <span data-lang="it">Avviso agli incroci</span>
-    <span data-lang="en">Junction calls</span><span data-lang="fr">Annonce des carrefours</span></label>
+    <span data-lang="en">Junction calls</span><span data-lang="fr">Annonce des croisements</span></label>
   <p style="margin-top:6px;font-size:11.5px" id="incrociDesc"></p>
   <label class="opt"><input type="checkbox" id="rotatorieChk">
     <span data-lang="it">Avviso alle rotatorie</span>
-    <span data-lang="en">Roundabout calls</span><span data-lang="fr">Annonce des giratoires</span></label>
+    <span data-lang="en">Roundabout calls</span><span data-lang="fr">Annonce des ronds-points</span></label>
   <p style="margin-top:6px;font-size:11.5px" id="rotatorieDesc"></p>
   <label class="opt"><input type="checkbox" id="legalChk">
     <span data-lang="it">Non superare mai il limite della strada</span>
@@ -1151,7 +1151,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '325';
+const APPVER = '326';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -3552,10 +3552,10 @@ const T = {
     outZone:'Tu es en dehors des cartes chargées.',
     fuoriScarica:(n,v)=>'Tu es en dehors des cartes chargées. '+(v?'La plus proche est ':'Il te faut ')+n+' : télécharge-la depuis le panneau Cartes.',
     fuoriAttiva:(n,v)=>'Tu es en dehors des cartes chargées. '+(v?'La plus proche est ':'Il te faut ')+n+' : active-la depuis le panneau Cartes.',
-    incrociOn:'Annonce «carrefour» là où la priorité est aux autres. Stop et cédez le passage sont toujours annoncés.',
-    incrociOff:'Aucun «carrefour». Stop et cédez le passage sont toujours annoncés.',
-    rotatorieOn:'Annonce «giratoire» avant chaque giratoire. Avec un itinéraire, c\'est le navigateur qui parle.',
-    rotatorieOff:'Muette aux giratoires quand tu ne suis pas d\'itinéraire. Avec un itinéraire, c\'est le navigateur qui parle.',
+    incrociOn:'Annonce «croisement» là où la priorité est aux autres. Stop et cédez le passage sont toujours annoncés.',
+    incrociOff:'Aucun «croisement». Stop et cédez le passage sont toujours annoncés.',
+    rotatorieOn:'Annonce «au rond-point» avant chaque rond-point. Avec un itinéraire, c\'est le navigateur qui parle.',
+    rotatorieOff:'Muette aux ronds-points quand tu ne suis pas d\'itinéraire. Avec un itinéraire, c\'est le navigateur qui parle.',
     primaIcona:'Tu utilises Co-Driver dans un onglet du navigateur. Ajoute d\'abord l\'icône à l\'écran d\'accueil et télécharge depuis là : l\'app de l\'écran d\'accueil a sa propre mémoire, et ces cartes n\'y passeraient pas.',
     instSafariT:'Sur iPhone mieux vaut ajouter l\'icône : l\'app de l\'écran d\'accueil a sa propre mémoire, et les cartes se téléchargent là.',
     instSafari:['touche le bouton Partager en bas <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
@@ -6402,8 +6402,10 @@ function allIncrocio(a){
   if(S.aheadSvolte && gj.some(j => S.aheadSvolte.has(j))) return true;
   return inPaese(a.e) && a.c.c > DEDOTTA_CLS;
 }
+const suAnello = a => !!(a.gj && a.gj.some(j => (JUN.get(j)||[]).some(id => ROTONDA.has(id))));
 const mutoQui = a => !!a.e && ((CLSARCO.get(a.e.id)|0) === 2
                                || ROTONDA.has(a.e.id)
+                               || suAnello(a)
                                || (a.e.ms > 0 && a.e.ms <= 30)
                                || dopoStop(a)
                                || allIncrocio(a));
