@@ -1,12 +1,6 @@
-/* Copilota IA - cache offline, multi-regione.
-   Una cache per la shell (cambia a ogni build) e una per ogni regione scaricata
-   (cambia solo col dataset), cosi' "elimina la mappa X" e' selettivo e un fix di
-   codice non fa riscaricare niente. */
-/* sorgente: 59dcedc488 */
-const APP = 'copilota-app-v312';
+/* sorgente: c18706e6d5 */
+const APP = 'copilota-app-v324';
 const DATA_PREFIX = 'copilota-data-';
-// niente './index.html' nella SHELL: su Cloudflare Pages risponde 308 (pretty URL)
-// e cache.addAll rifiuta le risposte redirette — l'install del SW fallirebbe intera.
 const SHELL = ['./', './manifest.webmanifest', './manifest-a.webmanifest', './regions.json',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const dataId = url => {
@@ -14,44 +8,59 @@ const dataId = url => {
   return m ? m[1] : null;
 };
 self.addEventListener('install', e => {
-  // `cache:'reload'` obbliga a ripescare dalla rete: senza, addAll puo' prendere
-  // dalla cache HTTP del browser e reinstallare la shell VECCHIA in una cache nuova
   e.waitUntil(caches.open(APP)
     .then(c => c.addAll(SHELL.map(u => new Request(u, {cache: 'reload'}))))
     .then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', e => {
-  /* Si buttano solo le shell vecchie. Le cache delle regioni sono ROBA DELL'UTENTE:
-     prima venivano confrontate con l'elenco della build e cancellate se non c'erano
-     — una build parziale, o una regione tolta dal sito, spazzava via mappe che
-     qualcuno aveva scaricato e magari si stava portando in montagna. Le regioni si
-     eliminano solo dal pannello Mappe. */
   e.waitUntil(caches.keys()
     .then(ks => Promise.all(ks
       .filter(k => k.startsWith('copilota-app-') && k !== APP)
       .map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
+  avvisaLePagine();
 });
+function chiediVersione(c) {
+  return new Promise(fatto => {
+    let finito = false;
+    const ch = new MessageChannel();
+    const t = setTimeout(() => { if (!finito) { finito = true; fatto(null); } }, 8000);
+    ch.port1.onmessage = ev => { if (!finito) { finito = true; clearTimeout(t); fatto((ev.data && ev.data.v) || '?'); } };
+    try { c.postMessage({ tipo: 'versione-nuova', v: APP }, [ch.port2]); }
+    catch (err) { clearTimeout(t); fatto(null); }
+  });
+}
+function avvisaLePagine() {
+  return self.clients.matchAll({ type: 'window' }).then(cs => Promise.all(cs.map(c =>
+    chiediVersione(c).then(v => {
+      if (v) return;
+      if (c.navigate) return c.navigate(c.url).catch(() => {});
+    })))).catch(() => {});
+}
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  // la pagina beta NON passa dal service worker. E' un file statico che cambia
-  // spesso durante la beta: in cache-first chi l'ha aperta una volta si terrebbe
-  // la versione vecchia fino alla build successiva dell'app. Senza respondWith
-  // la prende dalla rete come una pagina qualunque.
-  // Vale per TUTTE le forme dell'indirizzo: su Cloudflare Pages la pagina vive su
-  // /beta (pretty URL, /beta.html risponde 308) — coprire solo /beta.html vuol dire
-  // congelare /beta nella cache generica per chi ha l'app installata.
   { const p = new URL(req.url).pathname;
      if (p.endsWith('/beta.html') || p.endsWith('/beta')) return; }
+  if (req.mode === 'navigate') {
+    e.respondWith((async () => {
+      const copia = (await caches.match(req)) || (await caches.match('./'));
+      if (copia && self.navigator && self.navigator.onLine === false) return copia;
+      const rete = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+        .then(r => (r.ok && !r.redirected) ? r : Promise.reject(new Error('risposta non usabile')));
+      if (!copia) return rete;
+      try {
+        return await Promise.race([rete, new Promise((_, no) => setTimeout(() => no(new Error('rete lenta')), 2500))]);
+      } catch (err) { return copia; }
+    })());
+    return;
+  }
   const id = dataId(req.url);
   if (id) {
-    // cache-first sull'URL completo (?v=<hash>): quando il dataset cambia, l'URL
-    // cambia, si scarica il nuovo e si buttano le versioni vecchie della regione.
     e.respondWith(caches.open(DATA_PREFIX + id).then(c => c.match(req).then(hit => hit ||
       fetch(req).then(res => {
         if (res.ok) {
-          const copy = res.clone();          // clonare SUBITO: fra un tick il body e' gia' letto
+          const copy = res.clone();
           e.waitUntil(c.keys()
             .then(ks => Promise.all(ks.filter(k => k.url !== req.url).map(k => c.delete(k))))
             .then(() => c.put(req, copy)));
@@ -61,8 +70,6 @@ self.addEventListener('fetch', e => {
     return;
   }
   e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
-    // solo le risposte buone: mettere in cache un 404 o un 500 e poi servirlo
-    // cache-first vuol dire tenersi l'errore finche' non cambia la versione
     if (res.ok) {
       const copy = res.clone();
       caches.open(APP).then(c => c.put(req, copy)).catch(()=>{});
