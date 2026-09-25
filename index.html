@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v328';
+  const VERSIONE = 'copilota-app-v329';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -741,11 +741,11 @@ if ('serviceWorker' in navigator) {
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
   <p class="ver-app" id="verApp"></p>
   <p class="lic" data-lang="it">Dati mappa © collaboratori <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sotto licenza <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Anche curve, limiti, dossi, autovelox e sfondo ne sono elaborazioni e restano sotto la stessa licenza.</p>
-  <p class="lic" data-lang="it">Quote e pendenze: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italia: <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
+  <p class="lic" data-lang="it">Quote e pendenze: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italia: <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Curve nascoste da un dosso, in Valle d'Aosta: «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
   <p class="lic" data-lang="en">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Corners, limits, bumps, speed cameras and background are derived from it and stay under the same licence.</p>
-  <p class="lic" data-lang="en">Elevation and gradients: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italy: <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
+  <p class="lic" data-lang="en">Elevation and gradients: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italy: <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Curves hidden by a crest, in the Aosta Valley: «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
   <p class="lic" data-lang="fr">Données cartographiques © contributeurs <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sous licence <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Virages, limites, dos-d’âne, radars et fond de carte en sont dérivés et restent sous la même licence.</p>
-  <p class="lic" data-lang="fr">Altitudes et pentes : <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1 : NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · En Italie : <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
+  <p class="lic" data-lang="fr">Altitudes et pentes : <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1 : NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · En Italie : <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Virages cachés par une bosse, en Vallée d'Aoste : «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
 </div></div>
 
 <div class="sheet" id="sheetCar"><div class="inner">
@@ -1151,7 +1151,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '328';
+const APPVER = '329';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -1945,16 +1945,16 @@ function preparaAlt(j, r){
   const d = decodeInts(j.z), z = new Int16Array(d.length);
   let acc = 0;
   for(let i=0;i<d.length;i++){ acc += d[i]; z[i] = acc }
-  let cre = null;
-  if(j.c){
-    const w = decodeInts(j.c); cre = new Map(); let arco = 0;
-    for(let q=0; q+2<w.length; q+=3){
+  let nv = null;
+  if(j.nv){
+    const w = decodeInts(j.nv); nv = new Map(); let arco = 0;
+    for(let q=0; q+8<w.length; q+=9){
       arco += w[q];
-      if(!cre.has(arco)) cre.set(arco, []);
-      cre.get(arco).push({d: w[q+1], cv: w[q+2]/1000});
+      if(!nv.has(arco)) nv.set(arco, []);
+      nv.get(arco).push({d0: w[q+1], dir: w[q+2], vis: w[q+3], sp: w.slice(q+4, q+9).map(c => c/100)});
     }
   }
-  return {z, passo: j.meta.passo || 100, cre};
+  return {z, passo: j.meta.passo || 100, nv};
 }
 function quotaAt(e, d){
   if(!e || !e.zb || e.zn<2 || !(e.len>0)) return null;
@@ -2317,7 +2317,7 @@ function buildEdges(rid, map){
     const gj0=J(j0), gj1=J(j1);
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
                zb:RALT?RALT.z:null, zo, zn, zs:undefined, dos:dosArr, stp:stpArr,
-               cre:(RALT && RALT.cre) ? (RALT.cre.get(k) || null) : null,
+               nv:(RALT && RALT.nv) ? (RALT.nv.get(k) || null) : null,
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : '',
                rif:(rifIdx>=0 && RIF[rid]) ? (RIF[rid][rifIdx]||'') : ''};
@@ -6361,13 +6361,22 @@ function chiaviNota(el){
   return ch;
 }
 
-const CRINALE_ON = false;
-const CRINALE_MIN = 0.03, CRINALE_KMH = 50;
+const CRINALE_ON = true;
+const CRINALE_KMH = 50, CRINALE_SPORGE = 0.7, CRINALE_DIST = [40, 60, 80, 100, 130];
 function suCrinale(a){
   if(!CRINALE_ON) return false;
-  const l = a.e && a.e.cre;
-  if(!l || (S.v||0)*3.6 < CRINALE_KMH) return false;
-  return l.some(q => q.cv >= CRINALE_MIN && q.d >= a.c.d0 - 40 && q.d <= a.c.d1);
+  const l = a.e && a.e.nv;
+  const v = S.v || 0;
+  if(!l || v*3.6 < CRINALE_KMH) return false;
+  const q = l.find(x => x.d0 === a.c.d0 && x.dir === a.dir);
+  if(!q) return false;
+  const vc = curveKmh(a.c.r, a.e, a.dir, a.c.d0, true) / 3.6;
+  const serve = v*1.5 + Math.max(0, v*v - vc*vc) / (2*3.5);
+  if(q.vis >= serve) return false;
+  const x = Math.max(CRINALE_DIST[0], Math.min(CRINALE_DIST[CRINALE_DIST.length-1], serve));
+  let i = 0; while(i < CRINALE_DIST.length-2 && CRINALE_DIST[i+1] < x) i++;
+  const f = (x - CRINALE_DIST[i]) / (CRINALE_DIST[i+1] - CRINALE_DIST[i]);
+  return q.sp[i]*(1-f) + q.sp[i+1]*f >= CRINALE_SPORGE;
 }
 function chiaviCurva(a, conMarcia){
   const ix = VOCE.idx[L];

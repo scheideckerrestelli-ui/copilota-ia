@@ -1,5 +1,5 @@
-/* sorgente: 4453e9fc52 */
-const APP = 'copilota-app-v328';
+/* sorgente: 614c47b0de */
+const APP = 'copilota-app-v329';
 const DATA_PREFIX = 'copilota-data-';
 const SHELL = ['./', './manifest.webmanifest', './manifest-a.webmanifest', './regions.json',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
@@ -41,7 +41,8 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   { const p = new URL(req.url).pathname;
-     if (p.endsWith('/beta.html') || p.endsWith('/beta')) return; }
+     if (p.endsWith('/beta.html') || p.endsWith('/beta')) return;
+     if (/^\/(home|come-si-fa)(\.html)?$/.test(p) || p.startsWith('/video/') || p === '/strada.js') return; }
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
       const copia = (await caches.match(req)) || (await caches.match('./'));
