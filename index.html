@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v326';
+  const VERSIONE = 'copilota-app-v327';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1151,7 +1151,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '326';
+const APPVER = '327';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -5998,7 +5998,7 @@ function tracciaCurva(g, cls, right){
 const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, comp:null, lim:null, testa:null, sorgente:null};
 
 const CACHE_VOCE = 'copilota-voce-v1';
-const VOCE_VER = '4';
+const VOCE_VER = '5';
 async function prendi(url){
   if(self.caches){
     try{
@@ -6293,11 +6293,19 @@ function clipDist(m){
   const k='d.'+best;
   return (VOCE.idx[L] && VOCE.idx[L][k]) ? k : null;
 }
+function metriDi(dk){
+  const ix = VOCE.idx[L];
+  if(!dk || !ix) return [];
+  const intera = 'dm.' + dk.slice(2);
+  if(ix[intera]) return [intera];
+  return ix['d.metri'] ? [dk, 'd.metri'] : [];
+}
 function clipDistDetta(m, prima, conMetri){
   const v = S.v || 0;
   let k = clipDist(m - v*prima);
   for(let n=0; n<2 && k; n++){
-    const k2 = clipDist(m - v*(prima + durataFrase(conMetri ? [k,'d.metri'] : [k])));
+    const conM = conMetri ? metriDi(k) : [];
+    const k2 = clipDist(m - v*(prima + durataFrase(conM.length ? conM : [k])));
     if(k2 === k) break;
     k = k2;
   }
@@ -6318,7 +6326,7 @@ function catenaNota(){
 }
 function chiaviNota(el){
   let ch = chiaviCurva(el[0], !S.pace);
-  if(S.pace){ const dk=clipDistDetta(el[0].dist, 0, true); if(dk) ch=[dk,'d.metri'].concat(ch) }
+  if(S.pace){ const dk=clipDistDetta(el[0].dist, 0, true); if(dk) ch=metriDi(dk).concat(ch) }
   for(let n=1;n<el.length;n++){
     const dritto = el[n].dist - (el[n-1].dist + el[n-1].len);
     const legame = S.pace ? (clipDist(dritto) || 'k.poi') : 'k.poi';
@@ -6487,7 +6495,7 @@ function updateNote(){
         const molti = (ds.n|0) > 1;
         const dk = clipDistDetta(ds.dist, 0, true);
         const ch = [];
-        if(dk && VOCE.idx[L] && VOCE.idx[L]['d.metri']) ch.push(dk, 'd.metri');
+        ch.push(...metriDi(dk));
         ch.push(molti ? 'h.dossi' : 'h.dosso');
         if(dilo(ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]), false) > 0) S.said.add(kD);
       }
@@ -6505,8 +6513,15 @@ function updateNote(){
     if(dr && ixD && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()){
       const k = S.drittoK;
       if(!S.said.has(k)){
-        const dk = dr.oltre ? null : clipDistDetta(dr.dist, durataFrase(['r.dritto']), false);
-        const ch = S.pace ? ['r.dritto'].concat(dk ? [dk] : []) : ['r.lungo'];
+        const frasePer = k => k && ixD['r.per.' + k.slice(2)] ? ['r.per.' + k.slice(2)] : null;
+        let dk = dr.oltre ? null : clipDist(dr.dist);
+        for(let n=0; n<2 && dk && frasePer(dk); n++){
+          const k2 = clipDist(dr.dist - (S.v||0)*durataFrase(frasePer(dk)));
+          if(k2 === dk) break;
+          dk = k2;
+        }
+        if(dk && !frasePer(dk)) dk = clipDistDetta(dr.dist, durataFrase(['r.dritto']), false);
+        const ch = !S.pace ? ['r.lungo'] : frasePer(dk) || ['r.dritto'].concat(dk ? [dk] : []);
         if(ch.every(x => ixD[x]) && performance.now()-S.lastSaid > 900 && dilo(ch, false) > 0){
           S.said.add(k); S.lastSaid = performance.now(); S.drittoK = null;
         }
@@ -6528,7 +6543,7 @@ function updateNote(){
       if(dopo) chS = chS.concat(['k.poi'], chiaviCurva(dopo, false));
       else {
         const dk = clipDistDetta(st0.dist, 0, true);
-        if(dk && ixV['d.metri']) chS = [dk, 'd.metri', parolaStop];
+        if(metriDi(dk).length) chS = metriDi(dk).concat([parolaStop]);
       }
       const stS = stileAttivo(), reazS = Math.max(0.6, stS.reaz + (S.antic||0));
       const decS = Math.max(1.2, stS.dec*aderenza() + 9.81*Math.min(SALITA_MAX, S.pend||0));
@@ -6804,7 +6819,7 @@ function tickNav(){
       if(dilo(ch, false) > 0){ S.said.add(kv); S.said.add(kf); S.lastSaid=now; }
     } else if(dm<=lontano && !S.said.has(kf) && now-S.lastSaid>900){
       const dk = clipDistDetta(dm, 0, true);
-      if(dilo((dk && VOCE.idx[L]['d.metri'] ? [dk,'d.metri'] : []).concat(ch), false) > 0){ S.said.add(kf); S.lastSaid=now; }
+      if(dilo(metriDi(dk).concat(ch), false) > 0){ S.said.add(kf); S.lastSaid=now; }
     }
   }
   parlaTraffico(nv, pr);
@@ -6832,10 +6847,10 @@ function parlaTraffico(nv, pr){
     let ch = null, segna = null;
     if(pericolo && dist <= TRAFFICO_VICINO_M && !S.said.has(kV)){
       const dk = clipDistDetta(dist, 0, true);
-      ch = (dk && ix['d.metri'] ? [dk, 'd.metri'] : []).concat([parola]); segna = [kV, kL];
+      ch = metriDi(dk).concat([parola]); segna = [kV, kL];
     } else if(dist <= TRAFFICO_LONTANO_M && dist > TRAFFICO_VICINO_M && !S.said.has(kL)){
       const dk = dist >= 800 ? (ix['d.1000'] ? 'd.1000' : null) : clipDistDetta(dist, 0, true);
-      ch = (dk === 'd.1000' ? [dk] : dk && ix['d.metri'] ? [dk, 'd.metri'] : []).concat([parola]); segna = [kL];
+      ch = (dk === 'd.1000' ? [dk] : metriDi(dk)).concat([parola]); segna = [kL];
     }
     if(!ch) continue;
     if(dilo(ch, false) > 0){ segna.forEach(k => S.said.add(k)); S.lastSaid = now; }
