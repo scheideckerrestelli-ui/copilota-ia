@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v327';
+  const VERSIONE = 'copilota-app-v328';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -741,11 +741,11 @@ if ('serviceWorker' in navigator) {
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
   <p class="ver-app" id="verApp"></p>
   <p class="lic" data-lang="it">Dati mappa © collaboratori <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sotto licenza <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Anche curve, limiti, dossi, autovelox e sfondo ne sono elaborazioni e restano sotto la stessa licenza.</p>
-  <p class="lic" data-lang="it">Quote e pendenze: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved.</p>
+  <p class="lic" data-lang="it">Quote e pendenze: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italia: <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
   <p class="lic" data-lang="en">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Corners, limits, bumps, speed cameras and background are derived from it and stay under the same licence.</p>
-  <p class="lic" data-lang="en">Elevation and gradients: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved.</p>
+  <p class="lic" data-lang="en">Elevation and gradients: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italy: <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
   <p class="lic" data-lang="fr">Données cartographiques © contributeurs <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sous licence <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Virages, limites, dos-d’âne, radars et fond de carte en sont dérivés et restent sous la même licence.</p>
-  <p class="lic" data-lang="fr">Altitudes et pentes : <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1 : NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved.</p>
+  <p class="lic" data-lang="fr">Altitudes et pentes : <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1 : NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · En Italie : <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
 </div></div>
 
 <div class="sheet" id="sheetCar"><div class="inner">
@@ -1151,7 +1151,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '327';
+const APPVER = '328';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -1242,8 +1242,24 @@ async function leggiFile(url, rid, onProgress){
   if(!res){
     try{
       const c = await caches.open(cacheName(rid));
-      const ks = (await c.keys()).filter(k=>k.url.split('?')[0].endsWith(url.split('?')[0].split('/').pop()));
-      if(ks.length){ res = await c.match(ks[ks.length-1]); if(res) MAPPEVECCHIE.add(rid) }
+      const nome = url.split('?')[0].split('/').pop();
+      const ks = (await c.keys()).filter(k=>k.url.split('?')[0].endsWith(nome));
+      const sc = SIDECAR.find(s => nome.startsWith(s.url + '-'));
+      if(ks.length && sc && navigator.onLine !== false){
+        try{
+          const r2 = await fetch(url);
+          if(r2.ok){
+            const b2 = await readStream(r2, onProgress||(()=>{}));
+            const j2 = JSON.parse(new TextDecoder().decode(b2));
+            if(j2 && sc.ok(j2)){
+              await c.put(url, new Response(b2, {headers:{'Content-Type':'application/json'}}));
+              for(const k of ks) await c.delete(k);
+              return j2;
+            }
+          }
+        }catch(e){ nota('file aggiornato non scaricato ('+nome+'): '+e.message) }
+      }
+      if(ks.length){ res = await c.match(ks[ks.length-1]); if(res && !sc) MAPPEVECCHIE.add(rid) }
     }catch(e){}
   }
   if(!res){
@@ -1929,7 +1945,16 @@ function preparaAlt(j, r){
   const d = decodeInts(j.z), z = new Int16Array(d.length);
   let acc = 0;
   for(let i=0;i<d.length;i++){ acc += d[i]; z[i] = acc }
-  return {z, passo: j.meta.passo || 100};
+  let cre = null;
+  if(j.c){
+    const w = decodeInts(j.c); cre = new Map(); let arco = 0;
+    for(let q=0; q+2<w.length; q+=3){
+      arco += w[q];
+      if(!cre.has(arco)) cre.set(arco, []);
+      cre.get(arco).push({d: w[q+1], cv: w[q+2]/1000});
+    }
+  }
+  return {z, passo: j.meta.passo || 100, cre};
 }
 function quotaAt(e, d){
   if(!e || !e.zb || e.zn<2 || !(e.len>0)) return null;
@@ -2292,6 +2317,7 @@ function buildEdges(rid, map){
     const gj0=J(j0), gj1=J(j1);
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
                zb:RALT?RALT.z:null, zo, zn, zs:undefined, dos:dosArr, stp:stpArr,
+               cre:(RALT && RALT.cre) ? (RALT.cre.get(k) || null) : null,
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : '',
                rif:(rifIdx>=0 && RIF[rid]) ? (RIF[rid][rifIdx]||'') : ''};
@@ -5998,7 +6024,7 @@ function tracciaCurva(g, cls, right){
 const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, comp:null, lim:null, testa:null, sorgente:null};
 
 const CACHE_VOCE = 'copilota-voce-v1';
-const VOCE_VER = '5';
+const VOCE_VER = '6';
 async function prendi(url){
   if(self.caches){
     try{
@@ -6335,6 +6361,14 @@ function chiaviNota(el){
   return ch;
 }
 
+const CRINALE_ON = false;
+const CRINALE_MIN = 0.03, CRINALE_KMH = 50;
+function suCrinale(a){
+  if(!CRINALE_ON) return false;
+  const l = a.e && a.e.cre;
+  if(!l || (S.v||0)*3.6 < CRINALE_KMH) return false;
+  return l.some(q => q.cv >= CRINALE_MIN && q.d >= a.c.d0 - 40 && q.d <= a.c.d1);
+}
 function chiaviCurva(a, conMarcia){
   const ix = VOCE.idx[L];
   const ch = ['c.'+(isRight(a)?0:1)+'.'+a.c.c];
@@ -6344,6 +6378,7 @@ function chiaviCurva(a, conMarcia){
     else if(a.c.c <= CORTA_CLS && a.len <= CORTA_M) agg('m.corta');
   }
   if((a.c.st|0) >= STRINGE_MIN) agg('m.chiude');
+  if(suCrinale(a)) agg('m.crinale');
   if(conMarcia && !isAuto() && a.c.c <= MARCIA_CLS_MAX){
     const vRif = curveKmh(a.c.r, a.e, a.dir, a.c.d0, true);
     if(marciaDaDire(vRif)) agg('g.'+bestGear(vPerMarcia(vRif)));
@@ -6822,6 +6857,7 @@ function tickNav(){
       if(dilo(metriDi(dk).concat(ch), false) > 0){ S.said.add(kf); S.lastSaid=now; }
     }
   }
+  chiediTraffico(nv, pr);
   parlaTraffico(nv, pr);
 }
 const TRAFFICO_CODA_S = 120, TRAFFICO_LAVORI_S = 60;
@@ -6856,6 +6892,50 @@ function parlaTraffico(nv, pr){
     if(dilo(ch, false) > 0){ segna.forEach(k => S.said.add(k)); S.lastSaid = now; }
     return;
   }
+}
+const TRAFFICO_OGNI_MS = 4*60*1000, TRAFFICO_RIPROVA_MS = 60*1000;
+const TRAFFICO_PASSO_M = 500, TRAFFICO_AVANTI_M = 30000;
+const TRAFFICO_DEV = Math.random().toString(36).slice(2, 12).replace(/[^a-z0-9]/g, 'x').padEnd(8, 'x');
+function trafficoAcceso(){
+  if(TESTER === 'tiago') return true;
+  try{ return localStorage.getItem('codriver-traffico') === '1' }catch(e){ return false }
+}
+function puntiAvanti(nv, fatto){
+  const g = nv.geo; if(!g || !g.np) return null;
+  const c0 = fatto * g.k, c1 = c0 + TRAFFICO_AVANTI_M * g.k, p = [];
+  let prossimo = c0;
+  for(let i = 0; i < g.np && g.cum[i] <= c1; i++){
+    if(g.cum[i] < prossimo && i < g.np - 1) continue;
+    const [lo, la] = toLL(g.xy[2*i], g.xy[2*i+1]);
+    p.push([+la.toFixed(5), +lo.toFixed(5)]);
+    prossimo = g.cum[i] + TRAFFICO_PASSO_M * g.k;
+  }
+  return p.length >= 2 ? p : null;
+}
+async function chiediTraffico(nv, pr){
+  if(!nv || !pr || !trafficoAcceso() || navigator.onLine === false) return;
+  const U = S.trafficoChiesto || (S.trafficoChiesto = {t: 0, sn: 0, via: false});
+  const ora = Date.now();
+  if(U.via || (U.sn === nv.sn && ora - U.t < TRAFFICO_OGNI_MS)) return;
+  const p = puntiAvanti(nv, pr.fatto); if(!p) return;
+  const base = pr.fatto, sn = nv.sn;
+  U.via = true; U.sn = sn; U.t = ora;
+  try{
+    const r = await fetch('https://codriver.pages.dev/traffico', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, cache: 'no-store',
+      body: JSON.stringify({d: TRAFFICO_DEV, p}),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined});
+    const j = await r.json().catch(() => null);
+    if(!S.nav || S.nav.sn !== sn) return;
+    if(!r.ok || !j || !Array.isArray(j.eventi)){
+      if(r.status !== 429) U.t = ora - TRAFFICO_OGNI_MS + TRAFFICO_RIPROVA_MS;
+      return;
+    }
+    S.traffico = {t: Date.now(), sn, eventi: j.eventi.map(e => ({
+      id: e.tipo + ':' + Math.round((base + e.s) / 250), s: base + e.s,
+      len: e.len, tipo: e.tipo, ritardo: e.ritardo}))};
+  }catch(e){ U.t = ora - TRAFFICO_OGNI_MS + TRAFFICO_RIPROVA_MS }
+  finally{ U.via = false }
 }
 navX.onclick=()=>fermaNav();
 
