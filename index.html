@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v330';
+  const VERSIONE = 'copilota-app-v331';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -235,6 +235,7 @@ if ('serviceWorker' in navigator) {
     border-left:1px solid var(--line);padding-left:10px}
   .nav .eta b{display:block;font-family:var(--font-d);font-size:15px;font-weight:600;line-height:1.2}
   .nav .eta small{font-size:9.5px;letter-spacing:.1em;color:var(--ink2)}
+  .nav .eta .tt{display:block;margin-top:2px;font-size:8.5px;letter-spacing:.02em;opacity:.8}
   .nav .x{flex:none;width:32px;height:32px;border-radius:9px;border:1px solid var(--line);
     background:none;color:var(--ink2);font-size:15px;line-height:1;cursor:pointer}
 
@@ -665,7 +666,7 @@ if ('serviceWorker' in navigator) {
 <div class="nav" id="nav">
   <canvas id="navIcon" width="128" height="128"></canvas>
   <div class="txt"><div class="d" id="navD">—</div><div class="via" id="navVia"></div></div>
-  <div class="eta"><b id="navKm">—</b><small id="navMin"></small></div>
+  <div class="eta"><b id="navKm">—</b><small id="navMin"></small><small class="tt" id="navTt" hidden>© TomTom</small></div>
   <button class="x" id="navX" title="Annulla" aria-label="Annulla">✕</button>
 </div>
 
@@ -834,6 +835,10 @@ if ('serviceWorker' in navigator) {
     même si c'est le passager qui la tient. En <b>France</b> la position exacte est interdite,
     d'où l'absence totale de radars dans les cartes françaises. En éteignant ici, plus aucune
     annonce ni aucun repère à l'écran, sur toutes les cartes.</div>
+  <label class="opt"><input type="checkbox" id="trafficoChk">
+    <span data-lang="it">Traffico dal vivo</span>
+    <span data-lang="en">Live traffic</span><span data-lang="fr">Trafic en direct</span></label>
+  <p style="margin-top:6px;font-size:11.5px" id="trafficoDesc"></p>
   <div class="disc" data-lang="it">La velocità di riferimento è √(accelerazione laterale × raggio):
     un valore <b>teorico</b>, che presume asfalto asciutto e pulito, gomme in ordine e strada
     libera. Non tiene conto di pendenza, sopraelevazione, ghiaia, umido all'ombra né di chi arriva
@@ -1151,7 +1156,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '330';
+const APPVER = '331';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -3381,6 +3386,8 @@ const T = {
     legalOff:'Ignora il limite: solo quello che la curva permette.',
     camsOn:'Annuncia gli autovelox delle mappe attive.',
     camsOff:'Spenti: nessun avviso, nessun segnale a schermo.',
+    trafficoOn:'Con un percorso impostato annuncia code, lavori, strade chiuse e incidenti davanti a te. Ogni 4 minuti manda i punti del percorso al nostro sito, che li chiede a TomTom. Dati di traffico © TomTom.',
+    trafficoOff:'Spento: per il traffico dal telefono non parte niente.',
     navGo:'VAI', navIn:'fra', navM:'metri', navNow:'ORA', navInto:'in', navMin:'MIN',
     navTurn:{dx:'a destra', sx:'a sinistra', dxs:'secca a destra', sxs:'secca a sinistra',
              dxk:'tieni la destra', sxk:'tieni la sinistra', inv:'inverti la marcia',
@@ -3515,6 +3522,8 @@ const T = {
     legalOff:'Ignores the limit: only what the corner allows.',
     camsOn:'Announces speed cameras from the active maps.',
     camsOff:'Off: no warning, nothing on screen.',
+    trafficoOn:'With a route set, announces queues, roadworks, closed roads and accidents ahead of you. Every 4 minutes it sends the route points to our website, which asks TomTom. Traffic data © TomTom.',
+    trafficoOff:'Off: nothing leaves the phone for traffic.',
     navGo:'GO', navIn:'in', navM:'meters', navNow:'NOW', navInto:'onto', navMin:'MIN',
     navTurn:{dx:'turn right', sx:'turn left', dxs:'sharp right', sxs:'sharp left',
              dxk:'keep right', sxk:'keep left', inv:'make a U-turn',
@@ -3649,6 +3658,8 @@ const T = {
     legalOff:'Ignore la limite : seulement ce que permet le virage.',
     camsOn:'Annonce les radars des cartes actives.',
     camsOff:'Éteints : aucune alerte, rien à l\'écran.',
+    trafficoOn:'Avec un itinéraire défini, annonce bouchons, travaux, routes fermées et accidents devant toi. Toutes les 4 minutes, elle envoie les points de l\'itinéraire à notre site, qui les demande à TomTom. Données de trafic © TomTom.',
+    trafficoOff:'Éteint : rien ne part du téléphone pour le trafic.',
     navGo:'ALLER', navIn:'dans', navM:'mètres', navNow:'MAINTENANT', navInto:'sur', navMin:'MIN',
     navTurn:{dx:'à droite', sx:'à gauche', dxs:'fort à droite', sxs:'fort à gauche',
              dxk:'tiens la droite', sxk:'tiens la gauche', inv:'fais demi-tour',
@@ -3697,7 +3708,7 @@ const S = {
   dp:null, dhd:null, avanti:0,
   dvx:0, dvy:0, dvh:0, dva:0,
   fixT:0, vx:0, vy:0,
-  car:'m5', cal:36, calG:0, style:'strada', legal:true, cams:true, incroci:true, rotatorie:false,
+  car:'m5', cal:36, calG:0, style:'strada', legal:true, cams:true, incroci:true, rotatorie:false, trafficoVivo:true,
   accel:true,
   cmin:6,
   antic:0,
@@ -3747,6 +3758,7 @@ try{
   if(st.cmin>=2 && st.cmin<=6)S.cmin=st.cmin|0;
   if(typeof st.cams==='boolean')S.cams=st.cams;
   if(typeof st.incroci==='boolean')S.incroci=st.incroci;
+  if(typeof st.trafficoVivo==='boolean')S.trafficoVivo=st.trafficoVivo;
   if(typeof st.rotatorie==='boolean')S.rotatorie=st.rotatorie;
   if(typeof st.autoMode==='boolean')S.autoMode=st.autoMode;
   if(typeof st.pace==='boolean')S.pace=st.pace;
@@ -3789,7 +3801,7 @@ if(aNelLink || testerDalLink || profiloDalLink){
        window.history.replaceState(null, '', u.pathname + (u.search||'') + u.hash) }catch(e){}
 }
 const save=()=>{try{ricordaCal();localStorage.setItem('copilota2',JSON.stringify(
-  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,trafficoVivo:S.trafficoVivo,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 if(autoDalLink || profiloDalLink) save();
 
 (function (globale) {
@@ -6455,10 +6467,22 @@ function allIncrocio(a){
   return inPaese(a.e) && a.c.c > DEDOTTA_CLS;
 }
 const suAnello = a => !!(a.gj && a.gj.some(j => (JUN.get(j)||[]).some(id => ROTONDA.has(id))));
+const RAGGIO_PAESE = [3000, 1200, 600];
+function fuoriPaese(a){
+  const c = a.c;
+  if(c._fuori !== undefined) return c._fuori;
+  const p = posAt(a.e, c.d0); let fuori = true;
+  for(const q of PLACES){
+    const R = RAGGIO_PAESE[q.r]; if(R === undefined) continue;
+    const dx = q.x - p[0], dy = q.y - p[1];
+    if(Math.abs(dx) < R && Math.abs(dy) < R && dx*dx + dy*dy < R*R){ fuori = false; break }
+  }
+  return (c._fuori = fuori);
+}
 const mutoQui = a => !!a.e && ((CLSARCO.get(a.e.id)|0) === 2
                                || ROTONDA.has(a.e.id)
                                || suAnello(a)
-                               || (a.e.ms > 0 && a.e.ms <= 30)
+                               || (a.e.ms > 0 && a.e.ms <= 30 && !(a.e.rank <= 2 && fuoriPaese(a)))
                                || dopoStop(a)
                                || allIncrocio(a));
 
@@ -6690,6 +6714,7 @@ function updateNote(){
 const navEl=document.getElementById('nav'), navD=document.getElementById('navD'),
       navVia=document.getElementById('navVia'), navKm=document.getElementById('navKm'),
       navMin=document.getElementById('navMin'), navX=document.getElementById('navX'),
+      navTt=document.getElementById('navTt'),
       niv=document.getElementById('navIcon').getContext('2d');
 let NAVSN=0;
 const dec = n => (L==='it'||L==='fr') ? n.replace('.',',') : n;
@@ -6846,6 +6871,7 @@ function tickNav(){
   navVia.textContent = mn ? frase : t0.navTurn.arr + ' · ' + nv.dest.n;
   navKm.textContent = kmTxt(pr.restano);
   navMin.textContent = minTxt(tempoRestante(pr.fatto));
+  navTt.hidden = !(S.traffico && S.traffico.sn === nv.sn && Date.now() - S.traffico.t <= TRAFFICO_VECCHIO_MS);
   disegnaNavIcona(mn ? mn.ang : 0);
 
   if(mv){
@@ -6905,10 +6931,7 @@ function parlaTraffico(nv, pr){
 const TRAFFICO_OGNI_MS = 4*60*1000, TRAFFICO_RIPROVA_MS = 60*1000;
 const TRAFFICO_PASSO_M = 500, TRAFFICO_AVANTI_M = 30000;
 const TRAFFICO_DEV = Math.random().toString(36).slice(2, 12).replace(/[^a-z0-9]/g, 'x').padEnd(8, 'x');
-function trafficoAcceso(){
-  if(TESTER === 'tiago') return true;
-  try{ return localStorage.getItem('codriver-traffico') === '1' }catch(e){ return false }
-}
+function trafficoAcceso(){ return S.trafficoVivo !== false }
 function puntiAvanti(nv, fatto){
   const g = nv.geo; if(!g || !g.np) return null;
   const c0 = fatto * g.k, c1 = c0 + TRAFFICO_AVANTI_M * g.k, p = [];
@@ -8121,6 +8144,7 @@ const carChips=document.getElementById('carChips'), motoChips=document.getElemen
       accDesc=document.getElementById('accDesc'),
       camChk=document.getElementById('camChk'), camDesc=document.getElementById('camDesc'),
       incrociChk=document.getElementById('incrociChk'), incrociDesc=document.getElementById('incrociDesc'),
+      trafficoChk=document.getElementById('trafficoChk'), trafficoDesc=document.getElementById('trafficoDesc'),
       rotatorieChk=document.getElementById('rotatorieChk'), rotatorieDesc=document.getElementById('rotatorieDesc');
 function gearTableHtml(){
   const t=gearKmh(), lo=boostOf(), hi=rpmLimOf(), top=vTop(0);
@@ -8277,6 +8301,8 @@ function renderCar(){
   incrociDesc.textContent = tr()[S.incroci !== false ? 'incrociOn' : 'incrociOff'];
   rotatorieChk.checked = S.rotatorie === true;
   rotatorieDesc.textContent = tr()[S.rotatorie === true ? 'rotatorieOn' : 'rotatorieOff'];
+  trafficoChk.checked = S.trafficoVivo !== false;
+  trafficoDesc.textContent = tr()[S.trafficoVivo !== false ? 'trafficoOn' : 'trafficoOff'];
 }
 function renderCal(){
   const c=CARS[S.car], gr=marciaRif();
@@ -8353,6 +8379,8 @@ camChk.onchange=()=>{S.cams=camChk.checked; save(); renderCar(); S.said.clear();
                      S.aheadCams=[]; updateNote(); S.need=true};
 incrociChk.onchange=()=>{ S.incroci=incrociChk.checked; save(); renderCar(); S.said.clear(); updateNote(); S.need=true };
 rotatorieChk.onchange=()=>{ S.rotatorie=rotatorieChk.checked; save(); renderCar(); S.said.clear(); updateNote(); S.need=true };
+trafficoChk.onchange=()=>{ S.trafficoVivo=trafficoChk.checked; save(); renderCar();
+  if(!S.trafficoVivo){ S.traffico=null; S.trafficoChiesto=null } S.need=true };
 autoChk.onchange=()=>{S.autoMode=autoChk.checked; S.said.clear(); save(); renderCar();
   updateNote(); S.need=true};
 const paceChk=document.getElementById('paceChk');
