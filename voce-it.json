@@ -808,18 +808,28 @@
 "d": 0.9223,
 "w": "veicolo fermo"
 },
-"t.incidente": {
+"t.ghiaccio": {
 "t": 174.4358,
+"d": 1.2945,
+"w": "ghiaccio sulla strada"
+},
+"t.incidente": {
+"t": 175.8503,
 "d": 0.704,
 "w": "incidente"
 },
 "t.lavori": {
-"t": 175.2598,
+"t": 176.6743,
 "d": 0.5143,
 "w": "lavori"
 },
+"t.vento": {
+"t": 177.3086,
+"d": 0.9645,
+"w": "vento forte"
+},
 "x.attivo": {
-"t": 175.8941,
+"t": 178.3931,
 "d": 1.3875,
 "w": "copilota attivo"
 }
