@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v334';
+  const VERSIONE = 'copilota-app-v335';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -697,10 +697,12 @@ if ('serviceWorker' in navigator) {
 <div class="toast" id="toast"></div>
 <div class="vocemuta" id="voceMuta" role="status" hidden></div>
 <div class="vocemuta" id="avvisoLez" role="status" hidden></div>
+<div class="vocemuta" id="avvisoSchermo" role="status" hidden></div>
 <button type="button" class="vernuova" id="verNuova" hidden></button>
 <div class="instpop" id="posPop" hidden>
   <button class="instpop-x" id="posPopX" type="button" aria-label="Chiudi">&times;</button>
   <p class="instpop-t" id="posPopT"></p>
+  <ol class="instpop-l" id="posPopL" hidden></ol>
   <button class="btn" id="posPopB" type="button"></button>
 </div>
 
@@ -1157,7 +1159,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '334';
+const APPVER = '335';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -1520,13 +1522,15 @@ function calcolaRotta(jDa, jA, limite=900000, da=null){
   agen++;
   const gGet = s => AGEN[s]===agen ? AG[s] : Infinity;
   const gSet = (s,v) => { AGEN[s]=agen; AG[s]=v };
+  const TR = trafficoArchi();
   const q=new Coda();
   for(const id of (JUN.get(jDa)||[])){
     const e=E[id];
     if(!percorribile(e,jDa)) continue;
     if(da && svoltaVietata(jDa, da.wid, e.wid)) continue;
     const s = id*2 + (e.j0===jDa ? 0 : 1);
-    const c = costo(e) + (da && (e.j0===jDa ? e.j1 : e.j0)===da.jDietro ? da.pen : 0);
+    const xs = TR ? (TR.get(s)||0) : 0; if(xs===Infinity) continue;
+    const c = costo(e) + xs + (da && (e.j0===jDa ? e.j1 : e.j0)===da.jDietro ? da.pen : 0);
     if(c < gGet(s)){ gSet(s,c); APREV[s]=-1; q.push(s, c+h(testa(s))*PESO_H) }
   }
   let visti=0, fine=-1;
@@ -1548,9 +1552,10 @@ function calcolaRotta(jDa, jA, limite=900000, da=null){
       if(svoltaVietata(jn, e.wid, o.wid)) continue;
       const t = id*2 + (o.j0===jn ? 0 : 1);
       if(ACHIU[t]===agen) continue;
+      const xt = TR ? (TR.get(t)||0) : 0; if(xt===Infinity) continue;
       const pen = (id===e.id ? PEN_INVERSIONE : 0)
                 + (o.rank>=RANGO.minore && e.rank<RANGO.minore ? ENTRO_MINORE : 0);
-      const ng = gc + costo(o) + pen + (da && (o.j0===jn ? o.j1 : o.j0)===da.jDietro ? da.pen : 0);
+      const ng = gc + costo(o) + xt + pen + (da && (o.j0===jn ? o.j1 : o.j0)===da.jDietro ? da.pen : 0);
       if(ng < gGet(t)){ gSet(t,ng); APREV[t]=s; q.push(t, ng+h(testa(t))*PESO_H) }
     }
   }
@@ -1563,8 +1568,8 @@ function calcolaRotta(jDa, jA, limite=900000, da=null){
   }
   archi.reverse();
   const metri=archi.reduce((a,x)=>a+x.e.len,0);
-  const secondi=Math.round(archi.reduce((a,x)=>a+tempoArco(x.e),0));
-  return {archi, metri, secondi, visti};
+  const secondi=Math.round(archi.reduce((a,x)=>a+tempoArco(x.e)+(TR ? (TR.get(x.e.id*2+(x.verso>0?0:1))||0) : 0),0));
+  return {archi, metri, secondi, visti, traffico:!!TR};
 }
 
 const COMP_OK = new Set(), COMP_NO = new Set();
@@ -2496,7 +2501,11 @@ const CURATI = [
   [438773157,46.668383,11.797713,'t'],
   [438775121,46.689736,11.854510,'t'],
   [694116441,46.681202,11.823334,3],
-  [42564669,46.682970,11.898005,'t']
+  [42564669,46.682970,11.898005,'t'],
+  [315054357,46.484034,11.829035,'t'],
+  [441506871,46.492162,11.854960,'t'],
+  [37699819,46.452300,11.901282,4],
+  [37699821,46.451517,11.902953,3]
 ];
 const CURATI_M = 20;
 let CURATI_PER_VIA = null, CURATI_PRESI = 0, CURATI_PERSI = 0;
@@ -3605,8 +3614,21 @@ const T = {
     gpsPwa:'Manca il permesso di posizione. PRIMA guarda iPhone: Impostazioni → Privacy e sicurezza → Localizzazione, dev\'essere accesa, e più in basso Safari su «Mentre usi l\'app». Solo se è già così serve togliere e rimettere l\'icona, e attenzione: quello cancella le mappe scaricate. Tocca qui per l\'Aiuto.',
     posPre:'Co-Driver ha bisogno della posizione per dirti le curve mentre guidi. Il telefono te la chiederà appena tocchi qui: scegli «Consenti».',
     posPreB:'Attiva la posizione',
-    posNeg:'La posizione è bloccata per Co-Driver, e il telefono non la chiede più. Si rimette dalle impostazioni: tocca qui e ti dico come.',
-    posNegB:'Come si rimette',
+    posNeg:'La posizione è bloccata per Co-Driver, e il telefono non la chiede più. Ecco come si rimette:',
+    posNegB:'Ho capito',
+    posDentroT:'Stai usando Co-Driver dentro un\'altra app (Instagram o Telegram): da qui il telefono spesso non dà la posizione.',
+    posDentroIosL:['tocca il menu <b>···</b> in alto (o il tasto Condividi)',
+                   'scegli la voce che apre il link nel browser (di solito «Apri in Safari»)',
+                   'quando si riapre, alla domanda della posizione tocca «Consenti»'],
+    posDentroAndroidL:['tocca il menu <b>⋮</b> in alto',
+                       'scegli la voce che apre il link in Chrome (o «Apri nel browser»)',
+                       'quando si riapre, tocca «Consenti solo mentre usi l\'app»'],
+    posNegIosL:['Impostazioni → Privacy e sicurezza → Localizzazione: deve essere accesa, e più sotto <b>Safari</b> su «Mentre usi l\'app»',
+               'Se lì è già tutto a posto: l\'icona in Home ha permessi suoi, separati da Safari, e non compare in quell\'elenco. Si rimette togliendo l\'icona e rimettendola (occhio: cancella le mappe scaricate)',
+               'Quando la rimetti: tocca «Ho letto e accetto», poi <b>Consenti</b> alla domanda della posizione'],
+    posNegAndroidL:['Accendi la Localizzazione (tendina in alto, icona Posizione)',
+                    'Impostazioni → App → Chrome → Autorizzazioni → Posizione → <b>Consenti solo mentre l\'app è in uso</b>, con «Usa posizione precisa» attivo',
+                    'Poi riapri Co-Driver'],
     gpsTastoChiedi:'Chiedi il permesso di posizione',
     gpsTastoRiprova:'Il permesso è negato: cosa posso fare',
     gpsTastoOk:'Il permesso c\'è già: riaggancia la posizione',
@@ -3614,6 +3636,7 @@ const T = {
     gpsEsitoChiesto:'Fatto: se compare la domanda, tocca Consenti.',
     gpsEsitoGranted:'Il permesso c\'era già. Se la posizione non arriva lo stesso, non è un problema di permessi: guarda più in basso.',
     gpsAndroid:'Posizione non concessa. Su Android: 1) accendi la Localizzazione (tendina in alto, icona Posizione); 2) Impostazioni → App → Chrome → Autorizzazioni → Posizione → Consenti solo mentre l\'app è in uso, con «Usa posizione precisa» attivo; 3) apri codriver.pages.dev in Chrome, tocca l\'icona a sinistra dell\'indirizzo → Autorizzazioni → Posizione → Consenti. Vale anche per l\'app sulla schermata Home. Poi riapri l\'app.',
+    gpsDentroApp:'Sei dentro Instagram o Telegram: qui la posizione spesso non passa. Apri questo indirizzo in Safari (iPhone) o Chrome (Android), poi riprova.',
     onDevice:'mappe sul telefono', onDevice1:'mappa sul telefono', freeSpace:'spazio disponibile', delMap:'Elimina',
     dlFail:'Scaricamento fallito: ',
     hereDl:n=>'Sei in '+n+': scarica la mappa dal pannello Mappe.',
@@ -3665,7 +3688,9 @@ const T = {
     audioTocca:'Tocca lo schermo una volta per attivare la voce: il telefono non la fa partire da sola.',
     vocePausa:'Voce in pausa: tocca lo schermo per riattivarla.',
     lezEntra: n => 'Il percorso entra nella zona a basse emissioni (LEZ) di '+n+'. Se la tua auto non è ammessa o non è registrata, rischi la multa.',
-    lezNomi: {bxl:'Bruxelles', anv:'Anversa'},
+    lezNomi: {bxl:'Bruxelles', anv:'Anversa', gnt:'Gand'},
+    schermoNegato: 'Il telefono non tiene acceso lo schermo: togli il Risparmio energetico. Tocca qui per riprovare.',
+    trafficoRotta: m => m > 0 ? 'Percorso cambiato per il traffico: '+m+' min in meno.' : 'Percorso cambiato: strada chiusa più avanti.',
     linkTit:'Questo link cambia il tuo garage',
     linkAltra:'È il link di un\'altra persona: il tuo garage verrebbe sostituito e i tuoi giri andrebbero a suo nome.',
     linkNuova:'in più', linkCambia:'cambia', linkTecnici:'cambiano i dati tecnici',
@@ -3743,8 +3768,21 @@ const T = {
     gpsPwa:'Location permission is missing. FIRST check the iPhone: Settings → Privacy & Security → Location Services must be on, and further down Safari set to «While Using the App». Only if that is already right does removing and re-adding the icon help, and careful: that deletes your downloaded maps. Tap here for Help.',
     posPre:'Co-Driver needs your location to call the corners while you drive. Your phone will ask as soon as you tap here: choose "Allow".',
     posPreB:'Turn on location',
-    posNeg:'Location is blocked for Co-Driver and your phone will not ask again. It can be restored in settings: tap here and I will show you how.',
-    posNegB:'How to restore it',
+    posNeg:'Location is blocked for Co-Driver and your phone will not ask again. Here is how to restore it:',
+    posNegB:'Got it',
+    posDentroT:'You\'re using Co-Driver inside another app (Instagram or Telegram): from here your phone often can\'t share its location.',
+    posDentroIosL:['tap the <b>···</b> menu at the top (or the Share button)',
+                   'choose the option that opens the link in your browser (usually "Open in Safari")',
+                   'when it reopens, tap "Allow" on the location question'],
+    posDentroAndroidL:['tap the <b>⋮</b> menu at the top',
+                       'choose the option that opens the link in Chrome (or "Open in browser")',
+                       'when it reopens, tap "Allow only while using the app"'],
+    posNegIosL:['Settings → Privacy & Security → Location Services: must be on, and further down <b>Safari</b> set to "While Using the App"',
+               'If that\'s already right: the Home screen icon has its own permissions, separate from Safari, and it doesn\'t show up in that list. Fix it by removing the icon and adding it again (careful: that deletes your downloaded maps)',
+               'Once it\'s back: tap "I have read and accept", then <b>Allow</b> on the location question'],
+    posNegAndroidL:['Turn Location on (pull down from the top, Location icon)',
+                    'Settings → Apps → Chrome → Permissions → Location → <b>Allow only while using the app</b>, with "Use precise location" on',
+                    'Then reopen Co-Driver'],
     gpsTastoChiedi:'Ask for location permission',
     gpsTastoRiprova:'Permission is denied: what can I do',
     gpsTastoOk:'Permission is already there: lock on again',
@@ -3752,6 +3790,7 @@ const T = {
     gpsEsitoChiesto:'Done: if the question appears, tap Allow.',
     gpsEsitoGranted:'Permission was already granted. If the position still doesn\'t arrive, it isn\'t a permissions problem: read further down.',
     gpsAndroid:'Location not allowed. On Android: 1) turn Location on (pull down from the top, Location icon); 2) Settings → Apps → Chrome → Permissions → Location → Allow only while using the app, with "Use precise location" on; 3) open codriver.pages.dev in Chrome, tap the icon left of the address → Permissions → Location → Allow. This also covers the app on your Home screen. Then reopen the app.',
+    gpsDentroApp:'You\'re inside Instagram or Telegram: location often doesn\'t work here. Open this address in Safari (iPhone) or Chrome (Android), then try again.',
     onDevice:'maps on device', onDevice1:'map on device', freeSpace:'space available', delMap:'Delete',
     dlFail:'Download failed: ',
     hereDl:n=>'You are in '+n+': download the map from the Maps panel.',
@@ -3803,7 +3842,9 @@ const T = {
     audioTocca:'Tap the screen once to enable the voice: the phone will not start it on its own.',
     vocePausa:'Voice paused: tap the screen to turn it back on.',
     lezEntra: n => 'This route enters the '+n+' low emission zone (LEZ). If your car isn\'t allowed or registered, you may be fined.',
-    lezNomi: {bxl:'Brussels', anv:'Antwerp'},
+    lezNomi: {bxl:'Brussels', anv:'Antwerp', gnt:'Ghent'},
+    schermoNegato: 'Your phone won\'t keep the screen on: turn off Low Power Mode or Battery Saver. Tap here to try again.',
+    trafficoRotta: m => m > 0 ? 'Route changed for traffic: '+m+' min faster.' : 'Route changed: road closed ahead.',
     linkTit:'This link changes your garage',
     linkAltra:'It is another person\'s link: your garage would be replaced and your drives filed under their name.',
     linkNuova:'new', linkCambia:'changes', linkTecnici:'technical data change',
@@ -3881,8 +3922,21 @@ const T = {
     gpsPwa:'L\'autorisation de position manque. D\'ABORD regarde l\'iPhone : Réglages → Confidentialité et sécurité → Service de localisation doit être activé, et plus bas Safari sur «Lorsque l\'app est active». Seulement si c\'est déjà le cas il faut retirer et remettre l\'icône, et attention : cela efface les cartes téléchargées. Touche ici pour l\'Aide.',
     posPre:'Co-Driver a besoin de ta position pour annoncer les virages en conduisant. Le téléphone te la demandera dès que tu touches ici : choisis « Autoriser ».',
     posPreB:'Activer la position',
-    posNeg:'La position est bloquée pour Co-Driver et le téléphone ne la demande plus. Elle se rétablit dans les réglages : touche ici et je t\'explique.',
-    posNegB:'Comment la rétablir',
+    posNeg:'La position est bloquée pour Co-Driver et le téléphone ne la demande plus. Voici comment la rétablir :',
+    posNegB:'J\'ai compris',
+    posDentroT:'Tu utilises Co-Driver dans une autre app (Instagram ou Telegram) : d\'ici, le téléphone ne donne souvent pas la position.',
+    posDentroIosL:['touche le menu <b>···</b> en haut (ou le bouton Partager)',
+                   'choisis l\'option qui ouvre le lien dans le navigateur (souvent « Ouvrir dans Safari »)',
+                   'à la réouverture, touche « Autoriser » à la question sur la position'],
+    posDentroAndroidL:['touche le menu <b>⋮</b> en haut',
+                       'choisis l\'option qui ouvre le lien dans Chrome (ou « Ouvrir dans le navigateur »)',
+                       'à la réouverture, touche « Autoriser uniquement lors de l\'utilisation »'],
+    posNegIosL:['Réglages → Confidentialité et sécurité → Service de localisation : doit être activé, et plus bas <b>Safari</b> sur « Lorsque l\'app est active »',
+               'Si c\'est déjà bon : l\'icône de l\'écran d\'accueil a ses propres autorisations, séparées de Safari, et n\'apparaît pas dans cette liste. Il faut retirer l\'icône et la remettre (attention : ça efface les cartes téléchargées)',
+               'Une fois remise : touche « J\'ai lu et j\'accepte », puis <b>Autoriser</b> à la question sur la position'],
+    posNegAndroidL:['Active la Localisation (volet du haut, icône Position)',
+                    'Réglages → Applications → Chrome → Autorisations → Position → <b>Autoriser uniquement lors de l\'utilisation</b>, avec « Position précise » activée',
+                    'Puis rouvre Co-Driver'],
     gpsTastoChiedi:'Demander l\'autorisation de position',
     gpsTastoRiprova:'L\'autorisation est refusée : que faire',
     gpsTastoOk:'L\'autorisation est déjà là : se raccrocher',
@@ -3890,6 +3944,7 @@ const T = {
     gpsEsitoChiesto:'C\'est fait : si la question apparaît, touche Autoriser.',
     gpsEsitoGranted:'L\'autorisation était déjà donnée. Si la position n\'arrive quand même pas, ce n\'est pas un problème d\'autorisation : lis plus bas.',
     gpsAndroid:'Position non autorisée. Sur Android : 1) active la Localisation (volet du haut, icône Position) ; 2) Paramètres → Applications → Chrome → Autorisations → Position → Autoriser seulement si l\'appli est en cours d\'utilisation, avec « Utiliser la position exacte » activé ; 3) ouvre codriver.pages.dev dans Chrome, touche l\'icône à gauche de l\'adresse → Autorisations → Position → Autoriser. Cela vaut aussi pour l\'appli sur l\'écran d\'accueil. Puis rouvre l\'appli.',
+    gpsDentroApp:'Tu es dans Instagram ou Telegram : la position ne passe souvent pas ici. Ouvre cette adresse dans Safari (iPhone) ou Chrome (Android), puis réessaie.',
     onDevice:'cartes sur le téléphone', onDevice1:'carte sur le téléphone', freeSpace:'espace disponible', delMap:'Supprimer',
     dlFail:'Échec du téléchargement : ',
     hereDl:n=>'Tu es à '+n+' : télécharge la carte depuis le panneau Cartes.',
@@ -3941,7 +3996,9 @@ const T = {
     audioTocca:'Touche l\'écran une fois pour activer la voix : le téléphone ne la démarre pas tout seul.',
     vocePausa:'Voix en pause : touche l\'écran pour la réactiver.',
     lezEntra: n => 'Cet itinéraire entre dans la zone de basses émissions (LEZ) '+n+'. Si ta voiture n\'est pas autorisée ou enregistrée, tu risques une amende.',
-    lezNomi: {bxl:'de Bruxelles', anv:'d\'Anvers'},
+    lezNomi: {bxl:'de Bruxelles', anv:'d\'Anvers', gnt:'de Gand'},
+    schermoNegato: 'Le téléphone ne garde pas l\'écran allumé : désactive le mode Économie d\'énergie. Touche ici pour réessayer.',
+    trafficoRotta: m => m > 0 ? 'Itinéraire modifié à cause du trafic : '+m+' min de moins.' : 'Itinéraire modifié : route fermée plus loin.',
     linkTit:'Ce lien change ton garage',
     linkAltra:'C\'est le lien d\'une autre personne : ton garage serait remplacé et tes trajets iraient à son nom.',
     linkNuova:'en plus', linkCambia:'change', linkTecnici:'les données techniques changent',
@@ -4078,10 +4135,12 @@ if(autoDalLink || profiloDalLink) save();
   var PRECISIONE_MAX_M = 50;
   var TIPI_ANOMALIA = ['voce-interrotta', 'dati-ko', 'gps-perso',
                        'sidecar-scartato', 'ripresa-a-freddo', 'voce-ripresa',
-                       'gps-negato', 'voce-sveglia-negata', 'link-file-diverso'];
+                       'gps-negato', 'voce-sveglia-negata', 'link-file-diverso',
+                       'schermo-negato', 'aggiornata'];
   var CODA = 'codriver-bb-coda-v1';
   var trasporto = null;
   var testerId = '?';
+  var telemetriaFn = null;
   var svuotando = null;
 
   var giro = null;
@@ -4164,6 +4223,10 @@ if(autoDalLink || profiloDalLink) save();
   }
 
   var BB = {
+
+    telemetria: function (fn) {
+      telemetriaFn = fn;
+    },
 
     configura: function (o) {
       o = o || {};
@@ -4266,9 +4329,12 @@ if(autoDalLink || profiloDalLink) save();
       giro = null; ultima = null;
       if (vuoto) return;
 
+      var tele = null;
+      try { if (telemetriaFn) tele = telemetriaFn(); } catch (e) { tele = null; }
+
       var c = leggiCoda();
       c.seq = (c.seq || 0) + 1;
-      var r = BB.rapportoGiro(chiuso);
+      var r = BB.rapportoGiro(chiuso, tele);
       if (r) {
         r.seq = c.seq;
         c.q.push({ id: Math.random().toString(36).slice(2, 10), seq: c.seq,
@@ -4278,11 +4344,11 @@ if(autoDalLink || profiloDalLink) save();
       }
     },
 
-    rapportoGiro: function (g) {
+    rapportoGiro: function (g, tele) {
       if (!g) return null;
       var an = [];
       for (var k in g.an) an.push(k.replace(/-/g, '_') + ':' + g.an[k]);
-      return {
+      var r = {
         v: 1,
         tester: testerId,
         build: g.build || '?',
@@ -4297,6 +4363,13 @@ if(autoDalLink || profiloDalLink) save();
         veicolo: (g.veic && g.veic.length) ? g.veic.join(' > ') : '?',
         regione: g.reg || '?'
       };
+      if (tele && typeof tele === 'object') {
+        r.tele_sotto = tele.sotto;
+        r.tele_linea = tele.linea;
+        r.tele_sopra = tele.sopra;
+        r.tele_curve = tele.curve;
+      }
+      return r;
     },
 
     rapporto: function (tester, seq) {
@@ -4461,6 +4534,7 @@ function spedisciRapporto(tester, json){
 const SN_INVIO = true;
 window.SN.configura({tester: TESTER || '?',
                      spedisci: SN_INVIO ? spedisciRapporto : null});
+window.SN.telemetria(teleFineGiro);
 
 function anomaliaDi(msg){
   const segni = [
@@ -4480,6 +4554,11 @@ function snAvvia(){
                    regione: regioneAttiva()});
   try{ if(localStorage.getItem('copilota-datiko-avvio')){
     localStorage.removeItem('copilota-datiko-avvio'); window.SN.anomalia('dati-ko') } }catch(e){}
+  try{
+    const prima = localStorage.getItem('copilota-build-giro');
+    if(prima && prima !== APPVER) window.SN.anomalia('aggiornata');
+    localStorage.setItem('copilota-build-giro', APPVER);
+  }catch(e){}
   try{ if(localStorage.getItem(LINK_FILE_DIVERSO)){
     localStorage.removeItem(LINK_FILE_DIVERSO); window.SN.anomalia('link-file-diverso') } }catch(e){}
   window.SN.voce(!!S.audio);
@@ -6107,7 +6186,48 @@ function curvaSpezzata(prec, e, dir, c, dist){
   const svolta = angDiff(entrata, uscita);
   return (destra ? -svolta : svolta) >= -SPEZZATA_CONTRO;
 }
+const TELE_FASCIA = 0.15;
+const TELE_TICK_MIN = 2;
+const TELE_SOGLIA_CURVE = 10;
+let TELE = {sotto:0, linea:0, sopra:0, curve:0};
+let teleTick = new Map();
+function teleReset(){ TELE = {sotto:0, linea:0, sopra:0, curve:0}; teleTick.clear(); }
+function teleAggiorna(insidePrima){
+  const insideOra = new Set(S.ahead.filter(z => z.inside === true).map(z => z.key));
+  for(const u of insidePrima){
+    if(insideOra.has(u.key)){
+      teleTick.set(u.key, (teleTick.get(u.key) || 0) + 1);
+      continue;
+    }
+    const tick = teleTick.get(u.key) || 0;
+    teleTick.delete(u.key);
+    if(tick < TELE_TICK_MIN) continue;
+    const consigliata = curveKmh(u.c.r, u.e, u.dir, u.c.d0);
+    if(!Number.isFinite(consigliata) || consigliata <= 0) continue;
+    const fatta = S.v*3.6;
+    const delta = (fatta - consigliata) / consigliata;
+    TELE.curve++;
+    if(delta < -TELE_FASCIA) TELE.sotto++;
+    else if(delta > TELE_FASCIA) TELE.sopra++;
+    else TELE.linea++;
+  }
+  for(const z of S.ahead) if(z.inside === true && !teleTick.has(z.key)) teleTick.set(z.key, 1);
+}
+function teleFineGiro(){
+  const ultimo = TELE;
+  teleReset();
+  if(ultimo.curve < TELE_SOGLIA_CURVE) return null;
+  const oggetto = {
+    sotto: Math.round(ultimo.sotto / ultimo.curve * 100),
+    linea: Math.round(ultimo.linea / ultimo.curve * 100),
+    sopra: Math.round(ultimo.sopra / ultimo.curve * 100),
+    curve: ultimo.curve
+  };
+  try{ localStorage.setItem('copilota-tele-ultimo', JSON.stringify(oggetto)); }catch(e){}
+  return oggetto;
+}
 function buildAhead(){
+  const insidePrima = S.ahead.filter(u => u.inside === true);
   S.ahead=[]; S.aheadSegs=[]; S.aheadCams=[]; S.aheadRot=null; S.aheadSvolte=new Set(); S.aheadStop=[];
   const sn=S.snap; if(!sn){ S.pend=0; S.quota=null; return }
   const HORIZON = Math.max(420, Math.min(1100, S.v*11 + 260));
@@ -6222,6 +6342,7 @@ function buildAhead(){
         (S.stopMuti || (S.stopMuti = new Set())).add(a.key);
   }
   if(S.stopMuti && S.stopMuti.size > 200){ let n=100; for(const k of S.stopMuti){ if(n--<=0) break; S.stopMuti.delete(k) } }
+  teleAggiorna(insidePrima);
 }
 
 const DRITTO_VISTA = 2500;
@@ -6615,6 +6736,7 @@ function clipDistDetta(m, prima, conMetri){
   return k;
 }
 function catenaNota(){
+  const POI_LEGA_M = 120, POI_LEGA_TORNANTE_M = 160;
   const cand = S.ahead.filter(z => !z.inside && !S.said.has(z.key)
                                 && !piatta(z) && !mutoQui(z) && !troppoAmpia(z) && !sottoSoglia(z));
   const a=cand[0]; if(!a) return null;
@@ -6622,7 +6744,8 @@ function catenaNota(){
   for(let n=1; n<max; n++){
     const b=cand[n], prev=el[el.length-1];
     if(!b || piatta(b) || mutoQui(b) || troppoAmpia(b) || sottoSoglia(b)) break;
-    if(b.dist - prev.dist > Math.max(45, S.v*3.2)) break;
+    const soglia = ((a.c && a.c.c === 0) || (b.c && b.c.c === 0)) ? POI_LEGA_TORNANTE_M : POI_LEGA_M;
+    if(b.dist - prev.dist > Math.max(soglia, S.v*3.2)) break;
     el.push(b);
   }
   return el;
@@ -6632,8 +6755,9 @@ function chiaviNota(el){
   if(S.pace){ const dk=clipDistDetta(el[0].dist, 0, true); if(dk) ch=metriDi(dk).concat(ch) }
   for(let n=1;n<el.length;n++){
     const dritto = el[n].dist - (el[n-1].dist + el[n-1].len);
-    const legame = S.pace ? (clipDist(dritto) || 'k.poi') : 'k.poi';
-    ch = ch.concat([legame], chiaviCurva(el[n], false));
+    const dk = !S.pace ? clipDist(dritto) : null;
+    const legame = S.pace ? [clipDist(dritto) || 'k.poi'] : (dk ? ['k.poi', dk] : ['k.poi']);
+    ch = ch.concat(legame, chiaviCurva(el[n], false));
   }
   return ch;
 }
@@ -7034,6 +7158,7 @@ function destRicordata(){
 const LEZ = {
   bxl: [[[4.24377,50.81958],[4.24438,50.81954],[4.24492,50.81779],[4.2468,50.81764],[4.24652,50.81908],[4.24978,50.81946],[4.2513,50.81727],[4.25617,50.81747],[4.2617,50.81577],[4.26212,50.81582],[4.2631,50.81682],[4.26467,50.81763],[4.27157,50.8197],[4.27741,50.82175],[4.27863,50.82243],[4.2792,50.8233],[4.27995,50.82776],[4.28247,50.83785],[4.27765,50.83785],[4.27516,50.83893],[4.27431,50.83859],[4.27323,50.83868],[4.273,50.83801],[4.27188,50.83706],[4.2719,50.83616],[4.26896,50.8363],[4.26765,50.83619],[4.26453,50.8358],[4.26444,50.83553],[4.26356,50.83557],[4.26348,50.83534],[4.26267,50.83544],[4.26188,50.83518],[4.26028,50.8354],[4.25877,50.83599],[4.25717,50.83535],[4.25681,50.83422],[4.25542,50.83288],[4.25523,50.83155],[4.25578,50.83061],[4.2565,50.82983],[4.25668,50.82911],[4.25654,50.82889],[4.25551,50.82845],[4.25431,50.82629],[4.25316,50.82515],[4.25118,50.82422],[4.25084,50.82438],[4.24701,50.82153],[4.24377,50.81958]],[[4.25939,50.81293],[4.25987,50.81126],[4.26007,50.81107],[4.26128,50.81123],[4.26188,50.81119],[4.26178,50.81105],[4.26217,50.8111],[4.26287,50.8115],[4.26415,50.81153],[4.26564,50.81182],[4.26626,50.81152],[4.26744,50.81156],[4.26808,50.81173],[4.26815,50.81202],[4.27299,50.81215],[4.27491,50.81153],[4.2759,50.81074],[4.27603,50.81039],[4.27648,50.81003],[4.27627,50.80973],[4.27704,50.80824],[4.27819,50.80828],[4.27892,50.80806],[4.27925,50.80762],[4.27955,50.80768],[4.27968,50.80755],[4.28101,50.80761],[4.28277,50.80714],[4.28357,50.80734],[4.28365,50.80708],[4.28382,50.80707],[4.28547,50.80754],[4.28649,50.8083],[4.28851,50.80845],[4.28891,50.80851],[4.28895,50.80865],[4.28918,50.81313],[4.28663,50.8156],[4.28514,50.81606],[4.28113,50.81648],[4.27962,50.81705],[4.27421,50.81569],[4.26314,50.81477],[4.262,50.81504],[4.26141,50.81458],[4.25966,50.8139],[4.25996,50.81298],[4.25939,50.81293]],[[4.2647,50.81736],[4.26487,50.81731],[4.26553,50.8164],[4.26553,50.81596],[4.26527,50.81572],[4.26566,50.81566],[4.26584,50.81531],[4.27383,50.81591],[4.27984,50.81734],[4.2803,50.81698],[4.28121,50.81668],[4.28522,50.81624],[4.28663,50.81585],[4.28594,50.81701],[4.28244,50.82025],[4.28165,50.82075],[4.28064,50.82096],[4.2777,50.82085],[4.27608,50.82059],[4.2716,50.81945],[4.27123,50.81923],[4.27083,50.81924],[4.2647,50.81736]],[[4.27919,50.86476],[4.28037,50.86225],[4.28033,50.86149],[4.28078,50.86146],[4.28066,50.86046],[4.28034,50.85991],[4.28199,50.85931],[4.28265,50.85969],[4.28389,50.85925],[4.28345,50.8588],[4.28424,50.8585],[4.28401,50.85831],[4.28697,50.85747],[4.28703,50.8576],[4.28753,50.85691],[4.28838,50.85757],[4.28936,50.85662],[4.28984,50.85587],[4.28661,50.85463],[4.28472,50.85444],[4.28373,50.85404],[4.28322,50.85363],[4.28327,50.85341],[4.28629,50.85158],[4.2879,50.84893],[4.28853,50.84823],[4.28714,50.84769],[4.28385,50.84777],[4.28343,50.84705],[4.28464,50.84646],[4.28458,50.84571],[4.28429,50.8454],[4.28461,50.84534],[4.2847,50.84495],[4.28453,50.84385],[4.28362,50.8438],[4.28379,50.84194],[4.28331,50.84183],[4.28372,50.84066],[4.28057,50.82756],[4.28047,50.82614],[4.28059,50.82541],[4.28091,50.82409],[4.28139,50.82305],[4.28183,50.82248],[4.28286,50.82217],[4.28333,50.82182],[4.28383,50.82105],[4.28421,50.81992],[4.28467,50.81928],[4.28719,50.81691],[4.28752,50.81673],[4.28808,50.81697],[4.28828,50.81678],[4.28846,50.81686],[4.29089,50.81619],[4.2902,50.81507],[4.29028,50.81481],[4.29238,50.81339],[4.29797,50.8112],[4.29832,50.81166],[4.29928,50.81164],[4.29913,50.81215],[4.29986,50.81252],[4.29973,50.81274],[4.30004,50.81297],[4.3011,50.81276],[4.30167,50.81281],[4.30186,50.81305],[4.30555,50.81256],[4.30646,50.81195],[4.30322,50.80676],[4.30582,50.80378],[4.30585,50.80349],[4.30721,50.80174],[4.30748,50.80079],[4.30722,50.79996],[4.30836,50.79859],[4.31129,50.79793],[4.31571,50.79719],[4.31805,50.7959],[4.3185,50.79532],[4.31977,50.79425],[4.32031,50.79342],[4.32014,50.79318],[4.32036,50.79309],[4.31819,50.79105],[4.31821,50.79074],[4.31829,50.7906],[4.31876,50.79067],[4.31923,50.79011],[4.31911,50.78998],[4.31919,50.78976],[4.31893,50.78969],[4.31921,50.78943],[4.31917,50.7891],[4.31971,50.78875],[4.31964,50.78846],[4.31933,50.78837],[4.31942,50.78816],[4.31929,50.78799],[4.31954,50.78784],[4.31952,50.78769],[4.31913,50.78761],[4.31934,50.78688],[4.32024,50.78642],[4.3216,50.78392],[4.32187,50.78317],[4.32319,50.7824],[4.32494,50.7809],[4.32538,50.77997],[4.32674,50.77949],[4.32703,50.77908],[4.32785,50.77857],[4.32772,50.77837],[4.32927,50.77766],[4.33056,50.77738],[4.33339,50.77529],[4.33444,50.77514],[4.33508,50.77457],[4.33593,50.77524],[4.33924,50.77401],[4.34077,50.7736],[4.3418,50.7744],[4.34395,50.7751],[4.34404,50.77539],[4.34445,50.7753],[4.34474,50.77545],[4.34714,50.77549],[4.34752,50.77529],[4.3478,50.77478],[4.34881,50.7747],[4.34932,50.77447],[4.34991,50.77453],[4.353,50.77351],[4.35532,50.77357],[4.36183,50.77252],[4.36307,50.77338],[4.38107,50.76944],[4.38248,50.76953],[4.38308,50.7699],[4.39492,50.77439],[4.40631,50.77048],[4.43381,50.77851],[4.45321,50.78337],[4.45827,50.79101],[4.4581,50.79137],[4.46027,50.79403],[4.46253,50.79747],[4.46392,50.79971],[4.46434,50.80065],[4.46423,50.80091],[4.46333,50.8015],[4.43679,50.81261],[4.43471,50.81309],[4.43478,50.81352],[4.4367,50.8132],[4.44332,50.81042],[4.4459,50.80982],[4.44627,50.80952],[4.44617,50.80917],[4.44803,50.80844],[4.45026,50.80868],[4.45159,50.80833],[4.45283,50.8085],[4.45482,50.81009],[4.45518,50.81019],[4.45657,50.81004],[4.4576,50.8102],[4.45789,50.81043],[4.45784,50.81066],[4.45487,50.81049],[4.45287,50.80909],[4.45194,50.80893],[4.44953,50.80973],[4.44891,50.81018],[4.44781,50.81134],[4.45058,50.81314],[4.45175,50.81344],[4.45419,50.81505],[4.45522,50.81516],[4.45756,50.81633],[4.45536,50.81762],[4.45486,50.81816],[4.47286,50.81984],[4.47342,50.82063],[4.47361,50.82431],[4.46777,50.83261],[4.46546,50.83554],[4.46795,50.83769],[4.46773,50.83854],[4.46668,50.84004],[4.46704,50.84337],[4.46392,50.84503],[4.4626,50.84851],[4.46039,50.84845],[4.45943,50.84867],[4.45905,50.84894],[4.45875,50.84933],[4.45987,50.84969],[4.4591,50.85003],[4.45755,50.85036],[4.4577,50.85135],[4.45823,50.85205],[4.45839,50.85232],[4.45829,50.85241],[4.45492,50.85252],[4.4501,50.85316],[4.44837,50.85386],[4.44517,50.85553],[4.44614,50.85649],[4.44392,50.85749],[4.44233,50.85919],[4.43912,50.86045],[4.4377,50.85888],[4.43305,50.86058],[4.43418,50.8617],[4.42868,50.86304],[4.42663,50.86287],[4.42126,50.868],[4.42588,50.87206],[4.42572,50.87213],[4.4276,50.87504],[4.42881,50.87629],[4.42724,50.87698],[4.42735,50.87747],[4.43707,50.87878],[4.43523,50.8803],[4.43469,50.88117],[4.43064,50.88589],[4.42957,50.88653],[4.42975,50.88701],[4.42743,50.88923],[4.42713,50.88985],[4.42696,50.89066],[4.42932,50.8927],[4.42932,50.89288],[4.43184,50.89393],[4.43233,50.89436],[4.43248,50.89476],[4.43138,50.89509],[4.43114,50.89528],[4.43115,50.89566],[4.43097,50.89581],[4.429,50.89703],[4.42841,50.89733],[4.42676,50.89768],[4.42585,50.8984],[4.42398,50.89903],[4.42368,50.90119],[4.4224,50.90261],[4.42212,50.90317],[4.42111,50.9032],[4.42063,50.90357],[4.41815,50.90391],[4.41786,50.90422],[4.41757,50.90419],[4.41174,50.90713],[4.41081,50.90735],[4.40994,50.90777],[4.41294,50.91145],[4.41311,50.9118],[4.41294,50.91185],[4.40922,50.91264],[4.4061,50.91201],[4.40146,50.91148],[4.39671,50.91152],[4.39488,50.91019],[4.39461,50.91037],[4.39291,50.90996],[4.39,50.90998],[4.38926,50.91036],[4.389,50.91],[4.38852,50.91028],[4.38776,50.90994],[4.38704,50.90724],[4.38618,50.90576],[4.38297,50.90465],[4.38256,50.90403],[4.38328,50.90221],[4.38295,50.9018],[4.37922,50.9008],[4.37905,50.90037],[4.37792,50.89932],[4.3783,50.89854],[4.3781,50.89849],[4.37833,50.89785],[4.37822,50.89728],[4.37739,50.89699],[4.37632,50.89739],[4.37058,50.89882],[4.36387,50.90108],[4.35669,50.90129],[4.35173,50.90123],[4.348,50.90144],[4.3448,50.90215],[4.34211,50.9023],[4.34069,50.90218],[4.33277,50.90123],[4.33007,50.90057],[4.32411,50.8983],[4.32087,50.89541],[4.31948,50.89463],[4.31189,50.8925],[4.30971,50.89169],[4.30909,50.89107],[4.30906,50.89036],[4.31073,50.88743],[4.31217,50.88636],[4.31219,50.88614],[4.31198,50.88605],[4.31143,50.88599],[4.31085,50.88633],[4.30952,50.88885],[4.30837,50.88879],[4.30818,50.88918],[4.30781,50.88948],[4.3078,50.89008],[4.30872,50.8904],[4.3088,50.89115],[4.30916,50.89165],[4.30724,50.89096],[4.30578,50.89095],[4.30198,50.8904],[4.30116,50.89042],[4.30094,50.89056],[4.29407,50.88911],[4.29378,50.88894],[4.29394,50.88708],[4.29461,50.88613],[4.29528,50.8856],[4.29657,50.88498],[4.29705,50.88504],[4.29795,50.88337],[4.29818,50.88217],[4.29883,50.88044],[4.29885,50.87976],[4.29861,50.87965],[4.29821,50.87898],[4.29761,50.87861],[4.29569,50.87764],[4.29429,50.87713],[4.29457,50.87683],[4.29402,50.87642],[4.29366,50.87639],[4.2937,50.8762],[4.29305,50.87573],[4.2914,50.87529],[4.29204,50.87495],[4.29175,50.87454],[4.29148,50.87453],[4.29157,50.8744],[4.289,50.87346],[4.28863,50.87344],[4.28696,50.87159],[4.28694,50.87103],[4.28162,50.86746],[4.28032,50.86707],[4.27926,50.86571],[4.27926,50.86545],[4.27963,50.86516],[4.27919,50.86476]],[[4.28918,50.80852],[4.28989,50.80875],[4.2915,50.8089],[4.29187,50.80869],[4.29261,50.80863],[4.29305,50.80892],[4.29363,50.80845],[4.29357,50.80833],[4.29423,50.80819],[4.29446,50.80828],[4.2948,50.80881],[4.29584,50.80915],[4.29606,50.80945],[4.29582,50.80972],[4.29646,50.80973],[4.29642,50.80998],[4.29736,50.80982],[4.29736,50.81],[4.29768,50.81007],[4.29774,50.81033],[4.2979,50.81033],[4.29789,50.81057],[4.29737,50.81096],[4.29583,50.81157],[4.29043,50.8134],[4.28996,50.81343],[4.28963,50.81326],[4.28947,50.81279],[4.28918,50.80852]],[[4.30202,50.80404],[4.30229,50.80325],[4.303,50.80237],[4.30337,50.80216],[4.3039,50.8012],[4.30422,50.80058],[4.3043,50.80021],[4.30419,50.79999],[4.30451,50.79931],[4.30495,50.79875],[4.30542,50.79862],[4.30683,50.80021],[4.30698,50.80083],[4.30681,50.80154],[4.3031,50.80593],[4.30304,50.80535],[4.30202,50.80404]]],
   anv: [[[4.361,51.21899],[4.36123,51.21604],[4.36166,51.21491],[4.36209,51.21444],[4.36563,51.21195],[4.36953,51.20867],[4.36974,51.20777],[4.37462,51.20314],[4.37536,51.2034],[4.37596,51.2031],[4.3771,51.20207],[4.37865,51.20195],[4.38103,51.20218],[4.38624,51.20375],[4.38645,51.20362],[4.38557,51.20299],[4.3849,51.20197],[4.38613,51.20239],[4.38765,51.20255],[4.38934,51.20234],[4.3896,51.20213],[4.39001,51.2022],[4.39028,51.20106],[4.39019,51.2005],[4.39043,51.20046],[4.38997,51.19932],[4.39008,51.19898],[4.39059,51.19861],[4.39039,51.19804],[4.39601,51.19549],[4.39838,51.19416],[4.40111,51.19372],[4.40232,51.19463],[4.4026,51.19461],[4.40358,51.19425],[4.40584,51.19414],[4.40847,51.19282],[4.40909,51.19275],[4.41126,51.19338],[4.41255,51.19332],[4.41275,51.19256],[4.41319,51.19231],[4.41553,51.19213],[4.41797,51.19167],[4.42019,51.19161],[4.42237,51.19193],[4.42287,51.19215],[4.42271,51.19253],[4.42855,51.1951],[4.42947,51.19574],[4.43129,51.19748],[4.43363,51.19939],[4.43478,51.19803],[4.43757,51.20311],[4.43799,51.20338],[4.44031,51.20679],[4.44089,51.20827],[4.44117,51.20823],[4.44129,51.20865],[4.44311,51.20995],[4.44591,51.21246],[4.44604,51.21295],[4.44571,51.21341],[4.44587,51.21531],[4.44616,51.21529],[4.44638,51.2156],[4.44616,51.21708],[4.44628,51.21728],[4.44781,51.21845],[4.4493,51.21831],[4.45025,51.21996],[4.45032,51.22042],[4.45,51.22175],[4.44928,51.22313],[4.44769,51.22447],[4.4461,51.22615],[4.44589,51.22603],[4.44165,51.22838],[4.44119,51.2282],[4.44077,51.22848],[4.44103,51.22862],[4.44024,51.22909],[4.43997,51.22897],[4.43606,51.23137],[4.43277,51.23408],[4.43184,51.23504],[4.42877,51.23622],[4.42712,51.23736],[4.42633,51.23843],[4.42399,51.2393],[4.41941,51.24037],[4.41903,51.23998],[4.41887,51.23949],[4.41886,51.23707],[4.41861,51.23691],[4.40931,51.23701],[4.40922,51.23791],[4.40876,51.23795],[4.40875,51.23712],[4.40678,51.23693],[4.40671,51.23607],[4.40643,51.23533],[4.40575,51.23522],[4.40252,51.23535],[4.40244,51.2351],[4.39895,51.2352],[4.39056,51.23642],[4.38262,51.23674],[4.37932,51.23642],[4.37526,51.23567],[4.37272,51.23423],[4.37096,51.23297],[4.36947,51.23163],[4.36579,51.22781],[4.36314,51.22787],[4.36311,51.22756],[4.36287,51.22756],[4.36285,51.22729],[4.36547,51.22722],[4.36624,51.22043],[4.36593,51.22007],[4.36155,51.21984],[4.361,51.21899]],[[4.3724,51.20285],[4.37283,51.20257],[4.37369,51.20292],[4.3733,51.20328],[4.3724,51.20285]],[[4.40975,51.1925],[4.41217,51.19254],[4.4121,51.19275],[4.40975,51.1925]],[[4.41975,51.24404],[4.41976,51.24133],[4.42003,51.24091],[4.42074,51.24066],[4.42052,51.24418],[4.41975,51.24404]],[[4.42718,51.23811],[4.42785,51.23735],[4.42896,51.23658],[4.43248,51.23524],[4.43229,51.23606],[4.42718,51.23811]],[[4.43738,51.20037],[4.43827,51.20011],[4.43858,51.20049],[4.43763,51.2008],[4.43738,51.20037]],[[4.43909,51.20294],[4.44011,51.20294],[4.44047,51.20318],[4.43925,51.20317],[4.43909,51.20294]]],
+  gnt: [[[3.69312,51.05902],[3.69343,51.05748],[3.6956,51.05584],[3.6962,51.05615],[3.69829,51.05472],[3.69754,51.05435],[3.69986,51.0527],[3.70952,51.05664],[3.70939,51.05678],[3.70968,51.05711],[3.71013,51.05872],[3.71135,51.05942],[3.71164,51.05988],[3.71658,51.06378],[3.71684,51.06382],[3.71905,51.06531],[3.72197,51.06626],[3.72684,51.06747],[3.72668,51.06781],[3.72561,51.06775],[3.70452,51.06451],[3.70302,51.06411],[3.70214,51.06419],[3.70202,51.06466],[3.70093,51.06492],[3.69966,51.06611],[3.69935,51.06583],[3.69699,51.06479],[3.6956,51.06369],[3.69373,51.06126],[3.69317,51.05971],[3.69312,51.05902]],[[3.70005,51.05252],[3.70313,51.05015],[3.70409,51.04995],[3.7052,51.04942],[3.70673,51.04955],[3.70967,51.0486],[3.70967,51.04829],[3.71006,51.0479],[3.71137,51.04705],[3.71272,51.04653],[3.71412,51.0462],[3.71446,51.04569],[3.71459,51.04481],[3.71498,51.04436],[3.72566,51.03874],[3.73328,51.03851],[3.73575,51.03875],[3.73355,51.04237],[3.73223,51.04346],[3.73078,51.04592],[3.73076,51.04664],[3.73087,51.04665],[3.73094,51.04595],[3.73235,51.04362],[3.73363,51.04392],[3.73164,51.04728],[3.73176,51.04731],[3.73226,51.04658],[3.73618,51.04],[3.73703,51.03895],[3.73783,51.0394],[3.73816,51.04027],[3.73883,51.04126],[3.73955,51.04197],[3.73944,51.04215],[3.73974,51.04219],[3.74074,51.04332],[3.74386,51.04545],[3.74364,51.04559],[3.74372,51.04574],[3.74385,51.04583],[3.74407,51.0457],[3.74455,51.04605],[3.74536,51.04676],[3.74561,51.04723],[3.74547,51.04766],[3.74107,51.05151],[3.7407,51.0516],[3.74036,51.05211],[3.73603,51.06124],[3.73499,51.06192],[3.7337,51.06473],[3.73435,51.06486],[3.73304,51.06764],[3.72845,51.06761],[3.72021,51.06526],[3.72009,51.06504],[3.72059,51.06406],[3.72106,51.06402],[3.72153,51.06336],[3.72106,51.06331],[3.72036,51.06416],[3.71995,51.06501],[3.71915,51.06483],[3.71369,51.06091],[3.71319,51.06002],[3.71065,51.05851],[3.71022,51.05694],[3.70998,51.05669],[3.70005,51.05252]]],
 };
 let LEZ_XY = null;
 function dentroAnelli(A, x, y){
@@ -7067,7 +7192,7 @@ function avvisoLez(z){
   el.onclick = () => { el.hidden = true };
 }
 function fermaNav(msg){
-  avvisoLez(null);
+  avvisoLez(null); TR_ARCHI = null;
   S.nav=null; scordaDest(); document.body.classList.remove('navon');
   navEl.classList.remove('show'); S.need=true;
   if(msg) toast(msg,4500);
@@ -7098,6 +7223,7 @@ function avviaNav(x,y,nome){
   ricordaDest(x, y, S.nav.dest.n);
   toast(t0.navStart(S.nav.dest.n)+' · '+kmTxt(S.nav.tot), 6000);
   avvisoLez(lezDelPercorso(S.nav.archi));
+  TR_ARCHI = null; rottaColTraffico(true);
   tickNav();
 }
 function ricalcolaNav(){
@@ -7188,7 +7314,8 @@ function tickNav(){
   navVia.textContent = mn ? frase : t0.navTurn.arr + ' · ' + nv.dest.n;
   navKm.textContent = kmTxt(pr.restano);
   navMin.textContent = minTxt(tempoRestante(pr.fatto));
-  navTt.hidden = !(S.traffico && S.traffico.sn === nv.sn && Date.now() - S.traffico.t <= TRAFFICO_VECCHIO_MS);
+  navTt.hidden = !((S.traffico && S.traffico.sn === nv.sn && Date.now() - S.traffico.t <= TRAFFICO_VECCHIO_MS)
+                   || (nv.conTraffico && trafficoArchi()));
   disegnaNavIcona(mn ? mn.ang : 0);
 
   if(mv){
@@ -7263,6 +7390,122 @@ function puntiAvanti(nv, fatto){
   }
   return p.length >= 2 ? p : null;
 }
+const TR_CAMBIA_S = 60, TR_NUOVO_S = 180, TR_OGNI_MS = 5*60*1000, TR_VALE_MS = 10*60*1000;
+const TR_KM2 = 9500, TR_MARGINE_M = 3000, TR_AVANTI_M = 60000;
+let TR_ARCHI = null, trChiesto = {t: 0, via: false};
+function trafficoArchi(){
+  if(!TR_ARCHI || Date.now() - TR_ARCHI.t > TR_VALE_MS) return null;
+  return TR_ARCHI.m;
+}
+function agganciaLinea(p){
+  const cop = new Map(), PASSO = 20;
+  for(let i = 0; i+1 < p.length; i++){
+    const [xa, ya] = toXY(p[i][1], p[i][0]), [xb, yb] = toXY(p[i+1][1], p[i+1][0]);
+    const L = Math.hypot(xb-xa, yb-ya); if(L < 1) continue;
+    const hd = Math.atan2(yb-ya, xb-xa), n = Math.max(1, Math.round(L/PASSO));
+    for(let k = 0; k < n; k++){
+      const x = xa + (xb-xa)*(k+0.5)/n, y = ya + (yb-ya)*(k+0.5)/n;
+      let best = null;
+      for(const id of nearEdges(x, y, 25)){
+        const e = E[id], pr = projectOn(e, x, y);
+        if(pr.d > 15 || (best && pr.d >= best.d)) continue;
+        const sh = segHeading(e, pr.i), dv = Math.abs(angDiff(hd, sh)), db = Math.abs(angDiff(hd, sh+Math.PI));
+        if(Math.min(dv, db) > 0.5) continue;
+        const dir = dv <= db ? 1 : -1;
+        if(e.ow && dir !== e.ow) continue;
+        best = {k: id*2 + (dir>0 ? 0 : 1), d: pr.d};
+      }
+      if(best) cop.set(best.k, (cop.get(best.k)||0) + L/n);
+    }
+  }
+  return cop;
+}
+function agganciaIncidenti(inc){
+  const m = new Map();
+  for(const x of inc || []){
+    if(!x || !Array.isArray(x.p) || x.p.length < 2) continue;
+    const cop = agganciaLinea(x.p);
+    let tot = 0; for(const v of cop.values()) tot += v;
+    if(tot < 15) continue;
+    for(const [k, v] of cop){
+      if(v < 15) continue;
+      const add = x.tipo === 'chiusa' ? Infinity : (x.ritardo||0) * v / tot;
+      m.set(k, (m.get(k)||0) + add);
+    }
+  }
+  return m;
+}
+function riquadroViaggio(nv, fatto){
+  const g = nv.geo; if(!g || !g.np) return null;
+  const riq = lim => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const c0 = fatto*g.k, c1 = (fatto + lim)*g.k;
+    for(let i = 0; i < g.np; i++){
+      if(g.cum[i] < c0 && i < g.np-1) continue;
+      if(g.cum[i] > c1) break;
+      const x = g.xy[2*i], y = g.xy[2*i+1];
+      if(x<x0)x0=x; if(y<y0)y0=y; if(x>x1)x1=x; if(y>y1)y1=y;
+    }
+    if(!(x1 >= x0)) return null;
+    const m = TR_MARGINE_M + 0.1*Math.max(x1-x0, y1-y0);
+    const [lo0, la0] = toLL(x0-m, y0-m), [lo1, la1] = toLL(x1+m, y1+m);
+    const km2 = (x1-x0+2*m)*(y1-y0+2*m)/1e6;
+    return {b: [+la0.toFixed(5), +lo0.toFixed(5), +la1.toFixed(5), +lo1.toFixed(5)], km2};
+  };
+  let r = riq(Infinity);
+  if(r && r.km2 > TR_KM2) r = riq(TR_AVANTI_M);
+  return r && r.km2 <= TR_KM2 ? r.b : null;
+}
+function trafficoGiaNoto(nv, pos){
+  const T = trafficoArchi(); if(!T || !nv) return false;
+  for(let k = 0; k < nv.archi.length; k++){
+    const a = nv.archi[k];
+    if(pos >= nv.c0[k] && pos <= nv.c0[k] + a.e.len) return T.has(a.e.id*2 + (a.verso>0 ? 0 : 1));
+  }
+  return false;
+}
+function restanteConTraffico(nv, fatto, T){
+  let s = tempoTra(nv, fatto, nv.tot);
+  for(let k = 0; k < nv.archi.length; k++){
+    const a = nv.archi[k]; if(nv.c0[k] + a.e.len < fatto) continue;
+    s += T.get(a.e.id*2 + (a.verso>0 ? 0 : 1)) || 0;
+  }
+  return s;
+}
+async function rottaColTraffico(avvio){
+  const nv = S.nav;
+  if(!nv || !trafficoAcceso() || navigator.onLine === false || trChiesto.via) return;
+  const ora = Date.now();
+  if(!avvio && ora - trChiesto.t < TR_OGNI_MS) return;
+  const fatto = nv.fatto || 0, b = riquadroViaggio(nv, fatto); if(!b) return;
+  trChiesto.via = true; trChiesto.t = ora;
+  let j = null;
+  try{
+    const r = await fetch('https://codriver.pages.dev/traffico', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, cache: 'no-store',
+      body: JSON.stringify({d: TRAFFICO_DEV, b}),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(12000) : undefined});
+    j = r.ok ? await r.json().catch(() => null) : null;
+  }catch(e){}
+  finally{ trChiesto.via = false }
+  if(!j || !Array.isArray(j.inc) || !S.nav || S.nav.jA !== nv.jA) return;
+  TR_ARCHI = {t: Date.now(), m: agganciaIncidenti(j.inc)};
+  const T = TR_ARCHI.m, adesso = S.nav;
+  adesso.conTraffico = true;
+  if(!T.size) return;
+  const part = avvio ? giunzionePartenza(S.hd!=null) : giunzionePartenza(true); if(!part) return;
+  const da = part.e ? {id:part.e.id, wid:part.e.wid, pen:PEN_INVERSIONE,
+                       jDietro: part.verso>0 ? part.e.j0 : part.e.j1} : null;
+  const r = calcolaRotta(part.j, adesso.jA, undefined, da);
+  if(!r || !r.archi.length) return;
+  const vecchio = restanteConTraffico(adesso, adesso.fatto || 0, T);
+  if(!(r.secondi + TR_CAMBIA_S < vecchio)) return;
+  const guadagno = vecchio === Infinity ? 0 : Math.round((vecchio - r.secondi)/60);
+  installaRotta(part, r, adesso.dest, adesso.jA);
+  S.nav.conTraffico = true;
+  toast(tr().trafficoRotta(guadagno), 7000);
+  try{ nota('percorso cambiato per il traffico') }catch(e){}
+}
 async function chiediTraffico(nv, pr){
   if(!nv || !pr || !trafficoAcceso() || navigator.onLine === false) return;
   const U = S.trafficoChiesto || (S.trafficoChiesto = {t: 0, sn: 0, via: false});
@@ -7282,10 +7525,12 @@ async function chiediTraffico(nv, pr){
       if(r.status !== 429) U.t = ora - TRAFFICO_OGNI_MS + TRAFFICO_RIPROVA_MS;
       return;
     }
+    const nuovoPeso = j.eventi.some(e => (e.tipo === 'chiusa' || e.ritardo >= TR_NUOVO_S) && !trafficoGiaNoto(S.nav, base + e.s));
     S.traffico = {t: Date.now(), sn, eventi: j.eventi.map(e => ({
       id: e.tipo + ':' + Math.round((base + e.s) / 250), s: base + e.s,
       len: e.len, tipo: e.tipo, ritardo: e.ritardo})),
       tempo: j.tempo > 0 ? j.tempo : 0, da: base, a: fino};
+    if(nuovoPeso) rottaColTraffico(false);
   }catch(e){ U.t = ora - TRAFFICO_OGNI_MS + TRAFFICO_RIPROVA_MS }
   finally{ U.via = false }
 }
@@ -7502,7 +7747,19 @@ async function wakeOn(){
     S.wake.addEventListener('release', ()=>{
       if(S.mode==='follow' || S.mode==='demo') wakeOn();
     }, {once:true});
-  }catch(e){ nota('schermo sempre acceso negato: '+e.message) }
+    avvisoSchermo(false); schermoNegatoContato = false;
+  }catch(e){
+    nota('schermo sempre acceso negato: '+e.message);
+    avvisoSchermo(true);
+    if(!schermoNegatoContato){ schermoNegatoContato = true; try{ window.SN.anomalia('schermo-negato') }catch(e2){} }
+  }
+}
+let schermoNegatoContato = false;
+function avvisoSchermo(acceso){
+  const el = document.getElementById('avvisoSchermo'); if(!el) return;
+  if(acceso) el.textContent = tr().schermoNegato;
+  el.hidden = !acceso;
+  el.onclick = () => { el.hidden = true; wakeUltimo = 0; wakeOn() };
 }
 setInterval(()=>{ if(S.mode==='follow' || S.mode==='demo') wakeOn() }, 15000);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&S.mode!=='free')wakeOn() });
@@ -7583,6 +7840,7 @@ async function gpsWhy(){
        (E.length ? ' · mappa caricata' : ' · nessuna mappa caricata'));
   if(IN_FRAME) return tr().gpsFrame;
   if(!window.isSecureContext) return tr().gpsInsecure;
+  if(DENTRO_APP) return tr().gpsDentroApp;
   if(/Android/i.test(navigator.userAgent)) return tr().gpsAndroid;
   if(INSTALLATA) return tr().gpsPwa;
   try{
@@ -7674,12 +7932,26 @@ function contaNegato(){
 function mostraPosPop(negato){
   const pop = document.getElementById('posPop'); if(!pop) return;
   const t = document.getElementById('posPopT'), b = document.getElementById('posPopB');
-  t.textContent = negato ? tr().posNeg : tr().posPre;
+  const ol = document.getElementById('posPopL');
+  const android = /Android/i.test(navigator.userAgent);
+  if(!negato){
+    t.textContent = tr().posPre;
+    if(ol){ ol.hidden = true; ol.innerHTML = '' }
+  }else{
+    t.textContent = DENTRO_APP ? tr().posDentroT : tr().posNeg;
+    if(ol){
+      const passi = DENTRO_APP
+        ? (android ? tr().posDentroAndroidL : tr().posDentroIosL)
+        : (android ? tr().posNegAndroidL : tr().posNegIosL);
+      ol.innerHTML = '';
+      for(const riga of passi){ const li = document.createElement('li'); li.innerHTML = riga; ol.appendChild(li) }
+      ol.hidden = false;
+    }
+  }
   b.textContent = negato ? tr().posNegB : tr().posPreB;
   b.onclick = () => {
     pop.hidden = true;
-    if(negato) openSheet('aiuto');
-    else startGps();
+    if(!negato) startGps();
   };
   const x = document.getElementById('posPopX');
   if(x) x.onclick = () => { pop.hidden = true };
@@ -7720,6 +7992,7 @@ function startGps(){
   },err=>{
     if(err.code===1){
       contaAnomalia('gps-negato');
+      negatoContato = true;
       stopGps(); setMode('free'); S.gpsBuco=false;
       gpsWhy().then(m=>toast(m, 14000, () => openSheet('aiuto')));
       return;
@@ -7832,7 +8105,12 @@ b3d.onclick=()=>{
   save(); sync3dBtn(); S.need=true;
 };
 sync3dBtn();
-bGps.onclick=()=>{ accAvvia(); return S.mode==='follow'?setMode('free'):startGps() };
+bGps.onclick=()=>{
+  accAvvia();
+  if(S.mode==='follow') return setMode('free');
+  if(negatoContato){ mostraPosPop(true); return }
+  return startGps();
+};
 if(bDemo) bDemo.onclick=()=>S.mode==='demo'?setMode('free'):startDemo();
 function diciTastoVoce(){
   const t = S.audio ? tr().voceAccesa : tr().voceSpenta;
