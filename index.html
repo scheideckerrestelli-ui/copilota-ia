@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v331';
+  const VERSIONE = 'copilota-app-v332';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1156,7 +1156,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '331';
+const APPVER = '332';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -2275,6 +2275,125 @@ function dossoAvanti(e, v){
   return {dist, n, key: e.id+':'+o[i0]};
 }
 
+const PIEGA_DEG = 25, PIEGA_BORDO = 20, BANDE_R = [15, 30, 50, 85, 140, 250, 450];
+function correggiPieghe(curves, xy, np, cum, sc, len){
+  for(const c of curves){
+    if(c.c > 2 || c.d0 < PIEGA_BORDO || c.d1 > len - PIEGA_BORDO) continue;
+    const a = Math.max(0, c.d0 - 5), b = Math.min(len, c.d1 + 5);
+    let px = null, py = null, prec = null, tot = 0, i = 1;
+    for(let s = 0; s < 12; s++){
+      const d = (a + (b - a) * s / 11) / sc;
+      while(i < np - 1 && cum[i] < d) i++;
+      const t = cum[i] > cum[i-1] ? Math.min(1, Math.max(0, (d - cum[i-1]) / (cum[i] - cum[i-1]))) : 0;
+      const x = xy[2*i-2] + (xy[2*i] - xy[2*i-2]) * t, y = xy[2*i-1] + (xy[2*i+1] - xy[2*i-1]) * t;
+      if(px !== null && (x !== px || y !== py)){
+        const h = Math.atan2(y - py, x - px);
+        if(prec !== null){ let dh = h - prec; while(dh > Math.PI) dh -= 2*Math.PI; while(dh < -Math.PI) dh += 2*Math.PI; tot += dh }
+        prec = h;
+      }
+      px = x; py = y;
+    }
+    const ang = Math.abs(tot);
+    if(ang * 180 / Math.PI >= PIEGA_DEG) continue;
+    const req = Math.max(c.d1 - c.d0, 10) / Math.max(ang, 1e-3);
+    let cl = 0; while(cl < 6 && req >= BANDE_R[cl]) cl++;
+    if(cl <= c.c) continue;
+    c.c = cl; c.r = Math.round(Math.min(req, 999));
+  }
+}
+
+const CURATI = [
+  [291507474,46.540935,10.501834,'t'],
+  [291507474,46.541173,10.499854,'t'],
+  [291507474,46.538970,10.500412,'t'],
+  [767626959,46.532914,10.482563,'t'],
+  [767626959,46.533113,10.482701,'t'],
+  [767626960,46.533525,10.482970,'t'],
+  [767626960,46.531321,10.461220,'t'],
+  [767626960,46.530702,10.459425,'t'],
+  [767626960,46.532888,10.460860,'t'],
+  [767626960,46.531458,10.456110,'t'],
+  [901697065,46.543237,10.504930,'t'],
+  [315054357,46.484778,11.840597,3],
+  [892368886,46.489985,11.792360,'t'],
+  [767626960,46.531217,10.455873,'t'],
+  [892368886,46.484785,11.790120,'t'],
+  [297698422,46.488638,11.845143,3],
+  [315054357,46.484306,11.829408,'t'],
+  [315054357,46.483993,11.829326,'t'],
+  [397538969,46.494810,11.928868,'t'],
+  [441506871,46.492372,11.855038,'t'],
+  [130155197,46.535180,11.886840,'t'],
+  [159851611,46.542030,11.881207,'t'],
+  [352374161,46.510478,12.084217,3],
+  [253544665,46.522021,12.115192,3],
+  [314491250,46.519438,12.031163,'t'],
+  [352374176,46.520287,12.093136,2],
+  [397540296,46.489349,11.988739,4],
+  [397540296,46.489119,11.987880,'t'],
+  [397540296,46.488924,11.987794,'t'],
+  [948279842,46.487736,11.989078,'t'],
+  [318172390,46.399647,10.493939,'t'],
+  [767626960,46.531078,10.457254,'t'],
+  [767626960,46.531447,10.456097,'t'],
+  [767626960,46.532987,10.463860,'t'],
+  [767626960,46.533124,10.461234,'t'],
+  [767626960,46.533522,10.482957,'t'],
+  [68994239,46.376872,10.503740,'t'],
+  [1125227954,46.251912,10.539717,3],
+  [370372514,46.485928,10.366310,3],
+  [225237937,46.507580,10.366645,'t'],
+  [767626960,46.531480,10.458097,'t'],
+  [277504879,46.440164,10.448256,'t'],
+  [306204841,46.513663,10.402386,'t'],
+  [39405727,45.918624,10.391036,'t'],
+  [225237937,46.504501,10.360273,1],
+  [1263277948,45.854345,7.150650,'t'],
+  [171543979,45.826295,7.187676,'t'],
+  [171543979,45.825375,7.187960,'t'],
+  [1263277946,45.846950,7.167921,'t'],
+  [1263277946,45.842830,7.177160,'t'],
+  [35134949,44.674199,6.992038,'t'],
+  [903838992,44.654175,6.990459,'t'],
+  [903838989,44.683166,6.981204,'t'],
+  [93302858,45.460782,7.149331,'t'],
+  [301848226,45.463933,7.136540,'t'],
+  [598615516,45.453232,7.179886,'t']
+];
+const CURATI_M = 20;
+let CURATI_PER_VIA = null, CURATI_PRESI = 0, CURATI_PERSI = 0;
+function correggiCurati(curves, xy, np, cum, sc, wid){
+  if(!CURATI_PER_VIA){
+    CURATI_PER_VIA = new Map();
+    for(const k of CURATI){ if(!CURATI_PER_VIA.has(k[0])) CURATI_PER_VIA.set(k[0], []); CURATI_PER_VIA.get(k[0]).push(k) }
+  }
+  const qui = wid ? CURATI_PER_VIA.get(wid) : null;
+  if(!qui) return curves;
+  let togli = null;
+  for(const k of qui){
+    const [px, py] = toXY(k[2], k[1]);
+    let best = -1, bd = CURATI_M;
+    for(let j = 0; j < curves.length; j++){
+      const c = curves[j], d = (c.d0 + c.d1) / 2 / sc;
+      let i = 1; while(i < np - 1 && cum[i] < d) i++;
+      const t = cum[i] > cum[i-1] ? Math.min(1, Math.max(0, (d - cum[i-1]) / (cum[i] - cum[i-1]))) : 0;
+      const x = xy[2*i-2] + (xy[2*i] - xy[2*i-2]) * t, y = xy[2*i-1] + (xy[2*i+1] - xy[2*i-1]) * t;
+      const m = Math.hypot(x - px, y - py);
+      if(m <= bd){ bd = m; best = j }
+    }
+    if(best < 0) continue;
+    k.preso = true; CURATI_PRESI++;
+    if(k[3] === 't') (togli || (togli = new Set())).add(best);
+    else { const c = curves[best], n = k[3]; c.c = n; c.r = n === 0 ? 10 : n === 6 ? 350 : Math.round((BANDE_R[n-1] + BANDE_R[n]) / 2) }
+  }
+  return togli ? curves.filter((c, j) => !togli.has(j)) : curves;
+}
+function contaCuratiPersi(){
+  CURATI_PERSI = 0;
+  for(const k of CURATI) if(!k.preso && WOWN.has(k[0])) CURATI_PERSI++;
+  return CURATI_PERSI;
+}
+
 function buildEdges(rid, map){
   VIE[rid] = RAW.vie || [];
   RIF[rid] = (RAW.refs || []).map(normRif);
@@ -2318,6 +2437,8 @@ function buildEdges(rid, map){
       if(andamArr) for(let i=0;i<andamArr.length;i+=2){
         const c=curves[andamArr[i]]; if(c) c.st=andamArr[i+1];
       }
+      correggiPieghe(curves, xy, np, cum, sc, len);
+      curves = correggiCurati(curves, xy, np, cum, sc, Math.abs(wid||0));
     }
     const gj0=J(j0), gj1=J(j1);
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
@@ -6899,6 +7020,7 @@ const TRAFFICO_CODA_S = 120, TRAFFICO_LAVORI_S = 60;
 const TRAFFICO_LONTANO_M = 1000, TRAFFICO_VICINO_M = 300, TRAFFICO_VECCHIO_MS = 5*60*1000;
 function trafficoDaDire(ev){
   if(ev.tipo === 'chiusa' || ev.tipo === 'incidente' || ev.tipo === 'fermo') return true;
+  if(ev.tipo === 'ghiaccio' || ev.tipo === 'vento') return true;
   if(ev.tipo === 'coda')   return ev.ritardo >= TRAFFICO_CODA_S;
   if(ev.tipo === 'lavori') return ev.ritardo >= TRAFFICO_LAVORI_S;
   return false;
@@ -9052,6 +9174,7 @@ async function boot(){
 
   aggiornaVmax();
   buildDossi();
+  contaCuratiPersi();
   if(MAPPEVECCHIE.size){
     const nomi=[...MAPPEVECCHIE].map(id=>{const r=rById(id); return r?r.nm:id}).join(', ');
     setTimeout(()=>toast(L==='it'
