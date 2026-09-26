@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v336';
+  const VERSIONE = 'copilota-app-v337';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1168,7 +1168,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '336';
+const APPVER = '337';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -9747,8 +9747,12 @@ function primaScelta(){
   try{ openSheet('car') }catch(e){}
 }
 function cancelloChiuso(){
-  if(VISTA_PIENA || CARS.mio || pkNelLink || LINK_IN_ATTESA || linkRifiutato) return false;
-  try{ if(localStorage.getItem(TESTER_K) || localStorage.getItem(PK_K)) return false }catch(e){ return false }
+  if(VISTA_PIENA || CARS.mio || pkNelLink || LINK_IN_ATTESA || linkRifiutato || autoDalLink || testerDalLink) return false;
+  try{
+    if(localStorage.getItem(TESTER_K) || localStorage.getItem(PK_K) || localStorage.getItem(TERMINI_K)) return false;
+    const st = JSON.parse(localStorage.getItem('copilota2') || '{}');
+    if(st && st.car) return false;
+  }catch(e){ return false }
   return true;
 }
 function mostraCancello(){
