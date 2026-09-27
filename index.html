@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v339';
+  const VERSIONE = 'copilota-app-v340';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -170,6 +170,12 @@ if ('serviceWorker' in navigator) {
             stroke-linecap:round;stroke-linejoin:round}
   .rbtn.on{background:var(--accent);border-color:var(--accent);color:var(--suaccento)}
   .rbtn[disabled]{opacity:.35;cursor:default}
+
+  #bFineGiro{position:relative}
+  #bFineGiro.rc-rec::after{content:'';position:absolute;inset:-2px;border-radius:inherit;
+    border:2px solid #e0453c;pointer-events:none;animation:rcRecPulse 2.4s ease-in-out infinite}
+  @keyframes rcRecPulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @media (prefers-reduced-motion: reduce){#bFineGiro.rc-rec::after{animation:none}}
   .rbtn.armato{background:var(--accent);border-color:var(--accent);color:var(--suaccento)}
 
   .rail .rbtn:not(.on):not(.armato),.compass,.c3d:not(.on){background:var(--velo-tasti)}
@@ -402,6 +408,14 @@ if ('serviceWorker' in navigator) {
   .btn.ghost{background:none;border:1px solid var(--line);color:var(--ink)}
   .disc{margin-top:13px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
     font-size:11.5px;color:var(--ink2);line-height:1.5}
+
+  .discPiu{display:inline;margin-left:4px;padding:0;border:0;background:none;
+    color:var(--accent);font:inherit;font-weight:600;cursor:pointer}
+  .discPiu:active{opacity:.6}
+  .discFull{margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+    font-size:11.5px;color:var(--ink2);line-height:1.5}
+  .discFull>div{margin:0}
+  .discFull>div+div{margin-top:8px}
   .legend .lrow{display:flex;align-items:center;gap:9px;margin-top:5px;font-size:11.5px;
     font-variant-numeric:tabular-nums}
   .legend .sw{width:24px;height:5px;border-radius:3px;flex:none}
@@ -756,7 +770,7 @@ if ('serviceWorker' in navigator) {
     <svg viewBox="0 0 24 24"><path class="goccia" d="M12 3.2c-2.9 3.9-6 7.4-6 10.9a6 6 0 0 0 12 0c0-3.5-3.1-7-6-10.9z"></path></svg></button>
   <button class="rbtn" id="bCar" title="Il mio veicolo" aria-label="Il mio veicolo">
     <svg viewBox="0 0 24 24"><path d="M2.6 15.3v-1.9c0-.9.6-1.5 1.7-1.7l2.7-3.2c.5-.6 1.2-.9 2-.9h5.5c.8 0 1.5.3 2 .9l2.6 3.2c1.5.2 2.3.8 2.3 1.7v1.9"></path><path d="M4.3 11.7h15.1"></path><path d="M2.6 15.3h1.9M9.7 15.3h4.6M19.5 15.3h1.9"></path><circle cx="7.1" cy="15.3" r="2.3"></circle><circle cx="16.9" cy="15.3" r="2.3"></circle></svg></button>
-  <button class="rbtn" id="bFineGiro" title="Fine giro" aria-label="Fine giro" disabled>
+  <button class="rbtn" id="bFineGiro" title="Fine giro" aria-label="Fine giro">
     <svg viewBox="0 0 24 24"><path d="M5 3v18"></path><path d="M5 4h6l1.5 2H19l-2.5 3.5L19 12h-8l-1-1.5H5"></path></svg></button>
   <button class="rbtn" id="bGps" title="Segui GPS" aria-label="Segui GPS" hidden>
     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"></circle><circle cx="12" cy="12" r="7.5"></circle><path d="M12 1.5v3.2M12 19.3v3.2M1.5 12h3.2M19.3 12h3.2"></path></svg></button>
@@ -823,6 +837,19 @@ if ('serviceWorker' in navigator) {
   <ol class="instpop-l" id="instPopL"></ol>
 </div>
 
+<div class="instpop" id="rcScelta" hidden>
+  <button class="instpop-x" id="rcSceltaX" type="button" aria-label="Chiudi">&times;</button>
+  <p class="instpop-t">
+    <span data-lang="it">Giro in corso</span><span data-lang="en">Ride in progress</span><span data-lang="fr">Trajet en cours</span>
+  </p>
+  <div class="azioni2">
+    <button class="btn" id="rcSceltaChiudi" type="button">
+      <span data-lang="it">Chiudi giro</span><span data-lang="en">End ride</span><span data-lang="fr">Terminer le trajet</span></button>
+    <button class="btn ghost" id="rcSceltaRicomincia" type="button">
+      <span data-lang="it">Ricomincia da qui</span><span data-lang="en">Restart from here</span><span data-lang="fr">Recommencer d'ici</span></button>
+  </div>
+</div>
+
 <div class="sheet" id="sheetSet"><div class="inner">
   <div class="grip"></div>
   <div class="brand">
@@ -860,12 +887,30 @@ if ('serviceWorker' in navigator) {
     <span data-lang="it">Aiuto</span><span data-lang="en">Help</span><span data-lang="fr">Aide</span><i>›</i></button>
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
   <p class="ver-app" id="verApp"></p>
-  <p class="lic" data-lang="it">Dati mappa © collaboratori <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sotto licenza <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Anche curve, limiti, dossi, autovelox, sfondo e confini delle zone a basse emissioni (LEZ) ne sono elaborazioni e restano sotto la stessa licenza.</p>
-  <p class="lic" data-lang="it">Quote e pendenze: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italia: <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Curve nascoste da un dosso, in Valle d'Aosta: «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
-  <p class="lic" data-lang="en">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Corners, limits, bumps, speed cameras, background and low emission zone (LEZ) boundaries are derived from it and stay under the same licence.</p>
-  <p class="lic" data-lang="en">Elevation and gradients: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italy: <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Curves hidden by a crest, in the Aosta Valley: «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
-  <p class="lic" data-lang="fr">Données cartographiques © contributeurs <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>, sous licence <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Virages, limites, dos-d’âne, radars, fond de carte et limites des zones de basses émissions (LEZ) en sont dérivés et restent sous la même licence.</p>
-  <p class="lic" data-lang="fr">Altitudes et pentes : <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1 : NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · En Italie : <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">TINITALY 1.1</a>, Tarquini S., Isola I., Favalli M., Battistini A., Dotta G. (2023), INGV, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Virages cachés par une bosse, en Vallée d'Aoste : «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</p>
+  <!-- PULIZIA TESTI (27/09/2026): righe corte + "Altro", wording OSM/TINITALY verificato
+       da Legale (legale/righe-crediti-disclaimer.md). Formule fisse (© OpenStreetMap
+       contributors, ODbL 1.0, e la citazione TINITALY) restano verbatim in tutte e tre
+       le lingue, come richiesto dai titolari; cambia solo l'introduzione. -->
+  <div class="discGroup">
+    <p class="lic" data-lang="it">Dati mappa © OpenStreetMap contributors (ODbL 1.0). <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="it">Altro</span></span><span class="dpB" hidden><span data-lang="it">Meno</span></span></button></p>
+    <p class="lic" data-lang="en">Map data © OpenStreetMap contributors (ODbL 1.0). <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="en">More</span></span><span class="dpB" hidden><span data-lang="en">Less</span></span></button></p>
+    <p class="lic" data-lang="fr">Données cartographiques © OpenStreetMap contributors (ODbL 1.0). <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="fr">Plus</span></span><span class="dpB" hidden><span data-lang="fr">Moins</span></span></button></p>
+  </div>
+  <div class="discFull" hidden>
+    <div data-lang="it">Dati mappa © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, sotto licenza <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Anche curve, limiti, dossi, autovelox, sfondo e confini delle zone a basse emissioni (LEZ) ne sono elaborazioni e restano sotto la stessa licenza.</div>
+    <div data-lang="en">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, under the <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Corners, limits, bumps, speed cameras, background and low emission zone (LEZ) boundaries are derived from it and stay under the same licence.</div>
+    <div data-lang="fr">Données cartographiques © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, sous licence <a href="https://opendatacommons.org/licenses/odbl/1-0/" target="_blank" rel="noopener">ODbL 1.0</a>. Virages, limites, dos-d’âne, radars, fond de carte et limites des zones de basses émissions (LEZ) en sont dérivés et restent sous la même licence.</div>
+  </div>
+  <div class="discGroup">
+    <p class="lic" data-lang="it">Quote e pendenze da più fonti pubbliche (Terrain Tiles, USGS, NOAA, Copernicus, INGV, Regione Valle d'Aosta). <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="it">Altro</span></span><span class="dpB" hidden><span data-lang="it">Meno</span></span></button></p>
+    <p class="lic" data-lang="en">Elevation and gradients from several public sources (Terrain Tiles, USGS, NOAA, Copernicus, INGV, Aosta Valley region). <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="en">More</span></span><span class="dpB" hidden><span data-lang="en">Less</span></span></button></p>
+    <p class="lic" data-lang="fr">Altitudes et pentes issues de plusieurs sources publiques (Terrain Tiles, USGS, NOAA, Copernicus, INGV, région de la Vallée d'Aoste). <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="fr">Plus</span></span><span class="dpB" hidden><span data-lang="fr">Moins</span></span></button></p>
+  </div>
+  <div class="discFull" hidden>
+    <div data-lang="it">Quote e pendenze: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italia: Tarquini S., I. Isola, M. Favalli, A. Battistini, G. Dotta (2023). TINITALY, a digital elevation model of Italy with a 10 meters cell size (Version 1.1). Istituto Nazionale di Geofisica e Vulcanologia (INGV). <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">https://doi.org/10.13127/tinitaly/1.1</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Curve nascoste da un dosso, in Valle d'Aosta: «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</div>
+    <div data-lang="en">Elevation and gradients: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italy: Tarquini S., I. Isola, M. Favalli, A. Battistini, G. Dotta (2023). TINITALY, a digital elevation model of Italy with a 10 meters cell size (Version 1.1). Istituto Nazionale di Geofisica e Vulcanologia (INGV). <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">https://doi.org/10.13127/tinitaly/1.1</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Curves hidden by a crest, in the Aosta Valley: «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</div>
+    <div data-lang="fr">Altitudes et pentes : <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1 : NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · En Italie : Tarquini S., I. Isola, M. Favalli, A. Battistini, G. Dotta (2023). TINITALY, a digital elevation model of Italy with a 10 meters cell size (Version 1.1). Istituto Nazionale di Geofisica e Vulcanologia (INGV). <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">https://doi.org/10.13127/tinitaly/1.1</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Virages cachés par une bosse, en Vallée d'Aoste : «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</div>
+  </div>
 </div></div>
 
 <div class="sheet" id="sheetCar"><div class="inner">
@@ -946,44 +991,40 @@ if ('serviceWorker' in navigator) {
     <span data-lang="it">Avvisi autovelox</span>
     <span data-lang="en">Speed camera warnings</span><span data-lang="fr">Alertes radars</span></label>
   <p style="margin-top:6px;font-size:11.5px" id="camDesc"></p>
-  <div class="disc" data-lang="it">Dove sono leciti conviene tenerli accesi. Ma in <b>Germania</b>
-    la legge (§23 Abs. 1c StVO) vieta di <b>guidare</b> con un'app che segnala i controlli, e
-    l'illecito è avere la funzione attiva — non che una telecamera suoni: 75 € e un punto, anche
-    se è il passeggero a tenerla accesa. In <b>Francia</b> è vietata la posizione esatta, per
-    questo le mappe francesi non ne contengono nessuna. Spegnendo qui non si annuncia e non si
-    mostra più niente, in tutte le mappe.</div>
-  <div class="disc" data-lang="en">Keep them on where they are legal. But in <b>Germany</b> the law
-    (§23 Abs. 1c StVO) forbids <b>driving</b> with an app that signals speed controls, and the
-    offence is having the feature switched on — not a camera going off: €75 and one point, even if
-    a passenger is holding it. In <b>France</b> exact positions are forbidden, which is why the
-    French maps contain none. Switching this off stops every warning and every on-screen marker,
-    on all maps.</div>
-  <div class="disc" data-lang="fr">Garde-les actifs là où ils sont légaux. Mais en <b>Allemagne</b>
-    la loi (§23 Abs. 1c StVO) interdit de <b>conduire</b> avec une app qui signale les contrôles,
-    et l'infraction est d'avoir la fonction active — pas qu'un radar sonne : 75 € et un point,
-    même si c'est le passager qui la tient. En <b>France</b> la position exacte est interdite,
-    d'où l'absence totale de radars dans les cartes françaises. En éteignant ici, plus aucune
-    annonce ni aucun repère à l'écran, sur toutes les cartes.</div>
+  <div class="discGroup">
+    <p class="disc" data-lang="it">In Germania è vietato anche se l'app la usa il passeggero: la multa (75 €, un punto) la prende comunque chi guida. In Francia niente posizioni esatte, solo zone larghe. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="it">Altro</span></span><span class="dpB" hidden><span data-lang="it">Meno</span></span></button></p>
+    <p class="disc" data-lang="en">In Germany it's illegal even if a passenger uses the app: the fine (€75, one point) falls on the driver either way. In France no exact positions, only wide zones. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="en">More</span></span><span class="dpB" hidden><span data-lang="en">Less</span></span></button></p>
+    <p class="disc" data-lang="fr">En Allemagne c'est interdit même si c'est le passager qui utilise l'app : l'amende (75 €, un point) revient de toute façon au conducteur. En France, aucune position exacte, seulement des zones larges. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="fr">Plus</span></span><span class="dpB" hidden><span data-lang="fr">Moins</span></span></button></p>
+  </div>
+  <div class="discFull" hidden>
+    <div data-lang="it">In <b>Germania</b> la legge (§23 Abs. 1c StVO) vieta di <b>guidare</b> con un'app che segnala i controlli, e l'illecito è avere la funzione attiva — non che una telecamera suoni: 75 € e un punto, anche se è il passeggero a tenerla accesa. In <b>Francia</b> è vietata la posizione esatta: legali solo le zone di pericolo larghe (2 km in centro, 4-10 km fuori), mai il punto. Stesso spegnimento, e per lo stesso motivo, in <b>Svizzera</b> e <b>Austria</b>: lì è vietato anche solo avvisare. Spegnendo qui non si annuncia e non si mostra più niente, in tutte le mappe.</div>
+    <div data-lang="en">In <b>Germany</b> the law (§23 Abs. 1c StVO) forbids <b>driving</b> with an app that signals speed controls, and the offence is having the feature switched on — not a camera going off: €75 and one point, even if a passenger is holding it. In <b>France</b> exact positions are forbidden: only wide danger zones are legal (2 km in town, 4-10 km outside), never the exact point. Same switch-off, for the same reason, in <b>Switzerland</b> and <b>Austria</b>: there even a warning alone is forbidden. Switching this off stops every warning and every on-screen marker, on all maps.</div>
+    <div data-lang="fr">En <b>Allemagne</b> la loi (§23 Abs. 1c StVO) interdit de <b>conduire</b> avec une app qui signale les contrôles, et l'infraction est d'avoir la fonction active — pas qu'un radar sonne : 75 € et un point, même si c'est le passager qui la tient. En <b>France</b> la position exacte est interdite : seules les zones de danger larges sont légales (2 km en ville, 4-10 km hors agglomération), jamais le point exact. Même coupure, et pour la même raison, en <b>Suisse</b> et en <b>Autriche</b> : là, même un simple avertissement est interdit. En éteignant ici, plus aucune annonce ni aucun repère à l'écran, sur toutes les cartes.</div>
+  </div>
   <label class="opt"><input type="checkbox" id="trafficoChk">
     <span data-lang="it">Traffico dal vivo</span>
     <span data-lang="en">Live traffic</span><span data-lang="fr">Trafic en direct</span></label>
   <p style="margin-top:6px;font-size:11.5px" id="trafficoDesc"></p>
-  <div class="disc" data-lang="it">La velocità di riferimento è √(accelerazione laterale × raggio):
-    un valore <b>teorico</b>, che presume asfalto asciutto e pulito, gomme in ordine e strada
-    libera. Non tiene conto di pendenza, sopraelevazione, ghiaia, umido all'ombra né di chi arriva
-    in senso opposto — e su strada aperta sono quelli a decidere. Con <b>Race</b> i numeri
-    diventano da percorso chiuso: sulla provinciale trattali come il tetto assoluto, non come
-    obiettivo.</div>
-  <div class="disc" data-lang="en">The reference speed is √(lateral acceleration × radius): a
-    <b>theoretical</b> figure that assumes clean dry tarmac, good tyres and an empty road. It knows
-    nothing about gradient, camber, gravel, damp patches in the shade or oncoming traffic — and on
-    an open road those are what decide. With <b>Race</b> the numbers are closed-road
-    territory: on a public road treat them as the absolute ceiling, not a target.</div><div class="disc" data-lang="fr">La vitesse de référence est √(accélération latérale × rayon) :
-    une valeur <b>théorique</b>, qui suppose un asphalte sec et propre, des pneus en bon état et une
-    route dégagée. Elle ne tient compte ni de la pente, du dévers, du gravier, de l'humidité à
-    l'ombre, ni de ceux qui arrivent en sens inverse — et sur route ouverte, ce sont eux qui
-    décident. Avec <b>Race</b> les chiffres deviennent ceux d'un parcours fermé : sur route
-    ouverte, traite-les comme un plafond absolu, pas comme un objectif.</div>
+  <div class="discGroup">
+    <p class="disc" data-lang="it">Annuncia code e incidenti sul percorso impostato. Dati © TomTom. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="it">Altro</span></span><span class="dpB" hidden><span data-lang="it">Meno</span></span></button></p>
+    <p class="disc" data-lang="en">Announces queues and incidents on your set route. Data © TomTom. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="en">More</span></span><span class="dpB" hidden><span data-lang="en">Less</span></span></button></p>
+    <p class="disc" data-lang="fr">Annonce les bouchons et incidents sur l'itinéraire défini. Données © TomTom. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="fr">Plus</span></span><span class="dpB" hidden><span data-lang="fr">Moins</span></span></button></p>
+  </div>
+  <div class="discFull" hidden>
+    <div data-lang="it">Con un percorso impostato annuncia code, lavori, strade chiuse e incidenti davanti a te. Ogni 4 minuti manda i punti del percorso al nostro sito, che li chiede a TomTom. Dati di traffico © TomTom.</div>
+    <div data-lang="en">With a route set, announces queues, roadworks, closed roads and accidents ahead of you. Every 4 minutes it sends the route points to our website, which asks TomTom. Traffic data © TomTom.</div>
+    <div data-lang="fr">Avec un itinéraire défini, annonce bouchons, travaux, routes fermées et accidents devant toi. Toutes les 4 minutes, elle envoie les points de l'itinéraire à notre site, qui les demande à TomTom. Données de trafic © TomTom.</div>
+  </div>
+  <div class="discGroup">
+    <p class="disc" data-lang="it">Valore teorico su asfalto asciutto: non conta pendenza, umido o traffico. Con Race è un tetto, non un obiettivo. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="it">Altro</span></span><span class="dpB" hidden><span data-lang="it">Meno</span></span></button></p>
+    <p class="disc" data-lang="en">Theoretical value for dry tarmac: it doesn't account for gradient, wet roads or traffic. With Race, treat it as a ceiling, not a target. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="en">More</span></span><span class="dpB" hidden><span data-lang="en">Less</span></span></button></p>
+    <p class="disc" data-lang="fr">Valeur théorique sur asphalte sec : elle ne tient pas compte de la pente, de l'humidité ni du trafic. Avec Race, c'est un plafond, pas un objectif. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="fr">Plus</span></span><span class="dpB" hidden><span data-lang="fr">Moins</span></span></button></p>
+  </div>
+  <div class="discFull" hidden>
+    <div data-lang="it">La velocità di riferimento è √(accelerazione laterale × raggio): un valore <b>teorico</b>, che presume asfalto asciutto e pulito, gomme in ordine e strada libera. Non tiene conto di pendenza, sopraelevazione, ghiaia, umido all'ombra né di chi arriva in senso opposto — e su strada aperta sono quelli a decidere. Con <b>Race</b> i numeri diventano da percorso chiuso: sulla provinciale trattali come il tetto assoluto, non come obiettivo.</div>
+    <div data-lang="en">The reference speed is √(lateral acceleration × radius): a <b>theoretical</b> figure that assumes clean dry tarmac, good tyres and an empty road. It knows nothing about gradient, camber, gravel, damp patches in the shade or oncoming traffic — and on an open road those are what decide. With <b>Race</b> the numbers are closed-road territory: on a public road treat them as the absolute ceiling, not a target.</div>
+    <div data-lang="fr">La vitesse de référence est √(accélération latérale × rayon) : une valeur <b>théorique</b>, qui suppose un asphalte sec et propre, des pneus en bon état et une route dégagée. Elle ne tient compte ni de la pente, du dévers, du gravier, de l'humidité à l'ombre, ni de ceux qui arrivent en sens inverse — et sur route ouverte, ce sont eux qui décident. Avec <b>Race</b> les chiffres deviennent ceux d'un parcours fermé : sur route ouverte, traite-les comme un plafond absolu, pas comme un objectif.</div>
+  </div>
   <button class="btn" data-close><span data-lang="it">Fatto</span><span data-lang="en">Done</span><span data-lang="fr">Terminé</span></button>
 </div></div>
 
@@ -1202,20 +1243,16 @@ if ('serviceWorker' in navigator) {
   <h3><span data-lang="it">Dati</span><span data-lang="en">Data</span><span data-lang="fr">Données</span></h3>
   <p id="infoData" data-lang="it"></p>
   <p id="infoDataEn" data-lang="en"></p><p id="infoDataFr" data-lang="fr"></p>
-  <div class="disc" data-lang="it">Strumento informativo, non un dispositivo di sicurezza. Limiti di
-    velocità e postazioni di controllo sono <b>indicativi</b>, derivati da dati pubblici
-    (© OpenStreetMap contributors, ODbL) e possono essere errati o non aggiornati: fanno fede la
-    segnaletica stradale e il tachimetro del veicolo. <b>L'assenza di avvisi non garantisce
-    l'assenza di controlli.</b> Guarda la strada, non lo schermo: imposta tutto da fermo.</div>
-  <div class="disc" data-lang="en">An informational tool, not a safety device. Speed limits and
-    enforcement points are <b>indicative</b>, derived from public data (© OpenStreetMap
-    contributors, ODbL), and may be wrong or out of date: road signs and your own speedometer are
-    what count. <b>No warning does not mean no enforcement.</b> Watch the road, not the screen —
-    set everything up before moving.</div><div class="disc" data-lang="fr">Outil informatif, pas un dispositif de sécurité. Les limites de
-    vitesse et les radars sont <b>indicatifs</b>, tirés de données publiques
-    (© contributeurs OpenStreetMap, ODbL) et peuvent être erronés ou obsolètes : la signalisation
-    routière et ton propre compteur font foi. <b>L'absence d'alerte ne garantit pas
-    l'absence de contrôle.</b> Regarde la route, pas l'écran — règle tout à l'arrêt.</div>
+  <div class="discGroup">
+    <p class="disc" data-lang="it">Strumento informativo, non di sicurezza: dati indicativi, può sbagliare — guarda la strada. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="it">Altro</span></span><span class="dpB" hidden><span data-lang="it">Meno</span></span></button></p>
+    <p class="disc" data-lang="en">An informational tool, not a safety device: indicative data, may be wrong — watch the road. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="en">More</span></span><span class="dpB" hidden><span data-lang="en">Less</span></span></button></p>
+    <p class="disc" data-lang="fr">Outil informatif, pas un dispositif de sécurité : données indicatives, peut se tromper — regarde la route. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="fr">Plus</span></span><span class="dpB" hidden><span data-lang="fr">Moins</span></span></button></p>
+  </div>
+  <div class="discFull" hidden>
+    <div data-lang="it">Limiti di velocità e postazioni di controllo sono <b>indicativi</b>, derivati da dati pubblici (© OpenStreetMap contributors, ODbL) e possono essere errati o non aggiornati: fanno fede la segnaletica stradale e il tachimetro del veicolo. <b>L'assenza di avvisi non garantisce l'assenza di controlli.</b> Guarda la strada, non lo schermo: imposta tutto da fermo.</div>
+    <div data-lang="en">Speed limits and enforcement points are <b>indicative</b>, derived from public data (© OpenStreetMap contributors, ODbL), and may be wrong or out of date: road signs and your own speedometer are what count. <b>No warning does not mean no enforcement.</b> Watch the road, not the screen — set everything up before moving.</div>
+    <div data-lang="fr">Les limites de vitesse et les radars sont <b>indicatifs</b>, tirés de données publiques (© contributeurs OpenStreetMap, ODbL) et peuvent être erronés ou obsolètes : la signalisation routière et ton propre compteur font foi. <b>L'absence d'alerte ne garantit pas l'absence de contrôle.</b> Regarde la route, pas l'écran — règle tout à l'arrêt.</div>
+  </div>
   <button class="btn" id="bAiuto" type="button" style="background:none;border:1px solid var(--bordo2);color:var(--ink)"><span data-lang="it">Aiuto</span><span data-lang="en">Help</span><span data-lang="fr">Aide</span></button>
   <button class="btn" data-close><span data-lang="it">Si parte</span><span data-lang="en">Let's go</span><span data-lang="fr">C'est parti</span></button>
 </div></div>
@@ -1317,7 +1354,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '339';
+const APPVER = '340';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -9459,6 +9496,9 @@ const T = {
     rcDownloadAvviato:'Download avviato: controlla la cartella Download.',
     rcNomeVietato:'Meglio evitare quella parola qui: si usa il nome predefinito.',
     rcAvvisoPrimoGiro:'Registriamo il tuo giro sul telefono per la tua Road Card di fine corsa: resta solo qui e si cancella da sola. Disattivabile in Impostazioni.',
+    rcToccaAvvia:'Tocca ancora per avviare il giro',
+    rcGiroIniziato:'Giro iniziato: registro il percorso',
+    rcRicominciato:'Ricominciato da qui',
   },
   en: {
     search:'Search street, town, postcode…', fav:'favourite', rec:'recent search', kinds:['city','town','village','hamlet'],
@@ -9626,6 +9666,9 @@ const T = {
     rcDownloadAvviato:'Download started: check your Downloads folder.',
     rcNomeVietato:'Better avoid that word here: using the default name instead.',
     rcAvvisoPrimoGiro:'We\'re recording your ride on your phone for your end-of-ride Road Card: it stays here and deletes itself. You can turn it off in Settings.',
+    rcToccaAvvia:'Tap again to start the ride',
+    rcGiroIniziato:'Ride started: recording your route',
+    rcRicominciato:'Restarted from here',
   },
   fr: {
     search:'Cherche une rue, une ville, un code postal…', fav:'favori', rec:'recherche récente', kinds:['ville','commune','village','hameau'],
@@ -9793,6 +9836,9 @@ const T = {
     rcDownloadAvviato:'Téléchargement démarré : vérifie ton dossier Téléchargements.',
     rcNomeVietato:'Mieux vaut éviter ce mot ici : le nom par défaut est utilisé à la place.',
     rcAvvisoPrimoGiro:'Nous enregistrons ton trajet sur le téléphone pour ta Road Card de fin de course : il reste ici et s\'efface tout seul. Désactivable dans les Réglages.',
+    rcToccaAvvia:'Touche encore pour démarrer le trajet',
+    rcGiroIniziato:'Trajet démarré : j\'enregistre le parcours',
+    rcRicominciato:'Recommencé d\'ici',
   },
 };
 let L='it';
@@ -10302,6 +10348,7 @@ if(autoDalLink || profiloDalLink) save();
   var contaPuntiNuovi = 0;
   var ultimaScrittura = 0;
   var registrazioneAttiva = true;
+  var forzaApertura = false;
 
   function nuovoGiroRC(lat0, lon0) {
     return {
@@ -10447,7 +10494,8 @@ if(autoDalLink || profiloDalLink) save();
       if (!registrazioneAttiva) return;
       if (typeof lat !== 'number' || typeof lon !== 'number') return;
       if (!aperto) {
-        if (vMs == null || vMs < V_MIN_MS) return;
+        if (!forzaApertura && (vMs == null || vMs < V_MIN_MS)) return;
+        forzaApertura = false;
         aperto = nuovoGiroRC(lat, lon);
         ultimoPunto = null; ultimaQuotaPunto = null; contaPuntiNuovi = 0; ultimaScrittura = Date.now();
       }
@@ -10514,6 +10562,21 @@ if(autoDalLink || profiloDalLink) save();
     },
     annuncio: function () { if (aperto) aperto.ann++; },
     attivo: function () { return !!aperto; },
+
+    avviaManuale: function () { if (registrazioneAttiva && !aperto) forzaApertura = true; },
+
+    ricomincia: function () {
+      if (!aperto) return;
+      var lat0 = aperto.o[0], lon0 = aperto.o[1];
+      if (ultimoPunto) {
+        var kx = 111320 * Math.cos(lat0 * Math.PI / 180);
+        lat0 = aperto.o[0] + ultimoPunto[1] / KY_RC;
+        lon0 = aperto.o[1] + ultimoPunto[0] / kx;
+      }
+      aperto = nuovoGiroRC(lat0, lon0);
+      ultimoPunto = null; ultimaQuotaPunto = null; contaPuntiNuovi = 0; ultimaScrittura = Date.now();
+      try { globale.localStorage.removeItem(CHIAVE_APERTO); } catch (e) {}
+    },
 
     chiudi: function (motivo) {
       if (!aperto) return null;
@@ -10595,9 +10658,12 @@ if(autoDalLink || profiloDalLink) save();
 
     abilita: function (on) {
       registrazioneAttiva = !!on;
-      if (!registrazioneAttiva && aperto) {
-        aperto = null; ultimoPunto = null; ultimaQuotaPunto = null;
-        try { globale.localStorage.removeItem(CHIAVE_APERTO); } catch (e) {}
+      if (!registrazioneAttiva) {
+        forzaApertura = false;
+        if (aperto) {
+          aperto = null; ultimoPunto = null; ultimaQuotaPunto = null;
+          try { globale.localStorage.removeItem(CHIAVE_APERTO); } catch (e) {}
+        }
       }
     },
     stato: function () { return { attivo: registrazioneAttiva, giroAperto: !!aperto }; },
@@ -14204,30 +14270,38 @@ function rcFineGiro(motivo){
 var rcEraAttivo = false;
 function rcAggiornaTasto(){
   var attivo = !!(window.RC && window.RC.attivo());
-  if(attivo && !rcEraAttivo && !S.rcAvvisoVisto){
-    S.rcAvvisoVisto = true; save();
-    toast(tr().rcAvvisoPrimoGiro, 9000);
+  if(attivo && !rcEraAttivo){
+    if(!S.rcAvvisoVisto){
+      S.rcAvvisoVisto = true; save();
+      toast(tr().rcGiroIniziato, 3000);
+      setTimeout(function(){ toast(tr().rcAvvisoPrimoGiro, 9000); }, 3300);
+    }else{
+      toast(tr().rcGiroIniziato, 3000);
+    }
   }
   rcEraAttivo = attivo;
   var b = document.getElementById('bFineGiro');
-  if(!b) return;
-  b.disabled = !attivo;
-  if(!attivo){ b.classList.remove('armato'); rcArmato = false; }
+  if(b) b.classList.toggle('rc-rec', attivo);
 }
 var rcArmato = false, rcArmatoT = 0;
 function rcClickFineGiro(){
-  if(!window.RC || !window.RC.attivo()) return;
+  if(!window.RC) return;
+  var attivo = window.RC.attivo();
   var b = document.getElementById('bFineGiro');
   var ora = Date.now();
   if(rcArmato && (ora - rcArmatoT) < 4000){
     rcArmato = false;
     if(b) b.classList.remove('armato');
-    rcFineGiro('tasto');
+    if(attivo){
+      rcApriScelta();
+    }else{
+      try{ window.RC.avviaManuale(); }catch(e){}
+    }
     return;
   }
   rcArmato = true; rcArmatoT = ora;
   if(b) b.classList.add('armato');
-  toast(tr().rcTocca, 4000);
+  toast(attivo ? tr().rcTocca : tr().rcToccaAvvia, 4000);
   setTimeout(function(){
     if(rcArmato && (Date.now() - rcArmatoT) >= 3900){
       rcArmato = false;
@@ -14236,6 +14310,20 @@ function rcClickFineGiro(){
   }, 4000);
 }
 (function(){ var b = document.getElementById('bFineGiro'); if(b) b.onclick = rcClickFineGiro; })();
+function rcApriScelta(){ var el = document.getElementById('rcScelta'); if(el) el.hidden = false; }
+function rcChiudiScelta(){ var el = document.getElementById('rcScelta'); if(el) el.hidden = true; }
+(function(){
+  var x = document.getElementById('rcSceltaX'); if(x) x.onclick = rcChiudiScelta;
+  var bc = document.getElementById('rcSceltaChiudi');
+  if(bc) bc.onclick = function(){ rcChiudiScelta(); rcFineGiro('tasto'); };
+  var br = document.getElementById('rcSceltaRicomincia');
+  if(br) br.onclick = function(){
+    rcChiudiScelta();
+    try{ window.RC.ricomincia(); }catch(e){}
+    rcAggiornaTasto();
+    toast(tr().rcRicominciato, 3000);
+  };
+})();
 function rcControllaFermo(){
   if(!window.RC || !window.RC.attivo()) return;
   if(Date.now() - ultimoMoto > 5*60*1000) rcFineGiro('fermo');
@@ -14764,8 +14852,8 @@ function vetroEspandi(el){
   const r=el.getBoundingClientRect();
   el.style.setProperty('--ox',(vetroTocco.x-r.left)+'px');
   el.style.setProperty('--oy',(vetroTocco.y-r.top)+'px');
-  el.classList.remove('dalTasto'); void el.offsetWidth; el.classList.add('dalTasto');
-  el.addEventListener('animationend',()=>el.classList.remove('dalTasto'),{once:true});
+  if(el.classList.contains('dalTasto')){ el.classList.remove('dalTasto'); void el.offsetWidth }
+  el.classList.add('dalTasto');
 }
 bAudio.classList.toggle('on',S.audio);
 diciTastoVoce();
@@ -15336,6 +15424,20 @@ document.getElementById('aiutoLista').addEventListener('click', e => {
   box.hidden = !apri;
   cap.classList.toggle('aperto', apri);
   cap.setAttribute('aria-expanded', apri ? 'true' : 'false');
+});
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.discPiu');
+  if(!btn) return;
+  const gruppo = btn.closest('.discGroup');
+  const full = gruppo && gruppo.nextElementSibling;
+  if(!full || !full.classList.contains('discFull')) return;
+  const apri = full.hidden;
+  full.hidden = !apri;
+  gruppo.querySelectorAll('.discPiu').forEach(b => {
+    b.setAttribute('aria-expanded', apri ? 'true' : 'false');
+    b.querySelector('.dpA').hidden = apri;
+    b.querySelector('.dpB').hidden = !apri;
+  });
 });
 document.getElementById('bCoda').onclick=()=>{ try{ window.SN.svuota().then(mostraCoda) }catch(e){} };
 document.getElementById('bSet').onclick=()=>{
