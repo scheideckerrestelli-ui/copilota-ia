@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v340';
+  const VERSIONE = 'copilota-app-v341';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -445,7 +445,6 @@ if ('serviceWorker' in navigator) {
   .segn-b[data-cosa="polizia"]{color:#4c8dff}
   .segn-b[data-cosa="dosso"]{color:#f5c518}
   .segn-b[data-cosa="dissestata"]{color:#c98b3a}
-  .segn-b[data-cosa="altro"]{color:var(--ink2)}
   .solo-voce{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .segn-b:active{transform:scale(.97);filter:brightness(1.25)}
   .segn-b:disabled{opacity:.4;cursor:default}
@@ -1098,7 +1097,6 @@ if ('serviceWorker' in navigator) {
     <button class="segn-b" type="button" data-cosa="polizia" title="Polizia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5h8v7.5H6.5a2.5 2.5 0 0 1-2.5-2.5z" fill="#e04b4b"/><path d="M12 11.5h8v5a2.5 2.5 0 0 1-2.5 2.5H12z" fill="#4c8dff"/><path class="ic-buco" d="M11.2 11.5h1.6v7.5h-1.6z"/><path class="ic-linea" d="M2.5 21.5h19"/><path class="ic-linea" d="M6.5 4.5l2 2.6M17.5 4.5l-2 2.6M12 3v3"/></svg><span class="solo-voce" data-lang="it">Polizia</span><span class="solo-voce" data-lang="en">Police</span><span class="solo-voce" data-lang="fr">Police</span></button>
     <button class="segn-b" type="button" data-cosa="dosso" title="Dosso"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-tag" d="M2.5 17.5c0-5.5 4.2-8.5 9.5-8.5s9.5 3 9.5 8.5z"/><path class="ic-buco" d="M8.6 10.2l1.8.6-2.4 6.7H6.2zM13.4 10.1l1.8.8-2.7 6.6h-2z"/><path class="ic-linea" d="M1.5 20.5h21"/></svg><span class="solo-voce" data-lang="it">Dosso</span><span class="solo-voce" data-lang="en">Speed bump</span><span class="solo-voce" data-lang="fr">Dos-d’âne</span></button>
     <button class="segn-b" type="button" data-cosa="dissestata" title="Strada dissestata"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-tag" d="M3 21 8.1 4h7.8L21 21z"/><path class="ic-buco" d="M11.15 6h1.7l.3 2.5h-2.3zM10.75 10.7h2.5l.35 2.7h-3.2z"/><path class="ic-buco" d="M8.3 15.1c3-1 5.3.5 4.9 2.5-.4 2.1-4.1 3-5.8 1.6-1.3-1.1-1-3.3.9-4.1z"/></svg><span class="solo-voce" data-lang="it">Strada dissestata</span><span class="solo-voce" data-lang="en">Damaged road</span><span class="solo-voce" data-lang="fr">Route dégradée</span></button>
-    <button class="segn-b" type="button" data-cosa="altro" title="Altro"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="ic-tag" cx="5.5" cy="12" r="2"/><circle class="ic-tag" cx="12" cy="12" r="2"/><circle class="ic-tag" cx="18.5" cy="12" r="2"/></svg><span class="solo-voce" data-lang="it">Altro</span><span class="solo-voce" data-lang="en">Other</span><span class="solo-voce" data-lang="fr">Autre</span></button>
   </div>
   <p class="disc segn-nota"><span data-lang="it">Grazie per la tua segnalazione!</span><span data-lang="en">Thanks for your report!</span><span data-lang="fr">Merci pour ton signalement !</span>
     <a href="https://codriver.pages.dev/beta#privacy" target="_blank" rel="noopener"><span data-lang="it">Informativa</span><span data-lang="en">Privacy</span><span data-lang="fr">Confidentialité</span></a></p>
@@ -1354,7 +1352,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '340';
+const APPVER = '341';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -1369,6 +1367,7 @@ function nota(msg){
   if(window.SN){ const a = anomaliaDi(msg); if(a) window.SN.anomalia(a) }
 }
 const RKEY = 'copilota-regioni';
+const AVVIOK = 'copilota-avvio-mappe';
 let REG = [];
 let RSTATE = {inst:[], att:[]};
 const rById = id => REG.find(r=>r.id===id);
@@ -1422,6 +1421,7 @@ const altUrl = r => scUrl(r, SIDECAR[2]);
 const dosUrl = r => scUrl(r, SIDECAR[3]);
 const camsUrl = r => scUrl(r, SIDECAR[4]);
 const stpUrl = r => scUrl(r, SIDECAR.find(s => s.url === 'stp'));
+const disUrl = r => scUrl(r, SIDECAR.find(s => s.url === 'dis'));
 const basUrl = r => scUrl(r, SIDECAR[5]);
 const caseUrl = r => null;
 const SIDECAR = [
@@ -1432,6 +1432,7 @@ const SIDECAR = [
   {url:'cams', ver:'csv', peso:'csb', ok:j=>Array.isArray(j.c)},
   {url:'bas',  ver:'bsv', peso:'bsb', ok:j=>!!(j.a||j.v||j.u)},
   {url:'stp',  ver:'spv', peso:'spb', ok:j=>typeof j.s === 'string'},
+  {url:'dis',  ver:'disv', peso:'disb', ok:j=>!!j.d},
 ];
 function scUrl(r, s){ return r[s.url] ? r[s.url]+'?v='+r[s.ver] : null }
 const pesoTot = r => SIDECAR.reduce((s,x)=>s+(r[x.peso]||0), r.bytes||0);
@@ -2208,6 +2209,7 @@ function pendTratto(e, d, dir, m){
   return dir<0 ? -g : g;
 }
 let RDOS = null;
+let RDIS = null;
 let RCAMS = null;
 function preparaDos(j, r){
   if(!j || !j.d || !j.meta) return null;
@@ -2234,6 +2236,31 @@ function preparaDos(j, r){
     m.set(arco, off); tot += k;
   }
   console.log('dossi', r.id+':', tot, 'su', m.size, 'archi');
+  return m;
+}
+function preparaDis(j, r){
+  if(!j || !j.d || !j.meta) return null;
+  if(j.meta.sha && r.v && j.meta.sha !== r.v){
+    console.warn('dissestate scartate: sidecar di un altro dataset', j.meta.sha, '≠', r.v); return null }
+  const f = j.meta.firma;
+  if(f){
+    const mio = [RAW.edges.length, RAW.meta.nJn, RAW.meta.nCurve, RAW.meta.gen];
+    if(f.length!==mio.length || f.some((v,i)=>v!==mio[i])){
+      console.warn('dissestate scartate: dataset di un\'altra generazione', f, '≠', mio); return null }
+  } else if(j.meta.n !== RAW.edges.length){
+    console.warn('dissestate scartate:', j.meta.n, 'archi contro', RAW.edges.length); return null }
+  const v = decodeInts(j.d), m = new Map();
+  let i=0, arco=-1, tot=0;
+  while(i < v.length){
+    arco += v[i++];
+    const k = v[i++];
+    if(!(k>0) || i+k > v.length) break;
+    const off = new Int32Array(k);
+    let a = 0;
+    for(let q=0;q<k;q++){ a += v[i++]; off[q] = a }
+    m.set(arco, off); tot += k;
+  }
+  console.log('dissestate', r.id+':', tot, 'su', m.size, 'archi');
   return m;
 }
 let RSTP = null;
@@ -2495,6 +2522,20 @@ function dossoAvanti(e, v){
   let n = 1, last = o[i0];
   if(avanti){ for(let i=i0+1;i<o.length && o[i]-last<=SERIE_DOSSI;i++){ n++; last=o[i] } }
   else      { for(let i=i0-1;i>=0   && last-o[i]<=SERIE_DOSSI;i--){ n++; last=o[i] } }
+  return {dist, n, key: e.id+':'+o[i0]};
+}
+const SERIE_DISSESTATE = 150;
+function dissestataAvanti(e, v){
+  const o = e && e.dis; if(!o || !o.length) return null;
+  const s = S.snap; if(!s || s.e !== e) return null;
+  const d = distAlong(e, s.i, s.t), avanti = s.dir >= 0;
+  let i0 = -1, dist = 0;
+  if(avanti){ for(let i=0;i<o.length;i++) if(o[i] > d){ i0=i; dist=o[i]-d; break } }
+  else      { for(let i=o.length-1;i>=0;i--) if(o[i] < d){ i0=i; dist=d-o[i]; break } }
+  if(i0 < 0) return null;
+  let n = 1, last = o[i0];
+  if(avanti){ for(let i=i0+1;i<o.length && o[i]-last<=SERIE_DISSESTATE;i++){ n++; last=o[i] } }
+  else      { for(let i=i0-1;i>=0   && last-o[i]<=SERIE_DISSESTATE;i--){ n++; last=o[i] } }
   return {dist, n, key: e.id+':'+o[i0]};
 }
 
@@ -8329,6 +8370,7 @@ function buildEdges(rid, map){
     let zn = 0, zo = 0;
     if(RALT){ zn = nQuote(len, RALT.passo); zo = zpos; zpos += zn }
     const dosArr = RDOS ? (RDOS.get(k) || null) : null;
+    const disArr = RDIS ? (RDIS.get(k) || null) : null;
     const stpArr = RSTP ? (RSTP.get(k) || null) : null;
     const rifIdx     = arr.length>11 ? arr[11] : -1;
     const rotondaTag = arr.length>12 ? arr[12] : 0;
@@ -8364,7 +8406,7 @@ function buildEdges(rid, map){
     }
     const gj0=J(j0), gj1=J(j1);
     const e = {xy, np, cum, L, len, sc, runs, curves, rank, j0:gj0, j1:gj1, ms:ms||0,
-               zb:RALT?RALT.z:null, zo, zn, zs:undefined, zsR:undefined, dos:dosArr, stp:stpArr,
+               zb:RALT?RALT.z:null, zo, zn, zs:undefined, zsR:undefined, dos:dosArr, dis:disArr, stp:stpArr,
                nv:(RALT && RALT.nv) ? (RALT.nv.get(k) || null) : null,
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : '',
@@ -8438,10 +8480,11 @@ function buildCams(map){
   }
 }
 const DOSSI = [];
+const DISSESTATE = [];
 let SEGN_X = null, SEGN_Y = null, SEGN_T = null;
 const SEGN_GRID = new Map();
 function buildDossi(){
-  DOSSI.length = 0;
+  DOSSI.length = 0; DISSESTATE.length = 0;
   const sx = [], sy = [], st = [];
   for(const e of E){
     const o = e.dos;
@@ -8450,6 +8493,13 @@ function buildDossi(){
       if(!(d >= 0) || d > e.len) continue;
       const a = posAt(e, d), b = posAt(e, Math.min(e.len, d + 6));
       DOSSI.push({x:a[0], y:a[1], x2:b[0], y2:b[1]});
+    }
+    const oDis = e.dis;
+    if(oDis && oDis.length) for(let q=0;q<oDis.length;q++){
+      const d = oDis[q];
+      if(!(d >= 0) || d > e.len) continue;
+      const a = posAt(e, d), b = posAt(e, Math.min(e.len, d + 6));
+      DISSESTATE.push({x:a[0], y:a[1], x2:b[0], y2:b[1]});
     }
     const c = e.stp;
     if(c && c.length) for(let q=0;q+1<c.length;q+=2){
@@ -9423,6 +9473,7 @@ const T = {
     logTit:'Cosa è andato storto (resta qui, non ti interrompe in guida):',
     logSfratto:'le mappe scaricate NON sono protette: il telefono può cancellarle quando ha bisogno di spazio',
     tooMuch:mb=>'Molte mappe accese: con tante regioni l\'app può chiudersi da sola mentre guidi. Tieni accese solo quelle dove vai: spegnerle non le cancella, restano sul telefono.',
+    mappeAttiveTot:mb=>'Mappe attive: '+mb,
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
     profAgg:n=>'La scheda della tua '+(n||'auto')+' è stata aggiornata.',
@@ -9593,6 +9644,7 @@ const T = {
     logTit:'What went wrong (it stays here, it will not interrupt you while driving):',
     logSfratto:'downloaded maps are NOT protected: the phone may delete them when it needs space',
     tooMuch:mb=>'Many maps switched on: with lots of regions the app can close by itself while you drive. Keep on only the ones you are heading to: switching them off does not delete them, they stay on the phone.',
+    mappeAttiveTot:mb=>'Active maps: '+mb,
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
     profAgg:n=>'Your '+(n||'car')+' profile has been updated.',
@@ -9763,6 +9815,7 @@ const T = {
     logTit:'Ce qui a mal tourné (reste ici, ça ne t\'interrompt pas en conduisant) :',
     logSfratto:'les cartes téléchargées ne sont PAS protégées : le téléphone peut les supprimer s\'il a besoin d\'espace',
     tooMuch:mb=>'Beaucoup de cartes allumées : avec beaucoup de régions, l\'app peut se fermer toute seule pendant que tu conduis. N\'allume que celles où tu vas : les éteindre ne les supprime pas, elles restent sur le téléphone.',
+    mappeAttiveTot:mb=>'Cartes actives : '+mb,
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
     profAgg:n=>'La fiche de ta '+(n||'voiture')+' a été mise à jour.',
@@ -11994,6 +12047,29 @@ function disegnaSopra(){
     }
     ctx.lineCap='round';
   }
+  if(S.scale>0.9 && DISSESTATE.length){
+    const wS = CAM.on ? larg3d(SPESS.retto+SPESS.corpo, META.corpo)
+                      : (SPESS.retto+SPESS.corpo);
+    const mezzo = Math.max(4, wS*0.5);
+    ctx.lineCap='butt';
+    ctx.setLineDash([3.5, 3]);
+    for(const b of DISSESTATE){
+      if(fuoriVista(b.x,b.y)) continue;
+      const p=w2s(b.x,b.y); if(!p) continue;
+      const sx=p[0], sy=p[1];
+      if(sx<-20||sy<-20||sx>W+20||sy>H+20) continue;
+      const q=w2s(b.x2,b.y2); if(!q) continue;
+      const dx=q[0]-sx, dy=q[1]-sy, L=Math.hypot(dx,dy);
+      if(L<0.5) continue;
+      const nx=-dy/L, ny=dx/L;
+      ctx.strokeStyle=TC.ombra; ctx.lineWidth=4.5;
+      ctx.beginPath(); ctx.moveTo(sx-nx*mezzo, sy-ny*mezzo); ctx.lineTo(sx+nx*mezzo, sy+ny*mezzo); ctx.stroke();
+      ctx.strokeStyle='#c98b3a'; ctx.lineWidth=2.4;
+      ctx.beginPath(); ctx.moveTo(sx-nx*mezzo, sy-ny*mezzo); ctx.lineTo(sx+nx*mezzo, sy+ny*mezzo); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.lineCap='round';
+  }
 
   if(S.nav){
     const pd=w2s(S.nav.dest.x,S.nav.dest.y);
@@ -12632,7 +12708,7 @@ function tracciaCurva(g, cls, right){
 const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, comp:null, lim:null, testa:null, sorgente:null};
 
 const CACHE_VOCE = 'copilota-voce-v1';
-const VOCE_VER = '7';
+const VOCE_VER = '8';
 async function prendi(url){
   if(self.caches){
     try{
@@ -13165,6 +13241,21 @@ function updateNote(){
         ch.push(...metriDi(dk));
         ch.push(molti ? 'h.dossi' : 'h.dosso');
         if(dilo(ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]), false) > 0) S.said.add(kD);
+      }
+    }
+  }
+  if(typeof dissestataAvanti === 'function' && S.snap && !S.gpsBuco && versoNoto){
+    const dd = dissestataAvanti(S.snap.e, S.v);
+    if(dd && dd.dist != null){
+      const leadDis = Math.max(60, S.v*5.5);
+      const kDis = 'dis'+(dd.key != null ? dd.key : Math.round(dd.dist));
+      if(dd.dist <= leadDis && dd.dist >= S.v*1.5 && !S.said.has(kDis)){
+        const molti = (dd.n|0) > 1;
+        const dk = clipDistDetta(dd.dist, 0, true);
+        const ch = [];
+        ch.push(...metriDi(dk));
+        ch.push(molti ? 'h.dissestate' : 'h.dissestata');
+        if(dilo(ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]), false) > 0) S.said.add(kDis);
       }
     }
   }
@@ -14260,6 +14351,19 @@ function stopGps(){
   try{ window.SN.svuota() }catch(e){}
   try{ rcFineGiro('gps'); }catch(e){}
 }
+var seguivaAllaUscita = false, tornatoVisibileA = 0;
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    seguivaAllaUscita = (S.mode === 'follow');
+    return;
+  }
+  tornatoVisibileA = Date.now();
+  if(!seguivaAllaUscita) return;
+  seguivaAllaUscita = false;
+  gpsUltimo = Date.now(); gpsGuai = 0; S.gpsBuco = false;
+  if(S.watchId == null && !negatoContato) startGps();
+  else if(S.mode !== 'follow') setMode('follow');
+});
 function rcFineGiro(motivo){
   if(!window.RC || !window.RC.attivo()) return;
   var g = null;
@@ -15245,9 +15349,23 @@ function rigaRegione(r){
     return row;
 }
 
+const MAPPE_MB_AVVISO = 55;
+const MAPPE_HEAP_X = 6.5;
+
 function renderMaps(){
   if(!mapList) return;
   mapList.innerHTML='';
+
+  const attOra = RSTATE.att.map(rById).filter(Boolean);
+  if(attOra.length){
+    const mbAtt = attOra.reduce((a,r)=>a+r.bytes,0)/1e6;
+    const sopraSoglia = mbAtt > MAPPE_MB_AVVISO;
+    const tot=document.createElement('p'); tot.className='disc';
+    if(sopraSoglia) tot.style.color='#ff8a1e';
+    tot.textContent = sopraSoglia ? tr().tooMuch(Math.round(mbAtt*MAPPE_HEAP_X))
+                                   : tr().mappeAttiveTot(MB(mbAtt*1e6));
+    mapList.appendChild(tot);
+  }
 
   if(!INSTALLATA && matchMedia('(max-width:820px)').matches){
     const av = document.createElement('p');
@@ -15312,14 +15430,6 @@ function renderMaps(){
     };
   }
 
-  const att=RSTATE.att.map(rById).filter(Boolean);
-  const mbAtt = att.reduce((a,r)=>a+r.bytes,0)/1e6;
-  if(mbAtt > 55){
-    const w=document.createElement('p'); w.className='disc';
-    w.style.color='#ff8a1e';
-    w.textContent = tr().tooMuch(Math.round(mbAtt*6.5));
-    mapList.appendChild(w);
-  }
   if(daApplicare()){
     const a=document.createElement('p'); a.className='disc';
     a.style.color='#4fd6ff';
@@ -16243,7 +16353,7 @@ cv.addEventListener('pointermove',e=>{
   if(press && Math.hypot(e.clientX-press.sx, e.clientY-press.sy)>9) stopPress();
   if(ptrs.size===1){
     const dx=e.clientX-prev[0], dy=e.clientY-prev[1];
-    if(Math.hypot(dx,dy)>1.5 && S.mode!=='free') setMode('free');
+    if(Math.hypot(dx,dy)>1.5 && S.mode!=='free' && Date.now()-tornatoVisibileA>400) setMode('free');
     panCampiona(performance.now(), e.clientX, e.clientY);
     const w0=s2w(prev[0],prev[1]), w1=s2w(e.clientX,e.clientY);
     S.cx-=w1[0]-w0[0]; S.cy-=w1[1]-w0[1]; S.need=true;
@@ -16330,6 +16440,10 @@ async function boot(){
   rload();
   RSTATE.inst = RSTATE.inst.filter(id=>rById(id));
   RSTATE.att  = RSTATE.att.filter(id=>rById(id) && RSTATE.inst.includes(id));
+  let avvioRotto = false;
+  try{
+    if(localStorage.getItem(AVVIOK)){ avvioRotto = true; RSTATE.att = [] }
+  }catch(e){}
   rsave();
   segnaAvvioMappe();
   caches.keys().then(ks=>{
@@ -16344,9 +16458,18 @@ async function boot(){
     setBrandSub();
     splash.classList.add('hide');
     loop(); openSheet('maps'); avvisoGarage();
+    if(avvioRotto){
+      try{ localStorage.removeItem(AVVIOK) }catch(e){}
+      toast(L==='it'
+        ? 'L\'ultima apertura si è bloccata: ho disattivato le mappe. Riattiva solo la tua regione.'
+        : L==='fr'
+        ? 'La dernière ouverture s\'est bloquée : j\'ai désactivé les cartes. Réactive seulement ta région.'
+        : 'The last launch got stuck: I\'ve switched the maps off. Turn back on just your region.', 9000);
+    }
     return;
   }
 
+  try{ localStorage.setItem(AVVIOK, '1') }catch(e){}
   setOrigin(att, DOVE);
   const totBytes = att.reduce((a,r)=>a+r.bytes,0);
   let done = 0;
@@ -16360,6 +16483,7 @@ async function boot(){
     }catch(err){
       RSTATE.att  = RSTATE.att.filter(x=>x!==r.id);
       RSTATE.inst = RSTATE.inst.filter(x=>x!==r.id); rsave();
+      try{ localStorage.removeItem(AVVIOK) }catch(e){}
       caches.delete(cacheName(r.id)).catch(e=>nota('copia di '+r.nm+' non cancellata: '+e.message));
       const perche = (err && err.message) || String(err);
       nota(r.nm+' non caricata all\'avvio: '+perche);
@@ -16386,6 +16510,9 @@ async function boot(){
     RDOS = null;
     try{ RDOS = preparaDos(await leggiFile(dosUrl(r), r.id), r) }
     catch(err){ console.warn('dossi non caricati:', err.message) }
+    RDIS = null;
+    try{ RDIS = preparaDis(await leggiFile(disUrl(r), r.id), r) }
+    catch(err){ console.warn('dissestate non caricate:', err.message) }
     RSTP = null;
     try{ RSTP = preparaStp(await leggiFile(stpUrl(r), r.id), r) }
     catch(err){ console.warn('stop non caricati:', err.message) }
@@ -16467,6 +16594,7 @@ async function boot(){
   const zoomIniziale = m => Math.min(W,H)/m;
   if(BM.length){ S.cx=BM[0].x; S.cy=BM[0].y; S.scale=zoomIniziale(6000) }
   else { S.cx=(BB[0]+BB[2])/2; S.cy=(BB[1]+BB[3])/2; S.scale=zoomIniziale(20000) }
+  try{ localStorage.removeItem(AVVIOK) }catch(e){}
   splash.classList.add('hide');
   loop();
   BOOT_PRONTO = true; proponiLinkInAttesa(); avviaGpsSePronto();
