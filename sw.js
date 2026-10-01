@@ -1,5 +1,5 @@
-/* sorgente: 867a0b99eb */
-const APP = 'copilota-app-v341';
+/* sorgente: fee0eddb39 */
+const APP = 'copilota-app-v342';
 const DATA_PREFIX = 'copilota-data-';
 const SHELL = ['./', './manifest.webmanifest', './manifest-a.webmanifest', './regions.json',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
