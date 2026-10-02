@@ -1,6 +1,7 @@
-/* sorgente: fee0eddb39 */
-const APP = 'copilota-app-v342';
+/* sorgente: a44ab823b1 */
+const APP = 'copilota-app-v343';
 const DATA_PREFIX = 'copilota-data-';
+const MEDIA = 'copilota-media-v1';
 const SHELL = ['./', './manifest.webmanifest', './manifest-a.webmanifest', './regions.json',
                './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 const dataId = url => {
@@ -54,6 +55,11 @@ self.addEventListener('fetch', e => {
         return await Promise.race([rete, new Promise((_, no) => setTimeout(() => no(new Error('rete lenta')), 2500))]);
       } catch (err) { return copia; }
     })());
+    return;
+  }
+  if (/\/(font|foto-strada)\/[^/]+$/.test(new URL(req.url).pathname)) {
+    e.respondWith(caches.open(MEDIA).then(c => c.match(req).then(hit => hit ||
+      fetch(req).then(res => { if (res.ok) c.put(req, res.clone()).catch(() => {}); return res; }))));
     return;
   }
   const id = dataId(req.url);

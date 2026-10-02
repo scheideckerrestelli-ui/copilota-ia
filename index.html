@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v342';
+  const VERSIONE = 'copilota-app-v343';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -197,6 +197,21 @@ if ('serviceWorker' in navigator) {
   #rcAnteprimaWrap canvas{display:block;width:100%;height:auto}
   .azioni2{display:flex;gap:10px}
   .azioni2 .btn{flex:1;margin-top:0}
+  .rc-foto-riga{display:flex;gap:10px;margin-top:12px}
+  .rc-foto-riga .btn{flex:1;margin-top:0}
+  #rcFotoFile{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .rc-avviso-mappa{font-size:12px;color:var(--ink2);margin:8px 2px 0}
+  .rc-adesivo-tit{font:600 15px var(--font-d);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin:22px 0 8px}
+  #rcAdesivoWrap{border-radius:16px;padding:14px;margin:0 0 6px;background-color:#fff;
+    background-image:linear-gradient(45deg,#ccc 25%,transparent 25%),linear-gradient(-45deg,#ccc 25%,transparent 25%),
+      linear-gradient(45deg,transparent 75%,#ccc 75%),linear-gradient(-45deg,transparent 75%,#ccc 75%);
+    background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
+  #rcAdesivoImg{display:block;width:100%;height:auto;-webkit-touch-callout:default}
+  .rc-base{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .rc-chip{font:600 13px var(--font-d);letter-spacing:.05em;text-transform:uppercase;color:var(--ink2);background:transparent;
+    border:1px solid var(--line);border-radius:999px;padding:7px 13px;cursor:pointer}
+  .rc-chip.on{color:#000;background:var(--accent);border-color:var(--accent)}
+  .rc-privato{font-size:12px;color:var(--ink2);margin:-6px 2px 10px}
 
   #sheetRoadCard .btn[data-close]{position:static}
   #bAudio .onde{display:none}   
@@ -910,6 +925,11 @@ if ('serviceWorker' in navigator) {
     <div data-lang="en">Elevation and gradients: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1: NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · In Italy: Tarquini S., I. Isola, M. Favalli, A. Battistini, G. Dotta (2023). TINITALY, a digital elevation model of Italy with a 10 meters cell size (Version 1.1). Istituto Nazionale di Geofisica e Vulcanologia (INGV). <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">https://doi.org/10.13127/tinitaly/1.1</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Curves hidden by a crest, in the Aosta Valley: «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</div>
     <div data-lang="fr">Altitudes et pentes : <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener">Terrain Tiles</a> (AWS Open Data, Mapzen). SRTM and GMTED2010 data courtesy of the U.S. Geological Survey · ETOPO1 : NOAA National Centers for Environmental Information · Produced using Copernicus data and information funded by the European Union - EU-DEM layers · © Environment Agency copyright and/or database right 2015. All rights reserved. · En Italie : Tarquini S., I. Isola, M. Favalli, A. Battistini, G. Dotta (2023). TINITALY, a digital elevation model of Italy with a 10 meters cell size (Version 1.1). Istituto Nazionale di Geofisica e Vulcanologia (INGV). <a href="https://doi.org/10.13127/tinitaly/1.1" target="_blank" rel="noopener">https://doi.org/10.13127/tinitaly/1.1</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · Virages cachés par une bosse, en Vallée d'Aoste : «Dati estratti dal Modello Digitale del Terreno (DTM) della Regione Autonoma Valle d'Aosta», <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>.</div>
   </div>
+  <div class="discGroup">
+    <p class="lic" data-lang="it">Ortofoto © Service public de Wallonie (CC BY 4.0) · © Digitaal Vlaanderen (Modellicentie voor gratis hergebruik).</p>
+    <p class="lic" data-lang="en">Orthophotos © Service public de Wallonie (CC BY 4.0) · © Digitaal Vlaanderen (Modellicentie voor gratis hergebruik).</p>
+    <p class="lic" data-lang="fr">Orthophotos © Service public de Wallonie (CC BY 4.0) · © Digitaal Vlaanderen (Modellicentie voor gratis hergebruik).</p>
+  </div>
 </div></div>
 
 <div class="sheet" id="sheetCar"><div class="inner">
@@ -958,6 +978,10 @@ if ('serviceWorker' in navigator) {
     off on its own next time. Same switch as the drop button on the map.</p>
   <p class="disc" data-lang="fr">Virages plus lents et freinages plus longs, pour ce trajet
     seulement : il se coupe seul au prochain. Même interrupteur que le bouton goutte sur la carte.</p>
+  <h3><span data-lang="it">Voce del copilota</span><span data-lang="en">Co-driver voice</span><span data-lang="fr">Voix du copilote</span></h3>
+  <div class="row2" id="voceChips" role="radiogroup"></div>
+  <p style="margin-top:9px" id="voceDesc"></p>
+  <p class="disc"><span data-lang="it">Le voci della guida sono sintetiche.</span><span data-lang="en">The guidance voices are synthetic.</span><span data-lang="fr">Les voix du guidage sont synthétiques.</span></p>
   <h3><span data-lang="it">Anticipo della voce</span><span data-lang="en">Voice lead</span><span data-lang="fr">Anticipation de la voix</span></h3>
   <div class="slider">
     <input type="range" id="anticSlider" min="-1" max="3" step="0.2">
@@ -1065,14 +1089,43 @@ if ('serviceWorker' in navigator) {
   <input id="rcNome" type="text" maxlength="40" autocomplete="off" autocorrect="off" spellcheck="false">
   <div id="rcContatore" class="rc-contatore">0/40</div>
   <p class="rc-avviso" id="rcAvviso" hidden></p>
+  <div class="rc-foto-riga">
+    <button class="btn ghost" id="rcFoto" type="button">
+      <span data-lang="it">Usa una tua foto</span><span data-lang="en">Use your photo</span><span data-lang="fr">Utilise ta photo</span></button>
+    <button class="btn ghost" id="rcFotoTogli" type="button" hidden>
+      <span data-lang="it">Togli la foto</span><span data-lang="en">Remove photo</span><span data-lang="fr">Retirer la photo</span></button>
+  </div>
+  <input id="rcFotoFile" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+  <div class="rc-base" id="rcBase" role="group">
+    <button type="button" class="rc-chip" data-base="montagna"><span data-lang="it">Montagna</span><span data-lang="en">Mountains</span><span data-lang="fr">Montagne</span></button>
+    <button type="button" class="rc-chip" data-base="lago"><span data-lang="it">Lago</span><span data-lang="en">Lake</span><span data-lang="fr">Lac</span></button>
+    <button type="button" class="rc-chip" data-base="collina"><span data-lang="it">Collina</span><span data-lang="en">Hills</span><span data-lang="fr">Collines</span></button>
+    <button type="button" class="rc-chip" data-base="costa"><span data-lang="it">Costa</span><span data-lang="en">Coast</span><span data-lang="fr">Côte</span></button>
+    <button type="button" class="rc-chip" data-base="nessuna"><span data-lang="it">Senza foto</span><span data-lang="en">No photo</span><span data-lang="fr">Sans photo</span></button>
+  </div>
+  <p class="rc-avviso-mappa"><span data-lang="it">Se nella foto si vedono altre persone, pubblicarla è una tua responsabilità.</span><span data-lang="en">If other people can be seen in the photo, publishing it is your responsibility.</span><span data-lang="fr">Si d'autres personnes sont visibles sur la photo, c'est à toi d'en assumer la responsabilité.</span></p>
   <div id="rcAnteprimaWrap"><canvas id="rcCanvas" width="1080" height="1920"></canvas></div>
+  <p class="rc-privato" id="rcPrivato" hidden></p>
   <div class="azioni2">
     <button class="btn" id="rcCondividi" type="button">
       <span data-lang="it">Condividi</span><span data-lang="en">Share</span><span data-lang="fr">Partager</span></button>
     <button class="btn ghost" id="rcSalva" type="button">
       <span data-lang="it">Salva immagine</span><span data-lang="en">Save image</span><span data-lang="fr">Enregistrer l'image</span></button>
   </div>
+  <p class="rc-avviso-mappa"><span data-lang="it">La mappa mostra la strada del tuo giro: pensaci prima di pubblicarla se preferisci non far sapere dove passi.</span><span data-lang="en">The map shows the road you drove: think it over before posting it if you'd rather not show where you go.</span><span data-lang="fr">La carte montre la route de ton trajet : réfléchis avant de la publier si tu préfères ne pas montrer où tu passes.</span></p>
   <p id="rcEsito" class="disc" aria-live="polite" hidden></p>
+  <h3 class="rc-adesivo-tit"><span data-lang="it">Adesivo per le storie</span><span data-lang="en">Sticker for Stories</span><span data-lang="fr">Sticker pour les stories</span></h3>
+  <div id="rcAdesivoWrap"><img id="rcAdesivoImg" alt=""></div>
+  <p class="rc-avviso-mappa"><span data-lang="it">Se «Copia adesivo» non va: tieni premuto sull'adesivo e scegli Copia.</span><span data-lang="en">If “Copy sticker” doesn't work: long-press the sticker and choose Copy.</span><span data-lang="fr">Si « Copier le sticker » ne marche pas : appuie longuement sur le sticker et choisis Copier.</span></p>
+  <button class="btn" id="rcApriIg" type="button" style="margin-bottom:10px">
+    <span data-lang="it">Copia e apri Instagram</span><span data-lang="en">Copy and open Instagram</span><span data-lang="fr">Copier et ouvrir Instagram</span></button>
+  <div class="azioni2">
+    <button class="btn ghost" id="rcCopiaAdesivo" type="button">
+      <span data-lang="it">Copia adesivo</span><span data-lang="en">Copy sticker</span><span data-lang="fr">Copier le sticker</span></button>
+    <button class="btn ghost" id="rcSalvaAdesivo" type="button">
+      <span data-lang="it">Salva adesivo</span><span data-lang="en">Save sticker</span><span data-lang="fr">Enregistrer le sticker</span></button>
+  </div>
+  <p id="rcEsitoAdesivo" class="disc" aria-live="polite" hidden></p>
   <button class="btn ghost" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span><span data-lang="fr">Fermer</span></button>
 </div></div>
 
@@ -1110,8 +1163,13 @@ if ('serviceWorker' in navigator) {
   <p id="infoStatsEn" data-lang="en"></p><p id="infoStatsFr" data-lang="fr"></p>
   <p class="disc" id="infoPerf"></p>
   <p class="disc" id="infoVer"></p>
+  <p class="disc"><span data-lang="it">Le voci della guida sono sintetiche.</span><span data-lang="en">The guidance voices are synthetic.</span><span data-lang="fr">Les voix du guidage sont synthétiques.</span></p>
   <p class="disc" id="infoCoda" hidden><span id="infoCodaTxt"></span>
     <button class="rbtn" id="bCoda" type="button"><span data-lang="it">Invia ora</span><span data-lang="en">Send now</span><span data-lang="fr">Envoyer</span></button></p>
+  <p class="disc" id="infoReg" hidden><span id="infoRegTxt"></span>
+    <button class="rbtn" id="bRegGpx" type="button">Esporta GPX</button>
+    <button class="rbtn" id="bRegDel" type="button">Cancella</button>
+    <button class="rbtn" id="bRegOff" type="button">Spegni</button></p>
   <p class="disc" id="infoLog" hidden style="white-space:pre-line;color:#ffb454"></p>
   <h3><span data-lang="it">Come funziona</span><span data-lang="en">How it works</span><span data-lang="fr">Comment ça marche</span></h3>
   <ul data-lang="it">
@@ -1352,7 +1410,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '342';
+const APPVER = '343';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -24742,6 +24800,24 @@ const CARS = {
             "et pneus étroits : sur chaussée sale, plaques d'égout et gravier, il lâche avant "+
             "n'importe quelle moto, et les annonces le savent. L'angle maxi est bon (40°), "+
             "l'adhérence de référence non."},
+  mmax:{nm:'Maxi-scooter', sub:'variatore · da 250 cc · es. T-Max, X-Max 300, X-ADV, Forza 350, SH350, Burgman 400',
+       tipo:'moto', auto:true, n:1, g:[1.0], ref:30, grip:0.88, leanMax:42, boost:4000, rpmLim:8500,
+       cv:45, kg:300, cda:0.60, crr:0.018,
+       d_it:"Maxi-scooter: variatore (anche con la doppia frizione di un X-ADV nessuna marcia da suggerire: "+
+            "il riquadro sparisce). Più pesante e più lungo di uno scooter, ruote da 14-15 pollici e telaio da "+
+            "moto: tiene più dello scooter piccolo ma meno di una naked, e a pieno carico (pilota, passeggero, "+
+            "bagaglio) i 300 kg contano in frenata. Piega massima 42° (le pedane toccano prima), tenuta di "+
+            "riferimento 0,88.",
+       d_en:"Maxi-scooter: CVT (even with the X-ADV's dual-clutch there is no gear to suggest: the box "+
+            "disappears). Heavier and longer than a scooter, 14-15 inch wheels and a motorcycle frame: it "+
+            "holds more than a small scooter but less than a naked bike, and fully loaded (rider, passenger, "+
+            "luggage) the 300 kg matter under braking. Maximum lean 42° (the footboards touch first), "+
+            "reference grip 0.88.",
+       d_fr:"Maxi-scooter : variateur (même avec la double embrayage d'un X-ADV aucun rapport à conseiller : "+
+            "la case disparaît). Plus lourd et plus long qu'un scooter, roues de 14-15 pouces et cadre de "+
+            "moto : il tient plus qu'un petit scooter mais moins qu'un roadster, et en pleine charge (pilote, "+
+            "passager, bagages) les 300 kg comptent au freinage. Angle maxi 42° (les repose-pieds touchent "+
+            "avant), adhérence de référence 0,88."},
   mx:  {nm:'Altra moto', sub:'6 marce · profilo generico',
        tipo:'moto', auto:false, n:6, ref:24, grip:0.95, leanMax:48, boost:4000, rpmLim:10000,
        cv:90, kg:280, cda:0.60, crr:0.016,
@@ -24764,10 +24840,55 @@ const PROF_SPAZ = {
   8:[0.125,0.205,0.300,0.410,0.545,0.685,0.840,1.0],
   9:[0.1123,0.1855,0.2671,0.3665,0.4967,0.6010,0.6948,0.8382,1.0],
 };
+const MOTO_ON = false;
+const PROF_MOTO_CLASSI = {nk:'mnak', ss:'mss', ad:'madv', cu:'mcru', sc:'msco', ms:'mmax', al:'mx'};
+function profiloMotoDecodifica(c, s){
+  try{
+    if(!MOTO_ON || c.length!==11) return null;
+    if(!Object.prototype.hasOwnProperty.call(PROF_MOTO_CLASSI, c[1])) return null;
+    const base = CARS[PROF_MOTO_CLASSI[c[1]]];
+    if(!base || base.tipo!=='moto') return null;
+    const num=(x,lo,hi)=>{ const v=+x;
+      return (x!=='' && Number.isFinite(v) && v>=lo && v<=hi) ? v : null };
+    const nm = c[2].replace(/_/g,' ').replace(/[^A-Za-z0-9 -]/g,'').replace(/\s+/g,' ').trim().slice(0,32);
+    const cv=num(c[3],3,250), kg=num(c[4],100,600), n=num(c[5],1,7), rl=num(c[6],4000,16500),
+          rf=num(c[7],10,60), cs=num(c[9],0,250), an=num(c[10],0,2030), fl=c[8];
+    if(!nm || cv===null||kg===null||n===null||rl===null||rf===null||cs===null||an===null) return null;
+    if(!Number.isInteger(n) || !PROF_SPAZ[n]) return null;
+    if((c[1]==='sc' || c[1]==='ms') && n!==1) return null;
+    if(!/^[a-z-]{1,6}$/.test(fl)) return null;
+    if(rl <= base.boost) return null;
+    if(an!==0 && (an<1900 || an>2030)) return null;
+    const mila = v => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const p = Object.assign({}, base, {
+      nm:nm, sub:'', auto:(n===1), n:n, g:(n===base.n ? base.g : PROF_SPAZ[n]).slice(), ref:rf,
+      cv:cv, kg:kg, rpmLim:rl, vlim:0, tipo:'moto', classe:c[1],
+      pid:(()=>{ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0;
+                 return ('00000'+(h>>>0).toString(36)).slice(-6) })(),
+    });
+    const cvS = (cs && Math.abs(cs-cv) > 3) ? cs : 0;
+    p.d_it = 'Profilo costruito sui numeri della tua moto: '+cv+' CV, '+mila(kg)+' kg col pilota, '+
+      (n===1 ? 'cambio automatico' : n+' marce')+'. '+(cvS ? 'Di serie faceva '+cvS+' CV. ' : '')+
+      'Tenuta, piega massima e aerodinamica sono quelle della classe «'+base.nm+'»: i tuoi numeri cambiano '+
+      'potenza, peso e rapporti, non il limite di piega.';
+    p.d_en = 'Profile built on the numbers of YOUR bike: '+cv+' hp, '+mila(kg).replace(/\./g,',')+' kg with rider, '+
+      (n===1 ? 'automatic' : n+'-speed')+'. '+(cvS ? 'Stock it made '+cvS+' hp. ' : '')+
+      'Grip, maximum lean and aerodynamics come from the class «'+base.nm+'»: your numbers change power, '+
+      'weight and gearing, never the lean limit.';
+    p.d_fr = 'Profil construit sur les chiffres de TA moto : '+cv+' ch, '+mila(kg).replace(/\./g,' ')+' kg avec le pilote, '+
+      (n===1 ? 'boîte automatique' : n+' rapports')+'. '+(cvS ? 'D\'origine elle faisait '+cvS+' ch. ' : '')+
+      'Adhérence, angle maximal et aérodynamique viennent de la catégorie «'+base.nm+'» : tes chiffres changent '+
+      'puissance, poids et étagement, jamais la limite d\'angle.';
+    p.sub = (an ? an+' · ' : '') + cv + ' CV · ' + mila(kg) + ' kg · '
+          + (n===1 ? 'automatica' : n + ' marce');
+    return p;
+  }catch(e){ return null }
+}
 function profiloDecodifica(s){
   try{
     if(typeof s!=='string' || s.length<20 || s.length>200) return null;
     const c = s.split('.');
+    if(c[0]==='2') return profiloMotoDecodifica(c, s);
     if((c.length!==15 && c.length!==16) || c[0]!=='1') return null;
     const num=(x,lo,hi)=>{ const v=+x;
       return (x!=='' && Number.isFinite(v) && v>=lo && v<=hi) ? v : null };
@@ -24849,6 +24970,99 @@ function profiloDecodifica(s){
     return p;
   }catch(e){ return null }
 }
+const REG_KEY = 'copilota-registra', REG_DATI = 'copilota-registra-dati', REG_MAX = 12000;
+const REG_HASH = 'e08c50eca441d6017c6385597c355834a6b663173ebb5d508c9560af1df54ed2';
+let REG_ON = false, REG_PTS = [], REG_NUOVI = 0;
+function regAccendi(){
+  REG_ON = true;
+  try{ REG_PTS = JSON.parse(localStorage.getItem(REG_DATI)||'[]') || [] }catch(e){ REG_PTS = [] }
+  if(!document.getElementById('regBadge')){
+    const b = document.createElement('div'); b.id = 'regBadge';
+    b.textContent = '● REC GPS';
+    b.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);left:8px;z-index:99999;background:#d4001a;color:#fff;font:700 12px/1 system-ui,sans-serif;letter-spacing:.06em;padding:5px 9px;border-radius:12px;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.5)';
+    document.body.appendChild(b);
+  }
+  setTimeout(() => { try{ toast('Registrazione del giro ACCESA: la traccia resta su questo telefono. Info → Esporta GPX.', 9000) }catch(e){} }, 3000);
+}
+function regSpegniBadge(){ const b = document.getElementById('regBadge'); if(b) b.remove() }
+(function(){
+  try{
+    const h = location.hash || '';
+    const q = new URLSearchParams(h.charAt(0)==='#' ? h.slice(1) : h).get('registra') ||
+              new URLSearchParams(location.search || '').get('registra');
+    if(q==='off') localStorage.removeItem(REG_KEY);
+    if(localStorage.getItem(REG_KEY)==='1') regAccendi();
+    else if(q && q!=='off' && window.crypto && crypto.subtle){
+      crypto.subtle.digest('SHA-256', new TextEncoder().encode(q)).then(buf => {
+        const hex = Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2,'0')).join('');
+        if(hex === REG_HASH){ try{ localStorage.setItem(REG_KEY, '1') }catch(e){} regAccendi(); mostraReg() }
+      }).catch(() => {});
+    }
+  }catch(e){ REG_ON = false }
+})();
+function regSalva(){
+  REG_NUOVI = 0;
+  try{ localStorage.setItem(REG_DATI, JSON.stringify(REG_PTS)) }
+  catch(e){
+    try{ REG_PTS = REG_PTS.slice(REG_PTS.length>>1); localStorage.setItem(REG_DATI, JSON.stringify(REG_PTS)) }catch(e2){} }
+}
+function regPasso(p){
+  if(!REG_ON) return;
+  const c = p.coords, sn = S.snap;
+  REG_PTS.push([Math.round(p.timestamp ? p.timestamp/1000 : Date.now()/1000),
+    +c.latitude.toFixed(6), +c.longitude.toFixed(6), Math.round(c.accuracy||0), +((c.speed||0)).toFixed(1),
+    (c.heading!=null && !isNaN(c.heading)) ? Math.round(c.heading) : null,
+    sn ? sn.e.wid : null, sn ? sn.e.id : null, sn ? sn.dir : null, sn ? Math.round(sn.d) : null,
+    sn ? Math.round(distAlong(sn.e, sn.i, sn.t)) : null]);
+  if(REG_PTS.length > REG_MAX) REG_PTS.splice(0, REG_PTS.length - REG_MAX);
+  if(++REG_NUOVI >= 15) regSalva();
+}
+function regGpx(){
+  const esc = v => v==null ? '' : String(v);
+  let r = '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Co-Driver registrazione" xmlns="http://www.topografix.com/GPX/1/1" xmlns:cd="https://codriver.pages.dev/gpx">\n<trk><name>Co-Driver '+esc(APPVER)+'</name><trkseg>\n';
+  for(const q of REG_PTS){
+    r += '<trkpt lat="'+q[1]+'" lon="'+q[2]+'"><time>'+new Date(q[0]*1000).toISOString()+'</time>'+
+      '<extensions><cd:acc>'+q[3]+'</cd:acc><cd:speed>'+q[4]+'</cd:speed>'+(q[5]!=null?'<cd:course>'+q[5]+'</cd:course>':'')+
+      (q[7]!=null?'<cd:wid>'+q[6]+'</cd:wid><cd:arco>'+q[7]+'</cd:arco><cd:dir>'+q[8]+'</cd:dir><cd:d>'+q[9]+'</cd:d><cd:s>'+q[10]+'</cd:s>':'')+
+      '</extensions></trkpt>\n';
+  }
+  return r + '</trkseg></trk></gpx>\n';
+}
+async function regEsporta(){
+  regSalva();
+  if(!REG_PTS.length){ toast('Nessun punto registrato.', 3000); return }
+  const d = new Date(REG_PTS[0][0]*1000), z = n => String(n).padStart(2,'0');
+  const nome = 'giro-'+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+'-'+z(d.getHours())+z(d.getMinutes())+'.gpx';
+  const gpx = regGpx();
+  try{
+    const f = new File([gpx], nome, {type:'application/gpx+xml'});
+    if(navigator.canShare && navigator.canShare({files:[f]})){ await navigator.share({files:[f], title:nome}); return }
+  }catch(e){ if(e && e.name==='AbortError') return }
+  try{
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([gpx], {type:'application/gpx+xml'})); a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+  }catch(e){ toast('Esportazione non riuscita su questo browser.', 5000) }
+}
+function mostraReg(){
+  const el = document.getElementById('infoReg'); if(!el) return;
+  el.hidden = !REG_ON && !REG_PTS.length;
+  if(el.hidden) return;
+  const n = REG_PTS.length, min = n>1 ? Math.round((REG_PTS[n-1][0]-REG_PTS[0][0])/60) : 0;
+  document.getElementById('infoRegTxt').textContent = 'Registrazione del giro: '+(REG_ON?'accesa':'spenta')+', '+n+' punti ('+min+' min), solo su questo telefono. ';
+  document.getElementById('bRegOff').textContent = REG_ON ? 'Spegni' : 'Riaccendi';
+}
+addEventListener('pagehide', () => { if(REG_ON) regSalva() });
+addEventListener('visibilitychange', () => { if(REG_ON && document.visibilityState==='hidden') regSalva() });
+document.getElementById('bRegGpx').onclick = regEsporta;
+document.getElementById('bRegDel').onclick = () => { if(confirm('Cancellare la traccia registrata su questo telefono?')){ REG_PTS = []; REG_NUOVI = 0; regSalva(); mostraReg() } };
+document.getElementById('bRegOff').onclick = () => {
+  REG_ON = !REG_ON;
+  try{ if(REG_ON) localStorage.setItem(REG_KEY, '1'); else { regSalva(); localStorage.removeItem(REG_KEY) } }catch(e){}
+  if(REG_ON) regAccendi(); else regSpegniBadge();
+  mostraReg();
+};
 const PROF_EXTRA = 'copilota-profili-extra', PROF_VISTO = 'copilota-link-visto', MAX_AUTO = 5;
 const chiaveMia = i => i ? 'mio' + (i + 1) : 'mio';
 const profiliNelLink = (() => {
@@ -25132,6 +25346,28 @@ function vTop(slope){
 }
 
 const ECO_ON = true;
+const VOCI = {
+  rally:  {nm_it:'Rally',  nm_en:'Rally',   nm_fr:'Rally',
+           d_it:'Copilota di rally: asciutto, secco, rapido.',
+           d_en:'Rally co-driver: dry, clipped, fast.',
+           d_fr:'Copilote de rallye : sec, net, rapide.',
+           mb:{it:1.7, en:1.4, fr:1.6}},
+  julian: {nm_it:'Luca',  nm_en:'Luca',  nm_fr:'Luca',
+           d_it:'Voce maschile, rapida e diretta.',
+           d_en:'Male voice, quick and direct.',
+           d_fr:'Voix masculine, rapide et directe.',
+           mb:{it:1.7, en:1.5, fr:1.7}, lingue:['it']},
+  orion:  {nm_it:'Marco',  nm_en:'Marco', nm_fr:'Marco',
+           d_it:'Voce maschile, un po\' piu\' grave e posata.',
+           d_en:'Male voice, a little deeper and steadier.',
+           d_fr:'Voix masculine, un peu plus grave et posée.',
+           mb:{it:1.7, en:1.5, fr:1.7}, lingue:['it']},
+  gia:    {nm_it:'Giulia', nm_en:'Giulia',  nm_fr:'Giulia',
+           d_it:'Voce femminile, chiara e naturale.',
+           d_en:'Female voice, clear and natural.',
+           d_fr:'Voix féminine, claire et naturelle.',
+           mb:{it:1.7, en:1.5, fr:1.7}, lingue:['it']},
+};
 const STYLES = {
   calmo:  {a:2.0, reaz:ECO_ON ? 4.2 : 3.2, dec:2.2,
            moto:{lean:20, reaz:3.6, dec:2.0,
@@ -25174,7 +25410,6 @@ const STYLES = {
            d_en:'Closed-road figures. On a public road they are the absolute ceiling, never a target. The voice comes late on purpose.',
            d_fr:'Chiffres de route fermée. Sur route ouverte c\'est le plafond absolu, jamais un objectif. La voix arrive tard exprès.'},
 };
-const MOTO_ON = false;
 const VISTA_PIENA = false;
 const D3_ON = false;
 const isMoto = () => MOTO_ON && CARS[S.car].tipo === 'moto';
@@ -25188,7 +25423,14 @@ function stileAttivo(){
 }
 const piegaDeg = (vms, r) => Math.round(Math.atan(vms*vms/(Math.max(1,r)*9.81))*180/Math.PI);
 const rpmRif = () => isMoto() ? 4000 : RPM_RIF;
+const MOTO_AVVISO_K = 'copilota-moto-avviso';
+function avvisoMoto(){
+  if(!isMoto()) return;
+  try{ if(localStorage.getItem(MOTO_AVVISO_K)) return; localStorage.setItem(MOTO_AVVISO_K, '1') }catch(e){ return }
+  setTimeout(() => toast(tr().motoAvviso, 16000), 1200);
+}
 function applicaVeicolo(){
+  avvisoMoto();
   document.documentElement.dataset.veicolo = isMoto() ? 'moto' : 'auto';
   document.documentElement.dataset.moto = MOTO_ON ? 'on' : 'off';
   document.documentElement.dataset.vista = VISTA_PIENA ? 'piena' : 'tester';
@@ -25206,7 +25448,7 @@ const T = {
     gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', curvLab:'CURVA', lean:'piega', flat:'· in pieno', rpm:'giri',
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale',5:'Strada di paese'},
-    roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo', voceAccesa:'Voce accesa', voceSpenta:'Voce spenta',
+    roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo', voceAccesa:'Voce accesa', voceSpenta:'Voce spenta', voceScarico:'Scarico la voce…', voceSoloIt:'Questa voce c\'è solo in italiano: nelle altre lingue parla Rally.', voceSoloItChip:'solo italiano', voceNo:'Voce non scaricata: serve la rete. Per ora suona Rally.', voceGia:'scaricata',
     clsAuto:'Autostrada', clsRampa:'Svincolo',
     localCall:'Strada locale', localSub:'strada urbana: nessuna nota di curva, limite dedotto',
     gWords:['prima','seconda','terza','quarta','quinta','sesta','settima','ottava','nona'],
@@ -25289,6 +25531,7 @@ const T = {
     logSfratto:'le mappe scaricate NON sono protette: il telefono può cancellarle quando ha bisogno di spazio',
     tooMuch:mb=>'Molte mappe accese: con tante regioni l\'app può chiudersi da sola mentre guidi. Tieni accese solo quelle dove vai: spegnerle non le cancella, restano sul telefono.',
     mappeAttiveTot:mb=>'Mappe attive: '+mb,
+    motoAvviso:'Prima di partire in moto: le vibrazioni dei motori potenti possono danneggiare la fotocamera dell\'iPhone (Apple HT212803). Usa un supporto con smorzatore e, per sentire la voce, l\'interfono. Il telefono va fissato e impostato prima di partire.',
     inUse:'in uso', at:'a', byLimit:'limite',
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
     profAgg:n=>'La scheda della tua '+(n||'auto')+' è stata aggiornata.',
@@ -25365,6 +25608,14 @@ const T = {
     rcToccaAvvia:'Tocca ancora per avviare il giro',
     rcGiroIniziato:'Giro iniziato: registro il percorso',
     rcRicominciato:'Ricominciato da qui',
+    rcDidascalia:'Guidato con @co_driver_ 🏁 #codriver #roadcard',
+    rcDidascaliaCopiata:'Didascalia copiata: incollala su Instagram',
+    rcDidascaliaNonCopiata:'Didascalia non copiata: scrivi tu @co_driver_ su Instagram',
+    rcInPreparazione:'Un attimo: la sto preparando',
+    rcFotoNonLetta:'Questa foto non si apre qui: scegline un\'altra',
+    rcAdesivoCopiato:'Adesivo copiato: apri una storia su Instagram e tocca «Aggiungi adesivo»',
+    rcAdesivoNonCopiato:'Copia non riuscita: tieni premuto sull\'adesivo e scegli Copia, oppure usa Salva adesivo',
+    rcAdesivoSalvato:'Fatto: in una storia usa l\'adesivo Foto e scegli la Road Card',
   },
   en: {
     search:'Search street, town, postcode…', fav:'favourite', rec:'recent search', kinds:['city','town','village','hamlet'],
@@ -25377,7 +25628,7 @@ const T = {
     gear:'GEAR', then:'then', radius:'radius', ref:'ref.', curvLab:'CORNER', lean:'lean', flat:'· flat out', rpm:'rpm',
     off:'Off mapped roads', offSub:'get closer to a mapped road to resume pacenotes',
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road',5:'Residential street'},
-    roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active', voceAccesa:'Voice on', voceSpenta:'Voice off',
+    roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active', voceAccesa:'Voice on', voceSpenta:'Voice off', voceScarico:'Downloading the voice…', voceSoloIt:'This voice is Italian only for now: in other languages Rally speaks.', voceSoloItChip:'Italian only', voceNo:'Voice not downloaded: it needs the network. Rally plays for now.', voceGia:'downloaded',
     clsAuto:'Motorway', clsRampa:'Slip road',
     localCall:'Local road', localSub:'urban street: no corner calls, limit inferred',
     gWords:['first','second','third','fourth','fifth','sixth','seventh','eighth','ninth'],
@@ -25460,6 +25711,7 @@ const T = {
     logSfratto:'downloaded maps are NOT protected: the phone may delete them when it needs space',
     tooMuch:mb=>'Many maps switched on: with lots of regions the app can close by itself while you drive. Keep on only the ones you are heading to: switching them off does not delete them, they stay on the phone.',
     mappeAttiveTot:mb=>'Active maps: '+mb,
+    motoAvviso:'Before riding: the vibration of powerful engines can damage the iPhone camera (Apple HT212803). Use a mount with a damper and, to hear the voice, the intercom. The phone must be mounted and set up before you ride.',
     inUse:'in use', at:'at', byLimit:'limit',
     carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
     profAgg:n=>'Your '+(n||'car')+' profile has been updated.',
@@ -25536,6 +25788,14 @@ const T = {
     rcToccaAvvia:'Tap again to start the ride',
     rcGiroIniziato:'Ride started: recording your route',
     rcRicominciato:'Restarted from here',
+    rcDidascalia:'Driven with @co_driver_ 🏁 #codriver #roadcard',
+    rcDidascaliaCopiata:'Caption copied: paste it on Instagram',
+    rcDidascaliaNonCopiata:'Caption not copied: type @co_driver_ yourself on Instagram',
+    rcInPreparazione:'One moment: getting it ready',
+    rcFotoNonLetta:'This photo can\'t be opened here: pick another one',
+    rcAdesivoCopiato:'Sticker copied: open an Instagram story and tap “Add sticker”',
+    rcAdesivoNonCopiato:'Copy failed: long-press the sticker and choose Copy, or use Save sticker',
+    rcAdesivoSalvato:'Done: in a story use the Photo sticker and pick the Road Card',
   },
   fr: {
     search:'Cherche une rue, une ville, un code postal…', fav:'favori', rec:'recherche récente', kinds:['ville','commune','village','hameau'],
@@ -25548,7 +25808,7 @@ const T = {
     gear:'VITESSE', then:'puis', radius:'rayon', ref:'réf.', curvLab:'VIRAGE', lean:'inclinaison', flat:'· à fond', rpm:'tr/min',
     off:'Hors des routes cartographiées', offSub:'rapproche-toi d\'une route pour reprendre les indications',
     roads:{0:'Route nationale',1:'Nationale / Provinciale',2:'Route provinciale',3:'Provinciale secondaire',4:'Route locale',5:'Rue de village'},
-    roadOff:'hors des routes cartographiées', roadLocal:'route locale', voiceOn:'copilote actif', voceAccesa:'Voix active', voceSpenta:'Voix coupée',
+    roadOff:'hors des routes cartographiées', roadLocal:'route locale', voiceOn:'copilote actif', voceAccesa:'Voix active', voceSpenta:'Voix coupée', voceScarico:'Téléchargement de la voix…', voceSoloIt:'Cette voix n\'existe qu\'en italien pour l\'instant : dans les autres langues, Rally parle.', voceSoloItChip:'italien seulement', voceNo:'Voix non téléchargée : il faut du réseau. Rally parle pour l\'instant.', voceGia:'téléchargée',
     clsAuto:'Autoroute', clsRampa:'Bretelle',
     localCall:'Route locale', localSub:'rue urbaine : pas d\'annonce de virage, limite estimée',
     gWords:['première','deuxième','troisième','quatrième','cinquième','sixième','septième','huitième','neuvième'],
@@ -25631,6 +25891,7 @@ const T = {
     logSfratto:'les cartes téléchargées ne sont PAS protégées : le téléphone peut les supprimer s\'il a besoin d\'espace',
     tooMuch:mb=>'Beaucoup de cartes allumées : avec beaucoup de régions, l\'app peut se fermer toute seule pendant que tu conduis. N\'allume que celles où tu vas : les éteindre ne les supprime pas, elles restent sur le téléphone.',
     mappeAttiveTot:mb=>'Cartes actives : '+mb,
+    motoAvviso:'Avant de rouler : les vibrations des moteurs puissants peuvent endommager l\'appareil photo de l\'iPhone (Apple HT212803). Utilise un support avec amortisseur et, pour entendre la voix, l\'interphone. Le téléphone doit être fixé et réglé avant de partir.',
     inUse:'en cours', at:'à', byLimit:'limite',
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
     profAgg:n=>'La fiche de ta '+(n||'voiture')+' a été mise à jour.',
@@ -25707,6 +25968,14 @@ const T = {
     rcToccaAvvia:'Touche encore pour démarrer le trajet',
     rcGiroIniziato:'Trajet démarré : j\'enregistre le parcours',
     rcRicominciato:'Recommencé d\'ici',
+    rcDidascalia:'Roulé avec @co_driver_ 🏁 #codriver #roadcard',
+    rcDidascaliaCopiata:'Légende copiée : colle-la sur Instagram',
+    rcDidascaliaNonCopiata:'Légende non copiée : écris toi-même @co_driver_ sur Instagram',
+    rcInPreparazione:'Un instant : je la prépare',
+    rcFotoNonLetta:'Cette photo ne s\'ouvre pas ici : choisis-en une autre',
+    rcAdesivoCopiato:'Sticker copié : ouvre une story Instagram et touche « Ajouter le sticker »',
+    rcAdesivoNonCopiato:'Copie impossible : appuie longuement sur le sticker et choisis Copier, ou utilise Enregistrer le sticker',
+    rcAdesivoSalvato:'C\'est fait : dans une story, utilise le sticker Photo et choisis la Road Card',
   },
 };
 let L='it';
@@ -25730,6 +25999,7 @@ const S = {
   accel:true,
   cmin:6,
   antic:0,
+  voce:'rally',
   snap:null,
   nav:null,
   navRipreso:false,
@@ -25768,6 +26038,7 @@ try{
   S.carScelto = !!(st.car || autoDalLink || profiloDalLink);
   if(st.tema==='chiaro'||st.tema==='scuro'||st.tema==='auto')S.tema=st.tema;
   if(typeof st.antic==='number') S.antic=Math.max(-1,Math.min(3,st.antic));
+  if(typeof st.voce==='string' && propria(VOCI, st.voce)) S.voce=st.voce;
   if(propria(STYLES, st.style))S.style=st.style;
   if(typeof st.cal==='number')S.cal=st.cal;
   if(typeof st.calG==='number')S.calG=st.calG;
@@ -25825,7 +26096,7 @@ if(aNelLink || testerDalLink || profiloDalLink){
        window.history.replaceState(null, '', u.pathname + (u.search||'') + u.hash) }catch(e){}
 }
 const save=()=>{try{ricordaCal();localStorage.setItem('copilota2',JSON.stringify(
-  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,trafficoVivo:S.trafficoVivo,rcRegistra:S.rcRegistra,rcAvvisoVisto:S.rcAvvisoVisto,antic:S.antic,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema,vetro:S.vetro}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,trafficoVivo:S.trafficoVivo,rcRegistra:S.rcRegistra,rcAvvisoVisto:S.rcAvvisoVisto,antic:S.antic,voce:S.voce,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema,vetro:S.vetro}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 if(autoDalLink || profiloDalLink) save();
 
 (function (globale) {
@@ -25838,7 +26109,8 @@ if(autoDalLink || profiloDalLink) save();
   var TIPI_ANOMALIA = ['voce-interrotta', 'dati-ko', 'gps-perso',
                        'sidecar-scartato', 'ripresa-a-freddo', 'voce-ripresa',
                        'gps-negato', 'voce-sveglia-negata', 'link-file-diverso',
-                       'schermo-negato', 'aggiornata'];
+                       'schermo-negato', 'aggiornata',
+                       'salto-gamba', 'salto-verso'];
   var CODA = 'codriver-bb-coda-v1';
   var trasporto = null;
   var testerId = '?';
@@ -26231,6 +26503,7 @@ if(autoDalLink || profiloDalLink) save();
       vie: [],
       nome: '',
       dislivello: 0, quotaMax: null, ultimaQuota: null, mDaUltimaQuota: 0,
+      vmax: 0,
       velRifSotto: 0, velRifLinea: 0, velRifSopra: 0,
       pronta: false
     };
@@ -26393,6 +26666,7 @@ if(autoDalLink || profiloDalLink) save();
         ultimaQuotaPunto = quotaOra;
       }
       registraVia(via);
+      if (accettato && typeof vMs === 'number' && vMs > 0) { var vk = Math.round(vMs * 3.6); if (vk > (aperto.vmax || 0)) aperto.vmax = vk; }
       if (accettato && dAccettato > 0 && typeof vMs === 'number' && vMs > 0.3) {
         var vKmh = vMs * 3.6;
         if (typeof rifKmh === 'number' && rifKmh > 0) {
@@ -26701,7 +26975,7 @@ function tickEco(){
                                          && !piatta(z) && !troppoAmpia(z) && !sottoSoglia(z));
   if(av && av.dist < S.v*ECO_CURVA_S + 100) return;
   const ch = [L==='fr' ? 'e.passeen' : 'k.in', 'g.'+g];
-  if(!(VOCE.idx[L] && ch.every(k => VOCE.idx[L][k]))) return;
+  if(!(VOCE.idx[vk()] && ch.every(k => VOCE.idx[vk()][k]))) return;
   if(dilo(ch, false) > 0){ S.ecoDetta = g; S.ecoT = now; S.lastSaid = now }
 }
 const ACC_TAU     = 0.12;
@@ -26798,7 +27072,8 @@ function accAvvia(){
 }
 
 const BAGNATO_K = 0.7;
-const aderenza = () => S.bagnato ? BAGNATO_K : 1;
+const BAGNATO_K_MOTO = 0.65;
+const aderenza = () => S.bagnato ? (isMoto() ? BAGNATO_K_MOTO : BAGNATO_K) : 1;
 function latA(){
   const k = aderenza(), base = stileAttivo().a * (CARS[S.car].grip||1) * k;
   if(!S.accel) return base;
@@ -28435,7 +28710,7 @@ function buildAhead(){
     for(const a of tocca) (S.stopMuti || (S.stopMuti = new Set())).add(a.key);
     return true;
   });
-  const saStop = !!(VOCE.idx[L] && VOCE.idx[L]['h.stop']);
+  const saStop = !!(VOCE.idx[vk()] && VOCE.idx[vk()]['h.stop']);
   for(const st of S.aheadStop){
     if(st.tipo === 3 ? false : (st.tipo !== 0 || !saStop)) continue;
     for(const a of S.ahead)
@@ -28520,7 +28795,10 @@ function tracciaCurva(g, cls, right){
   g.lineTo(px+Math.cos(hd-2.6)*ah, py+Math.sin(hd-2.6)*ah);
   g.stroke();
 }
-const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, comp:null, lim:null, testa:null, sorgente:null};
+const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, comp:null, lim:null, testa:null, sorgente:null, sost:{}};
+function vk(lang, voce){ return (lang || L) + '/' + (voce || S.voce) }
+function voceInLingua(voce, lang){ const v = VOCI[voce]; return !v || !v.lingue || v.lingue.indexOf(lang) >= 0 }
+function vbase(lang, voce){ voce = voce || S.voce; return voce === 'rally' ? 'voce-' + lang : 'voce-' + voce + '-' + lang }
 
 const CACHE_VOCE = 'copilota-voce-v1';
 const VOCE_VER = '8';
@@ -28560,9 +28838,20 @@ function pulisciVoce(base, q){
   })).catch(()=>{});
 }
 
-async function caricaVoce(lang){
-  if(VOCE.buf[lang]) return true;
-  const base = 'voce-'+lang, q = '?v='+VOCE_VER;
+function liberaVoceVecchie(tenere){
+  for(const k of Object.keys(VOCE.buf)) if(k !== tenere) delete VOCE.buf[k];
+}
+async function caricaVoce(lang, voce, opz){
+  voce = voce || S.voce; opz = opz || {};
+  const key = vk(lang, voce);
+  if(VOCE.buf[key] && !VOCE.sost[key]) return true;
+  if(voce !== 'rally' && !voceInLingua(voce, lang)){
+    const ok = await caricaVoce(lang, 'rally', {senzaFallback:true});
+    if(ok){ VOCE.buf[key] = VOCE.buf[vk(lang,'rally')]; VOCE.idx[key] = VOCE.idx[vk(lang,'rally')]; VOCE.sost[key] = true;
+            liberaVoceVecchie(lang === L ? key : vk()) }
+    return ok;
+  }
+  const base = vbase(lang, voce), q = '?v='+VOCE_VER;
   try{
     let j, a, nuova = true;
     try{
@@ -28574,16 +28863,48 @@ async function caricaVoce(lang){
       if(!self.caches) throw e;
       [j,a] = await voceVecchia(base, q);
       nuova = false;
-      nota('voce '+lang+' nuova non scaricata, uso quella precedente: '+(e && e.message || e));
+      nota('voce '+voce+' '+lang+' nuova non scaricata, uso quella precedente: '+(e && e.message || e));
     }
     creaCtx();
-    VOCE.idx[lang] = j.clip;
+    VOCE.idx[key] = j.clip;
     const pcm = await VOCE.ctx.decodeAudioData(a);
     try{ livelliVoce(pcm, j.clip) }catch(e){ nota('voce '+lang+': livelli non calcolati, suona com\'era: '+(e && e.message || e)) }
-    VOCE.buf[lang] = pcm;
+    VOCE.buf[key] = pcm;
+    delete VOCE.sost[key];
+    liberaVoceVecchie(lang === L ? key : vk());
     if(nuova) pulisciVoce(base, q);
     return true;
-  }catch(e){ console.warn('voce non caricata ('+lang+'):', e); return false }
+  }catch(e){
+    console.warn('voce non caricata ('+voce+' '+lang+'):', e);
+    if(voce !== 'rally' && !opz.senzaFallback){
+      const ok = await caricaVoce(lang, 'rally', {senzaFallback:true, come:key});
+      if(ok){
+        VOCE.buf[key] = VOCE.buf[vk(lang,'rally')]; VOCE.idx[key] = VOCE.idx[vk(lang,'rally')]; VOCE.sost[key] = true;
+        liberaVoceVecchie(lang === L ? key : vk());
+        if(!window.__voceFallbackDetta){ window.__voceFallbackDetta = true; toast(tr().voceNo, 6000) }
+      }
+      return ok;
+    }
+    return false;
+  }
+}
+
+async function voceScaricata(lang, voce){
+  if(!self.caches) return false;
+  try{ const c = await caches.open(CACHE_VOCE); return !!(await c.match(vbase(lang, voce)+'.m4a?v='+VOCE_VER)) }
+  catch(e){ return false }
+}
+async function scegliVoce(k){
+  if(k === S.voce || !propria(VOCI, k)) return;
+  if(!voceInLingua(k, L)){
+    S.voce = k; save(); await caricaVoce(L, k); renderVoci();
+    toast(tr().voceSoloIt, 6000); return;
+  }
+  if(!(await voceScaricata(L, k))) toast(tr().voceScarico, 4000);
+  const ok = await caricaVoce(L, k, {senzaFallback:true});
+  if(!ok){ toast(tr().voceNo, 6000); renderVoci(); return }
+  S.voce = k; save(); renderVoci();
+  if(S.audio){ svegliaVoce(); dilo(['x.attivo'], true) }
 }
 
 function svegliaVoce(){
@@ -28627,16 +28948,16 @@ addEventListener('pageshow', riprovaVoce);
 setInterval(riprovaVoce, 2000);
 function sbloccaAudio(){
   if(!S.audio) return;
-  if(VOCE.ctx && VOCE.ctx.state === 'running' && VOCE.buf[L]) return;
+  if(VOCE.ctx && VOCE.ctx.state === 'running' && VOCE.buf[vk()]) return;
   svegliaVoce();
-  if(!VOCE.buf[L]) caricaVoce(L);
+  if(!VOCE.buf[vk()]) caricaVoce(L);
 }
 for(const ev of ['pointerdown','touchend','keydown'])
   addEventListener(ev, sbloccaAudio, {capture:true, passive:true});
 
 const GAP = 0;
 function durataFrase(chiavi){
-  const ix = VOCE.idx[L]; if(!ix) return 0;
+  const ix = VOCE.idx[vk()]; if(!ix) return 0;
   let t=0;
   for(const k of chiavi){
     const c=ix[k]; if(!c) continue;
@@ -28750,7 +29071,7 @@ function musicaSu(secondi){
 
 function dilo(chiavi, urgente){
   if(!S.audio) return 0;
-  const buf=VOCE.buf[L], ix=VOCE.idx[L];
+  const buf=VOCE.buf[vk()], ix=VOCE.idx[vk()];
   if(!buf||!ix) return 0;
   if(!svegliaVoce() && !VOCE_MUTA && !document.hidden){
     VOCE_MUTA = VOCE.ctx.state; nota('voce muta: nota su audio '+VOCE.ctx.state); contaAnomalia('voce-interrotta');
@@ -28816,10 +29137,10 @@ function clipDist(m){
   for(const v of DIST_CLIP) if(Math.abs(v-m) < Math.abs(best-m)) best=v;
   if(Math.abs(best-m) > m*0.20) return null;
   const k='d.'+best;
-  return (VOCE.idx[L] && VOCE.idx[L][k]) ? k : null;
+  return (VOCE.idx[vk()] && VOCE.idx[vk()][k]) ? k : null;
 }
 function metriDi(dk){
-  const ix = VOCE.idx[L];
+  const ix = VOCE.idx[vk()];
   if(!dk || !ix) return [];
   const intera = 'dm.' + dk.slice(2);
   if(ix[intera]) return [intera];
@@ -28881,7 +29202,7 @@ function suCrinale(a){
   return q.sp[i]*(1-f) + q.sp[i+1]*f >= CRINALE_SPORGE;
 }
 function chiaviCurva(a, conMarcia){
-  const ix = VOCE.idx[L];
+  const ix = VOCE.idx[vk()];
   const ch = ['c.'+(isRight(a)?0:1)+'.'+a.c.c];
   const agg = k => { if(ix && ix[k]) ch.push(k) };
   if(S.pace){
@@ -29034,13 +29355,13 @@ function updateNote(){
       S.said.add(cam0.key);
       const ch=['a.autovelox'];
       const lim=cam0.cam.ms;
-      if(lim && VOCE.idx[L] && VOCE.idx[L]['a.lim.'+lim]) ch.push('a.limite','a.lim.'+lim);
+      if(lim && VOCE.idx[vk()] && VOCE.idx[vk()]['a.lim.'+lim]) ch.push('a.limite','a.lim.'+lim);
       dilo(ch, true);
     }
   }
   if(S.rotatorie === true && S.aheadRot && !S.nav && !S.gpsBuco && versoNoto && !S.said.has(S.aheadRot.key)){
     const leadRot=Math.max(180, S.v*6.5);
-    if(S.aheadRot.dist<=leadRot && VOCE.idx[L] && VOCE.idx[L]['n.rot']){
+    if(S.aheadRot.dist<=leadRot && VOCE.idx[vk()] && VOCE.idx[vk()]['n.rot']){
       if(dilo(['n.rot'], false) > 0) S.said.add(S.aheadRot.key);
     }
   }
@@ -29055,7 +29376,7 @@ function updateNote(){
         const ch = [];
         ch.push(...metriDi(dk));
         ch.push(molti ? 'h.dossi' : 'h.dosso');
-        if(dilo(ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]), false) > 0) S.said.add(kD);
+        if(dilo(ch.filter(k => VOCE.idx[vk()] && VOCE.idx[vk()][k]), false) > 0) S.said.add(kD);
       }
     }
   }
@@ -29070,7 +29391,7 @@ function updateNote(){
         const ch = [];
         ch.push(...metriDi(dk));
         ch.push(molti ? 'h.dissestate' : 'h.dissestata');
-        if(dilo(ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]), false) > 0) S.said.add(kDis);
+        if(dilo(ch.filter(k => VOCE.idx[vk()] && VOCE.idx[vk()][k]), false) > 0) S.said.add(kDis);
       }
     }
   }
@@ -29082,7 +29403,7 @@ function updateNote(){
   if(S.drittoK && (dentroOra || performance.now() - S.drittoT > DRITTO_RIPROVA_MS)) S.drittoK = null;
   if(S.drittoK){
     const dr = drittoOra();
-    const ixD = VOCE.idx[L];
+    const ixD = VOCE.idx[vk()];
     if(dr && ixD && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()){
       const k = S.drittoK;
       if(!S.said.has(k)){
@@ -29105,7 +29426,7 @@ function updateNote(){
   let stopDetto = false;
   const st0 = S.aheadStop && S.aheadStop.find(z => z.tipo !== 3 && !S.said.has(z.key));
   const parolaStop = st0 ? (st0.tipo===2 ? 'h.incrocio' : st0.tipo ? 'h.precedenza' : 'h.stop') : null;
-  const ixV = VOCE.idx[L];
+  const ixV = VOCE.idx[vk()];
   if(st0 && ixV && ixV[parolaStop] && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()){
     if(st0.dist < 15) S.said.add(st0.key);
     else if(!(S.ahead.find(z => !z.inside && z.dist < st0.dist-5 && !S.said.has(z.key)
@@ -29446,7 +29767,7 @@ function tickNav(){
     else if(mn.rot)            ch=['n.rot', 'n.'+mn.tipo];
     else if(eSvincolo(nv, mn)) ch=['n.svincolo','n.uscita'];
     else                       ch=['n.'+mn.tipo];
-    ch = ch.filter(k => VOCE.idx[L] && VOCE.idx[L][k]);
+    ch = ch.filter(k => VOCE.idx[vk()] && VOCE.idx[vk()][k]);
     if(dm<=vicino && !S.said.has(kv)){
       if(dilo(ch, false) > 0){ S.said.add(kv); S.said.add(kf); S.lastSaid=now; }
     } else if(dm<=lontano && !S.said.has(kf) && now-S.lastSaid>900){
@@ -29467,7 +29788,7 @@ function trafficoDaDire(ev){
   return false;
 }
 function parlaTraffico(nv, pr){
-  const T = S.traffico, ix = VOCE.idx[L];
+  const T = S.traffico, ix = VOCE.idx[vk()];
   if(!T || !T.eventi || !pr || !ix || T.sn !== nv.sn) return;
   if(!(Date.now() - T.t <= TRAFFICO_VECCHIO_MS) || navigator.onLine === false) return;
   const now = performance.now();
@@ -29666,6 +29987,34 @@ function mostraPendenza(){
   pendV.style.color = pc>=8 ? '#ff8a1e' : pc<=-8 ? '#4ea8ff' : '';
   quotaV.textContent = Math.round(q)+' M';
 }
+let saltiConti = 0; const saltoUltimo = {};
+function puntoAggancio(m){
+  const e=m.e, i=m.i, t=m.t;
+  return [e.xy[2*i]+(e.xy[2*i+2]-e.xy[2*i])*t, e.xy[2*i+1]+(e.xy[2*i+3]-e.xy[2*i+1])*t];
+}
+function tipoSaltoAggancio(prev, nuovo, dt, v, acc){
+  if(!prev || !nuovo || !(dt>0.3 && dt<=3) || !(v>=3) || (acc||0)>30) return null;
+  const a=prev.e, b=nuovo.e; if(!a || !b) return null;
+  const pa=puntoAggancio(prev), pb=puntoAggancio(nuovo);
+  const attesi=v*dt;
+  if(Math.hypot(pb[0]-pa[0], pb[1]-pa[1]) > 25+attesi) return null;
+  if(a.id===b.id){
+    if(nuovo.dir!==prev.dir) return 'salto-verso';
+    const da=Math.abs(distAlong(b,nuovo.i,nuovo.t)-distAlong(a,prev.i,prev.t));
+    return da > 2*attesi+25 ? 'salto-gamba' : null;
+  }
+  if(a.wid && a.wid===b.wid && a.j0!==b.j0 && a.j0!==b.j1 && a.j1!==b.j0 && a.j1!==b.j1) return 'salto-gamba';
+  return null;
+}
+function saltiAggancio(prev, nuovo, dt){
+  if(S.hd==null || saltiConti>=40) return;
+  const tipo=tipoSaltoAggancio(prev, nuovo, dt, S.v, S.acc);
+  if(!tipo) return;
+  const ora=Date.now();
+  if(ora-(saltoUltimo[tipo]||0) < 4000) return;
+  saltoUltimo[tipo]=ora; saltiConti++;
+  contaAnomalia(tipo);
+}
 let lastFix=null;
 const AGG_MOTO = 2;
 let ultimoMoto = 0, fixMuro = 0;
@@ -29682,7 +30031,9 @@ function feed(x,y,hd,v,acc){
     S.hd=Math.atan2(y-lastFix[1],x-lastFix[0]);
   lastFix=[x,y];
   const m=matchRoad(x,y,S.hd);
+  const snapPrima = S.snap;
   S.snap = (m && m.d<70) ? m : null;
+  saltiAggancio(snapPrima, S.snap, (performance.now()-(S.fixT||0))/1000);
   if(S.snap) S.snapFix = (S.snapId===S.snap.e.id) ? (S.snapFix|0)+1 : 1;
   S.snapId = S.snap ? S.snap.e.id : null;
   S.local = !S.snap && distToGrey(x,y,45) < 45;
@@ -30129,6 +30480,7 @@ function startGps(){
     suggestRegion(p.coords.latitude, p.coords.longitude);
     feed(x,y,hd,p.coords.speed||0,p.coords.accuracy||0);
     rcPasso(p);
+    regPasso(p);
     rcAggiornaTasto();
     if(S.v > 3) chiudiIconaInMoto();
     if(SEGNALA_ON) ULTIMA_FIX = {
@@ -30257,18 +30609,32 @@ function rcBannerPronta(){
 }
 var rcGiroCorrente = null;
 function rcApriRoadCard(id){
+  if(rcInGuida()){ toast(rcT('La Road Card si prepara a veicolo fermo.', 'The Road Card is made when the vehicle is stopped.', 'La Road Card se prépare à l\'arrêt.'), 4500); return; }
   try{ window.RC.consumaPronto(id); }catch(e){}
   var g = null;
   try{ g = window.RC.leggiGiro(id); }catch(e){}
   if(!g) return;
+  if(!rcGiroCorrente || rcGiroCorrente.id !== g.id) rcLiberaFoto();
   rcGiroCorrente = g;
+  rcEsitoAdesivo('');
   var input = document.getElementById('rcNome');
   if(input) input.value = g.nome || '';
   rcContatoreNome();
   var avviso = document.getElementById('rcAvviso'); if(avviso) avviso.hidden = true;
   rcMostraEsito('');
+  if(rcBaseGiro !== g.id || rcBase === 'tua'){ rcBase = 'auto'; rcBaseGiro = g.id; }
+  var pv = document.getElementById('rcPrivato');
+  if(pv){
+    if(g.vmax > 0){ pv.hidden = false;
+      pv.textContent = rcT('Solo per te, non compare sulla card: velocità massima ' + g.vmax + ' km/h.',
+        'Only for you, not on the card: top speed ' + g.vmax + ' km/h.', 'Seulement pour toi, pas sur la card : vitesse maximale ' + g.vmax + ' km/h.');
+    } else pv.hidden = true;
+  }
   rcRidisegna();
+  rcMarcaBase();
   openSheet('roadcard');
+  rcApplicaBase();
+  if(!rcFontCaricati) rcCaricaFont().then(function(){ if(rcFontCaricati && sheets.roadcard.classList.contains('show')) rcRidisegna(); });
 }
 function rcContatoreNome(){
   var input = document.getElementById('rcNome'), c = document.getElementById('rcContatore');
@@ -30296,22 +30662,39 @@ function rcTitoloCorrente(){
   if(v && rcNomeAccettabile(v)) return v;
   return rcGiroCorrente ? tr().rcNomeDefault(new Date(rcGiroCorrente.t0).toLocaleDateString(L)) : '';
 }
+var rcFoto = null;
+var RC_ADESIVO_VARIANTE = 'chiaro';
 function rcRidisegna(){
   var cv = document.getElementById('rcCanvas');
   if(!cv || !rcGiroCorrente) return;
-  var ctx = cv.getContext('2d');
+  var ctx = cv.getContext('2d'), g = rcGiroCorrente;
   ctx.clearRect(0,0,cv.width,cv.height);
-  rcDisegna(ctx, rcGiroCorrente, rcTitoloCorrente());
+  try{
+    window.RCV2.disegnaCard(ctx, g, rcTitoloCorrente(), {
+      foto: rcFoto, lingua: L,
+      data: g.t0 ? new Date(g.t0).toLocaleDateString(L, {day:'numeric', month:'long', year:'numeric'}) : '',
+      sfondoSenzaFoto: function(c, toPx, box){
+        rcRilievo(c, rcDecodificaTraccia(g), rcDecodificaQuote(g), toPx, box.x, box.y, box.w, box.h);
+      }
+    });
+  }catch(e){
+    nota('road card v2: ' + (e && e.message));
+    ctx.clearRect(0,0,cv.width,cv.height);
+    rcDisegna(ctx, g, rcTitoloCorrente());
+  }
   rcPrepareFile();
+  rcPreparaAdesivo();
 }
 var rcBlob = null, rcFile = null;
 function rcPrepareFile(){
   var cv = document.getElementById('rcCanvas');
   if(!cv || !cv.toBlob) return;
+  var conFoto = !!(rcFoto && rcFoto.img);
+  rcBlob = null; rcFile = null;
   cv.toBlob(function(blob){
     rcBlob = blob;
-    rcFile = blob ? new File([blob], 'road-card.png', {type:'image/png'}) : null;
-  }, 'image/png');
+    rcFile = blob ? new File([blob], conFoto ? 'road-card.jpg' : 'road-card.png', {type: blob.type}) : null;
+  }, conFoto ? 'image/jpeg' : 'image/png', 0.9);
 }
 function rcMostraEsito(testo){
   var el = document.getElementById('rcEsito');
@@ -30321,13 +30704,18 @@ function rcMostraEsito(testo){
 }
 function rcCondividi(){
   rcMostraEsito('');
-  if(!rcFile || !navigator.canShare || !navigator.canShare({files:[rcFile]})){
-    rcMostraEsito(tr().rcCondivisioneNonDisponibile);
-    return;
-  }
-  navigator.share({ files:[rcFile], title: rcTitoloCorrente(), text: 'Guidato con Co-Driver — ' + rcTitoloCorrente() })
-    .then(function(){ rcMostraEsito(tr().rcCondivisa); })
-    .catch(function(err){ if(!err || err.name!=='AbortError') rcMostraEsito(tr().rcCondivisioneNonRiuscita); });
+  if(!rcFile){ rcMostraEsito(tr().rcInPreparazione); return; }
+  window.RCV2.condividiConDidascalia(rcFile, tr().rcDidascalia, function(){
+    rcMostraEsito(tr().rcDidascaliaCopiata);
+    toast(tr().rcDidascaliaCopiata, 5000);
+  }).then(function(r){
+    if(r.errore){
+      rcMostraEsito((r.copia ? tr().rcDidascaliaCopiata + '. ' : '') +
+        (r.errore === 'NonDisponibile' ? tr().rcCondivisioneNonDisponibile : tr().rcCondivisioneNonRiuscita));
+    }else if(!r.copia && !r.annullata){
+      rcMostraEsito(tr().rcDidascaliaNonCopiata);
+    }
+  });
 }
 function rcSalva(){
   rcMostraEsito('');
@@ -30340,7 +30728,7 @@ function rcSalva(){
   if(!rcBlob){ rcMostraEsito(tr().rcCondivisioneNonDisponibile); return; }
   var url = URL.createObjectURL(rcBlob);
   var a = document.createElement('a');
-  a.href = url; a.download = 'road-card.png';
+  a.href = url; a.download = (rcFile && rcFile.name) || 'road-card.png';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
   rcMostraEsito(tr().rcDownloadAvviato);
@@ -30376,6 +30764,742 @@ function rcSalva(){
     if(avviso && !accettato && v) avviso.hidden = false;
   });
 })();
+function rcLiberaFoto(){
+  if(rcFoto){ try{ window.RCV2.rilasciaFoto(rcFoto); }catch(e){} rcFoto = null; }
+  var t = document.getElementById('rcFotoTogli'); if(t) t.hidden = true;
+}
+(function(){
+  var b = document.getElementById('rcFoto'), inp = document.getElementById('rcFotoFile'), t = document.getElementById('rcFotoTogli');
+  if(b && inp) b.onclick = function(){ inp.click(); };
+  if(inp) inp.addEventListener('change', function(){
+    var f = inp.files && inp.files[0];
+    inp.value = '';
+    if(!f || !window.RCV2 || !rcGiroCorrente) return;
+    rcMostraEsito('');
+    window.RCV2.preparaFoto(f).then(function(foto){
+      rcLiberaFoto(); rcFoto = foto; rcBase = 'tua'; rcMarcaBase();
+      if(t) t.hidden = false;
+      rcRidisegna();
+    }, function(){ rcMostraEsito(tr().rcFotoNonLetta); });
+  });
+  if(t) t.onclick = function(){ rcLiberaFoto(); rcBase = 'nessuna'; rcMarcaBase(); rcRidisegna(); };
+})();
+var rcAdesivoBlob = null, rcAdesivoFile = null, rcAdesivoUrl = '', rcAdesivoChiave = '';
+function rcPreparaAdesivo(){
+  if(!window.RCV2 || !rcGiroCorrente) return;
+  var chiave = rcGiroCorrente.id + '|' + L + '|' + RC_ADESIVO_VARIANTE;
+  if(chiave === rcAdesivoChiave && rcAdesivoBlob) return;
+  var c = document.createElement('canvas'); c.width = window.RCV2.ADESIVO_W; c.height = window.RCV2.ADESIVO_H;
+  try{ window.RCV2.disegnaAdesivo(c.getContext('2d'), rcGiroCorrente, { lingua: L, variante: RC_ADESIVO_VARIANTE }); }
+  catch(e){ window.RCV2.rilasciaCanvas(c); return; }
+  var r = window.RCV2.ritagliaTrasparente(c, 24); if(r !== c) window.RCV2.rilasciaCanvas(c);
+  rcAdesivoBlob = null; rcAdesivoFile = null; rcAdesivoChiave = chiave;
+  r.toBlob(function(b){
+    window.RCV2.rilasciaCanvas(r);
+    if(!b) return;
+    rcAdesivoBlob = b;
+    rcAdesivoFile = new File([b], 'road-card-adesivo.png', {type:'image/png'});
+    if(rcAdesivoUrl) URL.revokeObjectURL(rcAdesivoUrl);
+    rcAdesivoUrl = URL.createObjectURL(b);
+    var img = document.getElementById('rcAdesivoImg'); if(img) img.src = rcAdesivoUrl;
+  }, 'image/png');
+}
+function rcEsitoAdesivo(testo){
+  var el = document.getElementById('rcEsitoAdesivo'); if(!el) return;
+  el.hidden = !testo; el.textContent = testo || '';
+}
+(function(){
+  var bc = document.getElementById('rcCopiaAdesivo'), bs = document.getElementById('rcSalvaAdesivo');
+  if(bc) bc.onclick = function(){
+    rcEsitoAdesivo('');
+    if(!rcAdesivoBlob){ rcEsitoAdesivo(tr().rcInPreparazione); return; }
+    window.RCV2.copiaImmagine(rcAdesivoBlob)
+      .then(function(){ rcEsitoAdesivo(tr().rcAdesivoCopiato); }, function(){ rcEsitoAdesivo(tr().rcAdesivoNonCopiato); });
+  };
+  var bi = document.getElementById('rcApriIg');
+  if(bi) bi.onclick = function(){
+    rcEsitoAdesivo('');
+    if(!rcAdesivoBlob){ rcEsitoAdesivo(tr().rcInPreparazione); return; }
+    window.RCV2.copiaImmagine(rcAdesivoBlob).then(function(){
+      rcEsitoAdesivo(tr().rcAdesivoCopiato);
+      setTimeout(function(){ try{ window.location.href = 'instagram://story-camera'; }catch(e){} }, 700);
+    }, function(){ rcEsitoAdesivo(tr().rcAdesivoNonCopiato); });
+  };
+  if(bs) bs.onclick = function(){
+    rcEsitoAdesivo('');
+    if(!rcAdesivoFile){ rcEsitoAdesivo(tr().rcInPreparazione); return; }
+    window.RCV2.salvaFile(rcAdesivoFile).then(function(m){
+      if(m === 'condiviso') rcEsitoAdesivo(tr().rcAdesivoSalvato);
+      else if(m === 'scaricato') rcEsitoAdesivo(tr().rcDownloadAvviato);
+    }, function(){ rcEsitoAdesivo(tr().rcCondivisioneNonRiuscita); });
+  };
+})();
+(function (globale) {
+  'use strict';
+
+  var W = 1080, H = 1920;
+  var M = 84;
+  var SICURO_SU = 220, SICURO_GIU = 1720;
+  var NASCOSTO_M = 500;
+  var COL_CLASSI = ['#ff2e6e', '#ff4438', '#ff8a1e', '#ffbe17', '#ffe14f', '#9fdf4e', '#2fce7a'];
+  var LARGH_CURVA = [70, 60, 55, 50, 44, 38, 32];
+  var ROSA = '#FF4E7E', INK = '#FFFFFF', INK2 = '#E1E7EC', SFONDO = '#101418';
+  var HANDLE = '@co_driver_';
+  var SITO = 'codriver.pages.dev';
+  var FOTO_MAX_LATO = 2048;
+
+  var font = {
+    titolo: "'Barlow Condensed', Oswald, 'Arial Narrow', sans-serif",
+    testo: "Barlow, system-ui, -apple-system, 'Segoe UI', sans-serif"
+  };
+
+  var TESTI = {
+    it: {
+      dist: 'distanza', dur: 'durata', disl: 'dislivello', torn: 'tornanti', curve: 'curve',
+      qm: 'quota max', stretta: 'curva più stretta', marcia: 'marcia più usata', media: 'media',
+      inLinea: 'in linea', perTipo: 'curve per tipo', nascosti: 'primi e ultimi 500 m nascosti',
+      marciaFmt: function (n) { return n + 'ª'; },
+      didascalia: 'Guidato con @co_driver_ 🏁 #codriver #roadcard',
+      didascaliaCopiata: 'Didascalia copiata: incollala su Instagram'
+    },
+    en: {
+      dist: 'distance', dur: 'time', disl: 'elevation gain', torn: 'hairpins', curve: 'corners',
+      qm: 'max altitude', stretta: 'tightest corner', marcia: 'most used gear', media: 'average',
+      inLinea: 'on pace', perTipo: 'corners by type', nascosti: 'first and last 500 m hidden',
+      marciaFmt: function (n) { return n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : n + 'th'; },
+      didascalia: 'Driven with @co_driver_ 🏁 #codriver #roadcard',
+      didascaliaCopiata: 'Caption copied: paste it on Instagram'
+    },
+    fr: {
+      dist: 'distance', dur: 'durée', disl: 'dénivelé', torn: 'épingles', curve: 'virages',
+      qm: 'altitude max', stretta: 'virage le plus serré', marcia: 'rapport le plus utilisé', media: 'moyenne',
+      inLinea: 'dans la ligne', perTipo: 'virages par type', nascosti: '500 premiers et derniers m masqués',
+      marciaFmt: function (n) { return n === 1 ? '1re' : n + 'e'; },
+      didascalia: 'Roulé avec @co_driver_ 🏁 #codriver #roadcard',
+      didascaliaCopiata: 'Légende copiée : colle-la sur Instagram'
+    }
+  };
+  function testi(lingua) { return TESTI[lingua] || TESTI.it; }
+
+  function fmtNum(v, dec, lingua) {
+    var s = v.toFixed(dec);
+    if (lingua !== 'en') s = s.replace('.', ',');
+    return s;
+  }
+  function fmtKm(m, lingua) { return fmtNum(m / 1000, m < 100000 ? 1 : 0, lingua) + ' km'; }
+  function fmtM(m) { return Math.round(m) + ' m'; }
+  function fmtDurata(ms) {
+    var min = Math.max(1, Math.round(ms / 60000));
+    if (min < 60) return min + ' min';
+    var h = Math.floor(min / 60), r = min % 60;
+    return h + 'h' + (r ? ' ' + (r < 10 ? '0' : '') + r : '');
+  }
+
+  function voci(g, lingua) {
+    var t = testi(lingua), out = [];
+    var dur = (g.t0 && g.t1 && g.t1 > g.t0) ? g.t1 - g.t0 : 0;
+    var totCurve = 0; for (var i = 0; g.cv && i < g.cv.length; i++) totCurve += g.cv[i] || 0;
+    var totRif = (g.velRifSotto || 0) + (g.velRifLinea || 0) + (g.velRifSopra || 0);
+    if (g.m > 0) out.push({ k: 'dist', l: t.dist, v: fmtKm(g.m, lingua) });
+    if (dur) out.push({ k: 'dur', l: t.dur, v: fmtDurata(dur) });
+    if (g.dislivello > 0) out.push({ k: 'disl', l: t.disl, v: fmtM(g.dislivello) });
+    if (g.cv) out.push({ k: 'torn', l: t.torn, v: String(g.cv[0] || 0) });
+    if (g.cv) out.push({ k: 'curve', l: t.curve, v: String(totCurve) });
+    if (totRif > 0) out.push({ k: 'inLinea', l: t.inLinea, v: Math.round((g.velRifLinea || 0) / totRif * 100) + '%' });
+    if (g.quotaMax != null) out.push({ k: 'qm', l: t.qm, v: fmtM(g.quotaMax) });
+    if (g.rMin > 0) out.push({ k: 'stretta', l: t.stretta, v: fmtM(g.rMin) });
+    if (g.marcia > 0) out.push({ k: 'marcia', l: t.marcia, v: t.marciaFmt(g.marcia) });
+    if (dur && g.m > 0) out.push({ k: 'media', l: t.media, v: Math.round((g.m / 1000) / (dur / 3600000)) + ' km/h' });
+    return out;
+  }
+
+  function decodifica(g) {
+    var pts = [], x = 0, y = 0;
+    if (g.p) for (var i = 0; i + 1 < g.p.length; i += 2) { x += g.p[i]; y += g.p[i + 1]; pts.push([x, -y]); }
+    return pts;
+  }
+  function cumulata(pts) {
+    var cum = [0];
+    for (var i = 1; i < pts.length; i++) {
+      var dx = pts[i][0] - pts[i - 1][0], dy = pts[i][1] - pts[i - 1][1];
+      cum.push(cum[i - 1] + Math.sqrt(dx * dx + dy * dy));
+    }
+    return cum;
+  }
+  function idxDist(cum, d) {
+    var lo = 0, hi = cum.length - 1;
+    while (lo < hi) { var mid = (lo + hi) >> 1; if (cum[mid] < d) lo = mid + 1; else hi = mid; }
+    return lo;
+  }
+  function classiSegmenti(g, pts, cum) {
+    var col = new Array(Math.max(0, pts.length - 1));
+    for (var k = 0; k < col.length; k++) col[k] = -1;
+    if (g.cvSeg) for (var s = 0; s < g.cvSeg.length; s++) {
+      var d = g.cvSeg[s][0], c = g.cvSeg[s][1], win = LARGH_CURVA[c] != null ? LARGH_CURVA[c] : 40;
+      var i0 = idxDist(cum, Math.max(0, d - win / 2)), i1 = idxDist(cum, d + win / 2);
+      for (var j = Math.max(1, i0); j <= Math.min(pts.length - 1, i1); j++) col[j - 1] = c;
+    }
+    return col;
+  }
+  function percorso(g, box, soloVisibile) {
+    var pts = decodifica(g);
+    if (pts.length < 2) return null;
+    var cum = cumulata(pts), tot = cum[cum.length - 1], soglia = Math.min(NASCOSTO_M, tot / 2);
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (var i = 0; i < pts.length; i++) {
+      if (soloVisibile && (cum[i] < soglia || cum[i] > tot - soglia)) continue;
+      var p = pts[i];
+      if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0];
+      if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1];
+    }
+    if (!isFinite(minX)) return null;
+    var scala = Math.min(box.w / Math.max(1, maxX - minX), box.h / Math.max(1, maxY - minY));
+    var cx = box.x + box.w / 2, cy = box.y + box.h / 2, mx = (minX + maxX) / 2, my = (minY + maxY) / 2;
+    return {
+      pts: pts, cum: cum, tot: tot, soglia: soglia, classi: classiSegmenti(g, pts, cum),
+      toPx: function (q) { return [cx + (q[0] - mx) * scala, cy + (q[1] - my) * scala]; },
+      bbox: { x: cx - (maxX - minX) * scala / 2, y: cy - (maxY - minY) * scala / 2, w: (maxX - minX) * scala, h: (maxY - minY) * scala }
+    };
+  }
+  function tracciaPercorso(ctx, P, stileDi, soloVisibile) {
+    var i = 1, n = P.pts.length;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    while (i < n) {
+      var mid = (P.cum[i - 1] + P.cum[i]) / 2;
+      var nascosto = mid < P.soglia || mid > P.tot - P.soglia;
+      var chiave = nascosto ? 'h' : String(P.classi[i - 1]);
+      var j = i;
+      while (j + 1 < n) {
+        var mid2 = (P.cum[j] + P.cum[j + 1]) / 2;
+        var n2 = mid2 < P.soglia || mid2 > P.tot - P.soglia;
+        if ((n2 ? 'h' : String(P.classi[j])) !== chiave) break;
+        j++;
+      }
+      if (!(nascosto && soloVisibile)) {
+        var st = stileDi(nascosto, P.classi[i - 1]);
+        if (st) {
+          ctx.beginPath();
+          var a = P.toPx(P.pts[i - 1]); ctx.moveTo(a[0], a[1]);
+          for (var k = i; k <= j; k++) { var b = P.toPx(P.pts[k]); ctx.lineTo(b[0], b[1]); }
+          ctx.setLineDash(st.dash || []);
+          ctx.strokeStyle = st.col; ctx.lineWidth = st.w; ctx.stroke();
+        }
+      }
+      i = j + 1;
+    }
+    ctx.setLineDash([]);
+  }
+
+  function spaziato(ctx, s, x, y, sp, allinea) {
+    var larg = 0, i;
+    for (i = 0; i < s.length; i++) larg += ctx.measureText(s[i]).width + (i < s.length - 1 ? sp : 0);
+    var x0 = allinea === 'right' ? x - larg : allinea === 'center' ? x - larg / 2 : x;
+    var salva = ctx.textAlign; ctx.textAlign = 'left';
+    for (i = 0; i < s.length; i++) { ctx.fillText(s[i], x0, y); x0 += ctx.measureText(s[i]).width + sp; }
+    ctx.textAlign = salva;
+    return larg;
+  }
+  function larghezzaSpaziato(ctx, s, sp) {
+    var l = 0; for (var i = 0; i < s.length; i++) l += ctx.measureText(s[i]).width + (i < s.length - 1 ? sp : 0);
+    return l;
+  }
+  function accorciaCtx(ctx, s, maxW) {
+    if (ctx.measureText(s).width <= maxW) return s;
+    var lo = 0, hi = s.length;
+    while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (ctx.measureText(s.slice(0, mid) + '…').width <= maxW) lo = mid; else hi = mid - 1; }
+    return s.slice(0, lo).replace(/[\s·]+$/, '') + '…';
+  }
+  var cacheSegno = {};
+  function segno(ctx, x, y, size) {
+    var k = Math.round(size), c = cacheSegno[k];
+    if (!c) {
+      c = document.createElement('canvas'); c.width = k; c.height = k;
+      segnoPunti(c.getContext('2d'), 0, 0, k);
+      cacheSegno[k] = c;
+    }
+    ctx.drawImage(c, x, y, k, k);
+  }
+  function segnoPunti(ctx, x, y, size) {
+    var N = Math.max(120, Math.round(size * 5)), rr = size * 0.30, w = size * 0.115, cx = x + size / 2;
+    for (var i = 0; i < N; i++) {
+      var t = i / (N - 1), px = cx + Math.sin(t * Math.PI * 2) * rr * 0.62, py = y + size * 0.86 - t * size * 0.72, c;
+      if (t < 0.5) { var u = t / 0.5; c = [255, Math.round(0x2e + (0xbe - 0x2e) * u), Math.round(0x6e + (0x17 - 0x6e) * u)]; }
+      else { var v = (t - 0.5) / 0.5; c = [Math.round(255 + (0x2f - 255) * v), Math.round(0xbe + (0xce - 0xbe) * v), Math.round(0x17 + (0x7a - 0x17) * v)]; }
+      ctx.fillStyle = 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')';
+      ctx.beginPath(); ctx.arc(px, py, w / 2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  function logo(ctx, x, yBase, px, colCo) {
+    var s = px * 1.75;
+    segno(ctx, x, yBase - px * 1.32, s);
+    ctx.font = '700 ' + px + 'px ' + font.titolo;
+    var sp = px * 0.16, xt = x + s + px * 0.35;
+    ctx.fillStyle = colCo || INK;
+    var l1 = spaziato(ctx, 'CO-', xt, yBase, sp);
+    ctx.fillStyle = ROSA;
+    var l2 = spaziato(ctx, 'DRIVER', xt + l1 + sp, yBase, sp);
+    return s + px * 0.35 + l1 + sp + l2;
+  }
+  function ombra(ctx, on, forte) {
+    if (on) { ctx.shadowColor = 'rgba(0,0,0,' + (forte ? 0.7 : 0.45) + ')'; ctx.shadowBlur = forte ? 18 : 12; ctx.shadowOffsetY = forte ? 3 : 2; }
+    else { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; }
+  }
+
+  function leggiIntestazione(file) {
+    var fetta = file.slice(0, 512 * 1024);
+    var lettura = fetta.arrayBuffer ? fetta.arrayBuffer() : new Promise(function (ok, ko) {
+      var fr = new FileReader(); fr.onload = function () { ok(fr.result); }; fr.onerror = ko; fr.readAsArrayBuffer(fetta);
+    });
+    return lettura.then(function (buf) {
+      var d = new DataView(buf), n = d.byteLength, r = { tipo: file.type || '', w: 0, h: 0, orient: 1 };
+      if (n > 4 && d.getUint16(0) === 0xFFD8) {
+        r.tipo = 'image/jpeg';
+        var o = 2;
+        while (o + 9 < n) {
+          if (d.getUint8(o) !== 0xFF) { o++; continue; }
+          var mk = d.getUint8(o + 1), len = d.getUint16(o + 2);
+          if (mk === 0xE1 && d.getUint32(o + 4) === 0x45786966) r.orient = orientamentoExif(d, o + 10, n) || 1;
+          if ((mk >= 0xC0 && mk <= 0xC3) || (mk >= 0xC5 && mk <= 0xC7) || (mk >= 0xC9 && mk <= 0xCB) || (mk >= 0xCD && mk <= 0xCF)) {
+            r.h = d.getUint16(o + 5); r.w = d.getUint16(o + 7); break;
+          }
+          o += 2 + len;
+        }
+      } else if (n > 24 && d.getUint32(0) === 0x89504E47) {
+        r.tipo = 'image/png'; r.w = d.getUint32(16); r.h = d.getUint32(20);
+      } else if (n > 30 && d.getUint32(0) === 0x52494646 && d.getUint32(8) === 0x57454250) {
+        r.tipo = 'image/webp';
+        var fmt = d.getUint32(12);
+        if (fmt === 0x56503820) { r.w = d.getUint16(26, true) & 0x3FFF; r.h = d.getUint16(28, true) & 0x3FFF; }
+        else if (fmt === 0x5650384C) { var b = d.getUint32(21, true); r.w = (b & 0x3FFF) + 1; r.h = ((b >> 14) & 0x3FFF) + 1; }
+        else if (fmt === 0x56503858) { r.w = 1 + (d.getUint8(24) | d.getUint8(25) << 8 | d.getUint8(26) << 16); r.h = 1 + (d.getUint8(27) | d.getUint8(28) << 8 | d.getUint8(29) << 16); }
+      } else if (n > 12 && d.getUint32(4) === 0x66747970) {
+        var marca = String.fromCharCode(d.getUint8(8), d.getUint8(9), d.getUint8(10), d.getUint8(11));
+        r.tipo = /avif|avis/.test(marca) ? 'image/avif' : 'image/heic';
+        for (var k = 12; k + 20 < n; k++) {
+          if (d.getUint32(k) === 0x69737065) { var w0 = d.getUint32(k + 8), h0 = d.getUint32(k + 12); if (w0 * h0 > r.w * r.h) { r.w = w0; r.h = h0; } }
+        }
+      }
+      return r;
+    });
+  }
+  function orientamentoExif(d, t, n) {
+    if (t + 8 > n) return 1;
+    var le = d.getUint16(t) === 0x4949, ifd = t + d.getUint32(t + 4, le);
+    if (ifd + 2 > n) return 1;
+    var cnt = d.getUint16(ifd, le);
+    for (var i = 0; i < cnt; i++) {
+      var e = ifd + 2 + i * 12;
+      if (e + 12 > n) break;
+      if (d.getUint16(e, le) === 0x0112) return d.getUint16(e + 8, le);
+    }
+    return 1;
+  }
+
+  function preparaFoto(file) {
+    return leggiIntestazione(file).then(function (info) {
+      var w = info.w, h = info.h;
+      if (info.orient >= 5 && info.orient <= 8) { var tmp = w; w = h; h = tmp; }
+      var s = (w && h) ? Math.min(1, Math.max(W / w, H / h), FOTO_MAX_LATO / Math.max(w, h)) : 1;
+      var tw = w ? Math.max(1, Math.round(w * s)) : 0, th = h ? Math.max(1, Math.round(h * s)) : 0;
+      var risultato = function (img, metodo) { return { img: img, w: img.width, h: img.height, metodo: metodo, orig: info }; };
+      return conElementoImg(file).then(function (c) { return risultato(c, 'img+canvas'); }, function (e) {
+        if (typeof createImageBitmap !== 'function') throw e;
+        var opz = { imageOrientation: 'from-image' };
+        if (tw) { opz.resizeWidth = tw; opz.resizeHeight = th; opz.resizeQuality = 'high'; }
+        return createImageBitmap(file, opz).then(function (bmp) {
+          if (tw && (Math.abs(bmp.width - tw) > 2 || Math.abs(bmp.height - th) > 2)) {
+            var c = riduciSuCanvas(bmp, tw, th); if (bmp.close) bmp.close();
+            return risultato(c, 'createImageBitmap + canvas');
+          }
+          return risultato(bmp, 'createImageBitmap');
+        });
+      });
+    }).catch(function (e) {
+      if (e && e.codice) throw e;
+      throw { codice: 'formato', dettaglio: String(e && e.message || e) };
+    });
+  }
+  function misuraCover(w, h) {
+    var s = Math.min(1, Math.max(W / w, H / h), FOTO_MAX_LATO / Math.max(w, h));
+    return [Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))];
+  }
+  function conElementoImg(file) {
+    return new Promise(function (ok, ko) {
+      var url = URL.createObjectURL(file), img = new window.Image();
+      img.decoding = 'async';
+      img.onload = function () {
+        try {
+          if (!img.naturalWidth || !img.naturalHeight) throw { codice: 'formato' };
+          var m = misuraCover(img.naturalWidth, img.naturalHeight);
+          var c = riduciSuCanvas(img, m[0], m[1]);
+          img.src = ''; URL.revokeObjectURL(url); ok(c);
+        } catch (e) { URL.revokeObjectURL(url); ko(e); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); ko({ codice: 'formato' }); };
+      img.src = url;
+    });
+  }
+  function riduciSuCanvas(src, w, h) {
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    x.drawImage(src, 0, 0, w, h);
+    return c;
+  }
+  function rilasciaFoto(f) {
+    if (!f || !f.img) return;
+    if (f.img.close) f.img.close(); else { f.img.width = 0; f.img.height = 0; }
+    f.img = null;
+  }
+  function rilasciaCanvas(c) { if (c) { c.width = 0; c.height = 0; } }
+
+  function fotoCover(ctx, img, w, h, x, y, bw, bh) {
+    var s = Math.max(bw / w, bh / h), dw = w * s, dh = h * s;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, x + (bw - dw) / 2, y + (bh - dh) / 2, dw, dh);
+  }
+  function sfumatura(ctx, y0, y1, a0, a1) {
+    var gr = ctx.createLinearGradient(0, y0, 0, y1);
+    gr.addColorStop(0, 'rgba(8,11,14,' + a0 + ')'); gr.addColorStop(1, 'rgba(8,11,14,' + a1 + ')');
+    ctx.fillStyle = gr; ctx.fillRect(0, y0, W, y1 - y0);
+  }
+
+  function disegnaCard(ctx, g, titolo, opz) {
+    opz = opz || {};
+    var lingua = opz.lingua || 'it', t = testi(lingua), foto = opz.foto && opz.foto.img ? opz.foto : null;
+    ctx.save();
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+
+    var boxMappa = { x: M + 24, y: 520, w: W - 2 * M - 48, h: 700 };
+    var P = percorso(g, boxMappa, true);
+    if (foto) {
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+      fotoCover(ctx, foto.img, foto.w, foto.h, 0, 0, W, H);
+      ctx.fillStyle = 'rgba(8,11,14,0.18)'; ctx.fillRect(0, 0, W, H);
+      sfumatura(ctx, 0, 420, 0.82, 0.5);
+      sfumatura(ctx, 420, 700, 0.5, 0);
+      sfumatura(ctx, 1000, 1300, 0, 0.78);
+      ctx.fillStyle = 'rgba(8,11,14,0.78)'; ctx.fillRect(0, 1300, W, 140);
+      sfumatura(ctx, 1440, 1920, 0.78, 0.92);
+      if (P) {
+        var bb = P.bbox, cxm = bb.x + bb.w / 2, cym = bb.y + bb.h / 2, rr = Math.max(bb.w, bb.h) * 0.62 + 80;
+        var rg = ctx.createRadialGradient(cxm, cym, 0, cxm, cym, rr);
+        rg.addColorStop(0, 'rgba(8,11,14,0.38)'); rg.addColorStop(1, 'rgba(8,11,14,0)');
+        ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+      }
+    } else {
+      ctx.fillStyle = SFONDO; ctx.fillRect(0, 0, W, H);
+      if (P && opz.sfondoSenzaFoto) { try { opz.sfondoSenzaFoto(ctx, P.toPx, boxMappa); } catch (e) {} }
+    }
+
+    var yLogo = SICURO_SU + 64;
+    if (foto) ombra(ctx, true);
+    logo(ctx, M, yLogo, 36);
+    ctx.font = '700 38px ' + font.titolo;
+    var lh = ctx.measureText(HANDLE).width, padX = 22, pillH = 58, pillY = yLogo - 42;
+    ombra(ctx, false);
+    ctx.fillStyle = foto ? 'rgba(8,11,14,0.55)' : 'rgba(255,255,255,0.06)';
+    rettangoloTondo(ctx, W - M - lh - 2 * padX, pillY, lh + 2 * padX, pillH, pillH / 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = INK; ctx.textAlign = 'right'; ctx.fillText(HANDLE, W - M - padX, yLogo);
+    ctx.textAlign = 'left';
+
+    if (foto) ombra(ctx, true, true);
+    var taglie = [104, 92, 80, 70, 60, 52], tg = taglie[taglie.length - 1];
+    for (var i = 0; i < taglie.length; i++) {
+      ctx.font = '700 ' + taglie[i] + 'px ' + font.titolo;
+      if (ctx.measureText(titolo).width <= W - 2 * M) { tg = taglie[i]; break; }
+    }
+    ctx.font = '700 ' + tg + 'px ' + font.titolo; ctx.fillStyle = INK;
+    ctx.fillText(accorciaCtx(ctx, titolo, W - 2 * M), M, SICURO_SU + 200);
+    var sotto = [];
+    if (opz.data) sotto.push(opz.data);
+    if (g.vie && g.vie.length) sotto.push(g.vie.slice(0, 3).join(' · '));
+    if (sotto.length) {
+      ctx.font = '600 34px ' + font.testo; ctx.fillStyle = INK2;
+      ctx.fillText(accorciaCtx(ctx, sotto.join('  ·  '), W - 2 * M), M, SICURO_SU + 252);
+    }
+    ombra(ctx, false);
+
+    if (P) {
+      tracciaPercorso(ctx, P, function (nasc) {
+        return { col: foto ? 'rgba(6,8,10,0.72)' : '#06080a', w: foto ? 24 : 20 };
+      }, true);
+      tracciaPercorso(ctx, P, function (nasc, cls) {
+        return { col: cls >= 0 ? COL_CLASSI[cls] : (foto ? '#FFFFFF' : '#4fd6ff'), w: 11 };
+      }, true);
+    }
+
+    var vv = voci(g, lingua).slice(0, 6), colW = (W - 2 * M) / 3, yR = [1330, 1478];
+    if (foto) ombra(ctx, true);
+    for (var k = 0; k < vv.length; k++) {
+      var cx = M + (k % 3) * colW, ry = yR[Math.floor(k / 3)];
+      ctx.font = '700 25px ' + font.testo; ctx.fillStyle = INK2;
+      spaziato(ctx, accorciaCtx(ctx, vv[k].l.toUpperCase(), colW - 30), cx, ry, 2.2);
+      ctx.font = '700 80px ' + font.titolo; ctx.fillStyle = INK;
+      ctx.fillText(accorciaCtx(ctx, vv[k].v, colW - 16), cx, ry + 78);
+    }
+    var yD = 1606, xD = M;
+    ctx.font = '600 22px ' + font.testo; ctx.fillStyle = INK2;
+    xD += spaziato(ctx, t.perTipo.toUpperCase(), xD, yD + 8, 2) + 26;
+    ctx.font = '600 26px ' + font.testo;
+    for (var c = 0; g.cv && c < g.cv.length; c++) {
+      if (!g.cv[c]) continue;
+      ctx.fillStyle = COL_CLASSI[c]; ctx.beginPath(); ctx.arc(xD + 10, yD, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = INK; ctx.fillText(String(g.cv[c]), xD + 28, yD + 9);
+      xD += 28 + ctx.measureText(String(g.cv[c])).width + 26;
+    }
+    ctx.font = '600 28px ' + font.testo; ctx.fillStyle = INK;
+    ctx.fillText(SITO, M, 1684);
+    ctx.font = '500 22px ' + font.testo; ctx.fillStyle = 'rgba(213,220,226,0.8)'; ctx.textAlign = 'right';
+    ctx.fillText(t.nascosti, W - M, 1682);
+    ombra(ctx, false);
+    ctx.restore();
+  }
+
+  function rettangoloTondo(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r); ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h); ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r); ctx.arcTo(x, y, x + r, y, r); ctx.closePath();
+  }
+
+  var ADESIVO_W = 1080, ADESIVO_H = 1180;
+  function disegnaAdesivo(ctx, g, opz) {
+    opz = opz || {};
+    var lingua = opz.lingua || 'it', variante = opz.variante || 'chiaro';
+    var Wa = ADESIVO_W, Ha = ADESIVO_H, pad = 60;
+    ctx.save(); ctx.clearRect(0, 0, Wa, Ha);
+    ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    if (variante === 'pannello') {
+      ctx.fillStyle = 'rgba(11,15,19,0.74)'; rettangoloTondo(ctx, 0, 0, Wa, Ha, 56); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 3; rettangoloTondo(ctx, 1.5, 1.5, Wa - 3, Ha - 3, 55); ctx.stroke();
+    }
+    var P = percorso(g, { x: pad + 120, y: pad + 20, w: Wa - 2 * pad - 240, h: 640 }, true);
+    if (P) {
+      if (variante === 'chiaro') {
+        ombra(ctx, true, true);
+        tracciaPercorso(ctx, P, function () { return { col: 'rgba(0,0,0,0.85)', w: 30 }; }, true);
+        ombra(ctx, false);
+        tracciaPercorso(ctx, P, function () { return { col: '#FFFFFF', w: 15 }; }, true);
+      } else {
+        tracciaPercorso(ctx, P, function () { return { col: '#06080a', w: 26 }; }, true);
+        tracciaPercorso(ctx, P, function (n, cls) { return { col: cls >= 0 ? COL_CLASSI[cls] : '#FFFFFF', w: 13 }; }, true);
+      }
+    }
+    var tutte = voci(g, lingua), scelte = [];
+    var ordine = ['dist', 'disl', 'torn', 'curve', 'qm', 'stretta'];
+    for (var o = 0; o < ordine.length && scelte.length < 4; o++)
+      for (var q = 0; q < tutte.length; q++) if (tutte[q].k === ordine[o]) scelte.push(tutte[q]);
+    var yV = 860, yL = 910, larg = [], somma = 0, k;
+    for (k = 0; k < scelte.length; k++) {
+      ctx.font = '700 84px ' + font.titolo; var lv = ctx.measureText(scelte[k].v).width;
+      ctx.font = '700 30px ' + font.testo; var ll = Math.min(ctx.measureText(scelte[k].l.toUpperCase()).width, 260);
+      larg.push(Math.max(lv, ll)); somma += larg[k];
+    }
+    var spazio = Math.max(24, (Wa - 2 * pad - somma) / Math.max(1, scelte.length - 1));
+    var xk = (Wa - (somma + spazio * (scelte.length - 1))) / 2;
+    for (k = 0; k < scelte.length; k++) {
+      var cx = xk + larg[k] / 2;
+      ctx.textAlign = 'center';
+      ctx.font = '700 84px ' + font.titolo;
+      testoContornato(ctx, scelte[k].v, cx, yV, variante);
+      ctx.font = '700 30px ' + font.testo;
+      testoContornato(ctx, accorciaCtx(ctx, scelte[k].l.toUpperCase(), 260), cx, yL, variante, true);
+      xk += larg[k] + spazio;
+    }
+    ctx.textAlign = 'left';
+    ctx.font = '700 40px ' + font.titolo;
+    var lLogo = 40 * 1.75 + 40 * 0.35 + larghezzaSpaziato(ctx, 'CO-', 6.4) + 6.4 + larghezzaSpaziato(ctx, 'DRIVER', 6.4);
+    var lHandle = ctx.measureText(HANDLE).width, gap = 34;
+    var x0 = (Wa - (lLogo + gap + lHandle)) / 2, yB = 1080;
+    if (variante === 'chiaro') {
+      ctx.save(); ctx.fillStyle = 'rgba(8,11,14,0.62)';
+      rettangoloTondo(ctx, x0 - 26, yB - 62, lLogo + gap + lHandle + 52, 86, 43); ctx.fill(); ctx.restore();
+    }
+    logo(ctx, x0, yB, 40);
+    ctx.font = '700 40px ' + font.titolo; ctx.fillStyle = INK;
+    ctx.fillText(HANDLE, x0 + lLogo + gap, yB);
+    ctx.restore();
+  }
+  function testoContornato(ctx, s, x, y, variante, piccolo) {
+    if (variante === 'chiaro') {
+      ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+      ombra(ctx, true, true);
+      ctx.strokeStyle = 'rgba(8,11,14,0.9)'; ctx.lineWidth = piccolo ? 7 : 12; ctx.strokeText(s, x, y);
+      ombra(ctx, false);
+      ctx.fillStyle = '#FFFFFF'; ctx.fillText(s, x, y);
+    } else {
+      ctx.fillStyle = piccolo ? INK2 : '#FFFFFF'; ctx.fillText(s, x, y);
+    }
+  }
+  function ritagliaTrasparente(canvas, margine) {
+    var ctx = canvas.getContext('2d'), w = canvas.width, h = canvas.height, d = ctx.getImageData(0, 0, w, h).data;
+    var x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 8) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (x1 < 0) return canvas;
+    margine = margine || 0;
+    x0 = Math.max(0, x0 - margine); y0 = Math.max(0, y0 - margine); x1 = Math.min(w - 1, x1 + margine); y1 = Math.min(h - 1, y1 + margine);
+    var c = document.createElement('canvas'); c.width = x1 - x0 + 1; c.height = y1 - y0 + 1;
+    c.getContext('2d').drawImage(canvas, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
+    return c;
+  }
+
+  function supporto(fileProva) {
+    var s = {
+      sicuro: !!globale.isSecureContext,
+      share: !!(navigator.share),
+      shareFile: false,
+      appuntiTesto: !!(navigator.clipboard && navigator.clipboard.writeText),
+      appuntiImmagine: !!(navigator.clipboard && navigator.clipboard.write && typeof window.ClipboardItem !== 'undefined'),
+      pngNegliAppunti: null,
+      attivazione: !!(navigator.userActivation)
+    };
+    try { s.shareFile = !!(fileProva && navigator.canShare && navigator.canShare({ files: [fileProva] })); } catch (e) {}
+    try { if (typeof window.ClipboardItem !== 'undefined' && window.ClipboardItem.supports) s.pngNegliAppunti = window.ClipboardItem.supports('image/png'); } catch (e) {}
+    return s;
+  }
+
+  function copiaTesto(testo) {
+    if (navigator.clipboard && navigator.clipboard.writeText && globale.isSecureContext) {
+      return navigator.clipboard.writeText(testo).then(function () { return 'clipboard'; }, function (e) {
+        return copiaTestoVecchio(testo) ? 'execCommand' : Promise.reject(e);
+      });
+    }
+    return copiaTestoVecchio(testo) ? Promise.resolve('execCommand') : Promise.reject(new Error('copia non disponibile'));
+  }
+  function copiaTestoVecchio(testo) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = testo; ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px';
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, testo.length);
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  function condividiConDidascalia(file, didascalia, alCopiato) {
+    var esito = { copia: null, condivisa: false, annullata: false, errore: null };
+    var pCopia = copiaTesto(didascalia).then(function (m) { esito.copia = m; if (alCopiato) try { alCopiato(m); } catch (e) {} },
+      function (e) { esito.erroreCopia = String(e && e.name || e); });
+    var pShare;
+    try {
+      if (!navigator.share || !navigator.canShare || !navigator.canShare({ files: [file] })) throw { name: 'NonDisponibile' };
+      pShare = navigator.share({ files: [file] });
+    } catch (e) { pShare = Promise.reject(e); }
+    pShare = pShare.then(function () { esito.condivisa = true; }, function (e) {
+      if (e && e.name === 'AbortError') esito.annullata = true; else esito.errore = (e && e.name) || String(e);
+    });
+    return Promise.all([pCopia, pShare]).then(function () { return esito; });
+  }
+
+  function copiaImmagine(blobOPromise) {
+    if (!(navigator.clipboard && navigator.clipboard.write && typeof window.ClipboardItem !== 'undefined'))
+      return Promise.reject({ name: 'NonDisponibile' });
+    try {
+      return navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blobOPromise })]);
+    } catch (e) { return Promise.reject(e); }
+  }
+
+  function canvasInFile(canvas, nome, tipo, qualita) {
+    return new Promise(function (ok, ko) {
+      canvas.toBlob(function (b) {
+        if (!b) return ko(new Error('toBlob vuoto'));
+        var f; try { f = new File([b], nome, { type: b.type }); } catch (e) { f = b; f.name = nome; }
+        ok({ blob: b, file: f });
+      }, tipo || 'image/png', qualita);
+    });
+  }
+
+  function salvaFile(file) {
+    var ua = navigator.userAgent || '';
+    var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (ios && navigator.canShare && navigator.canShare({ files: [file] })) {
+      return navigator.share({ files: [file] }).then(function () { return 'condiviso'; },
+        function (e) { if (e && e.name === 'AbortError') return 'annullato'; throw e; });
+    }
+    var u = URL.createObjectURL(file), a = document.createElement('a');
+    a.href = u; a.download = file.name || 'road-card.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(u); }, 4000);
+    return Promise.resolve('scaricato');
+  }
+
+  function esportaCard(canvas, conFoto) {
+    return conFoto ? canvasInFile(canvas, 'road-card.jpg', 'image/jpeg', 0.9) : canvasInFile(canvas, 'road-card.png', 'image/png');
+  }
+
+  function pronto() {
+    if (!document.fonts || !document.fonts.load) return Promise.resolve();
+    var lista = ['700 80px ' + font.titolo, '600 30px ' + font.titolo, '500 30px ' + font.testo, '600 30px ' + font.testo, '700 30px ' + font.testo];
+    return Promise.all(lista.map(function (f) { return document.fonts.load(f, 'CO-DRIVER @co_driver_ 0123456789ª'); })).then(function () {}, function () {});
+  }
+
+  globale.RCV2 = {
+    W: W, H: H, ADESIVO_W: ADESIVO_W, ADESIVO_H: ADESIVO_H, HANDLE: HANDLE, font: font,
+    testi: testi, voci: voci, pronto: pronto,
+    leggiIntestazione: leggiIntestazione, preparaFoto: preparaFoto, rilasciaFoto: rilasciaFoto, rilasciaCanvas: rilasciaCanvas,
+    disegnaCard: disegnaCard, disegnaAdesivo: disegnaAdesivo, ritagliaTrasparente: ritagliaTrasparente,
+    supporto: supporto, copiaTesto: copiaTesto, condividiConDidascalia: condividiConDidascalia,
+    copiaImmagine: copiaImmagine, canvasInFile: canvasInFile, esportaCard: esportaCard, salvaFile: salvaFile
+  };
+})(typeof window !== 'undefined' ? window : this);
+function rcT(it, en, fr){ return L==='en' ? en : (L==='fr' ? fr : it); }
+var RC_BASI = {montagna:['montagna-1','montagna-2'], lago:['lago'], collina:['collina'], costa:['costa']};
+var rcBase = 'auto', rcBaseGiro = '';
+function rcTipoStrada(g){
+  var q = g.quotaMax, d = g.dislivello || 0;
+  if(q != null && (q >= 900 || d >= 600)) return 'montagna';
+  if(q != null && q < 100) return 'costa';
+  return 'collina';
+}
+function rcHash(sz){ var h = 0; for(var i = 0; i < sz.length; i++) h = (h * 31 + sz.charCodeAt(i)) | 0; return Math.abs(h); }
+function rcMarcaBase(){
+  var scelta = rcBase === 'auto' && rcGiroCorrente ? rcTipoStrada(rcGiroCorrente) : rcBase;
+  var chips = document.querySelectorAll('#rcBase .rc-chip');
+  for(var i = 0; i < chips.length; i++) chips[i].classList.toggle('on', chips[i].getAttribute('data-base') === scelta);
+}
+function rcApplicaBase(){
+  var g = rcGiroCorrente; if(!g || !window.RCV2) return;
+  if(rcBase === 'nessuna'){ rcLiberaFoto(); rcRidisegna(); return; }
+  if(rcBase === 'tua') return;
+  var chiave = rcBase === 'auto' ? rcTipoStrada(g) : rcBase, voci = RC_BASI[chiave];
+  if(!voci) return;
+  var nome = voci[rcHash(g.id) % voci.length], id = g.id, scelta = rcBase;
+  fetch('foto-strada/' + nome + '.jpg').then(function(r){ if(!r.ok) throw new Error('foto'); return r.blob(); })
+    .then(function(b){ return window.RCV2.preparaFoto(new File([b], nome + '.jpg', {type: 'image/jpeg'})); })
+    .then(function(foto){
+      if(!rcGiroCorrente || rcGiroCorrente.id !== id || rcBase !== scelta || !sheets.roadcard.classList.contains('show')){
+        try{ window.RCV2.rilasciaFoto(foto); }catch(e){} return; }
+      rcLiberaFoto(); rcFoto = foto;
+      var t = document.getElementById('rcFotoTogli'); if(t) t.hidden = false;
+      rcRidisegna();
+    }, function(){   });
+}
+(function(){
+  var chips = document.querySelectorAll('#rcBase .rc-chip');
+  for(var i = 0; i < chips.length; i++) chips[i].onclick = function(){
+    rcBase = this.getAttribute('data-base'); rcMarcaBase(); rcApplicaBase();
+  };
+})();
+var rcFontPromessa = null, rcFontCaricati = false;
+function rcCaricaFont(){
+  if(rcFontPromessa) return rcFontPromessa;
+  if(!window.FontFace || !document.fonts){ rcFontCaricati = true; return (rcFontPromessa = Promise.resolve()); }
+  var def = [['Barlow', 500, 'Barlow-500'], ['Barlow', 600, 'Barlow-600'], ['Barlow', 700, 'Barlow-700'],
+             ['Barlow Condensed', 600, 'BarlowCondensed-600'], ['Barlow Condensed', 700, 'BarlowCondensed-700']];
+  rcFontPromessa = Promise.all(def.map(function(d){
+    var f = new window.FontFace(d[0], 'url(font/' + d[2] + '.woff2) format("woff2")', {weight: String(d[1])});
+    return f.load().then(function(ff){ document.fonts.add(ff); });
+  })).then(function(){ rcFontCaricati = true; }, function(){ rcFontPromessa = null; });
+  return rcFontPromessa;
+}
+function rcInGuida(){ return !!S.fixT && (performance.now() - S.fixT) < 10000 && (S.v || 0) > 1.5; }
 function rcFmtKm(m){
   var s = (m/1000).toFixed(1);
   if(L!=='en') s = s.replace('.', ',');
@@ -30935,6 +32059,7 @@ function mostraPerf(){
     if(v) v.textContent = tr().ver(APPVER, INSTALLATA);
     mostraRegistro();
     mostraCoda();
+    mostraReg();
     setTimeout(scrivi, 1000); };
   scrivi();
 }
@@ -30956,6 +32081,7 @@ function mostraRegistro(){
   el.textContent = righe.length ? tr().logTit+'\n'+righe.join('\n') : '';
 }
 function closeSheets(subito){
+  try{ if(sheets.roadcard && sheets.roadcard.classList.contains('show')) rcLiberaFoto(); }catch(e){}
   const eraMappe = sheets.maps && sheets.maps.classList.contains('show');
   const ridotto = matchMedia('(prefers-reduced-motion: reduce)').matches;
   for(const n in sheets){
@@ -31164,7 +32290,11 @@ function rigaRegione(r){
     return row;
 }
 
-const MAPPE_MB_AVVISO = 55;
+const MAPPE_MB_AVVISO = (() => {
+  const dm = navigator.deviceMemory;
+  if(!(dm > 0)) return 55;
+  return dm <= 2 ? 55 : dm <= 4 ? 110 : 200;
+})();
 const MAPPE_HEAP_X = 6.5;
 
 function renderMaps(){
@@ -31373,6 +32503,7 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{
   closeSheets(); });
 
 const carChips=document.getElementById('carChips'), motoChips=document.getElementById('motoChips'), styleChips=document.getElementById('styleChips'),
+      voceChips=document.getElementById('voceChips'), voceDesc=document.getElementById('voceDesc'),
       gearTable=document.getElementById('gearTable'), calSlider=document.getElementById('calSlider'),
       calVal=document.getElementById('calVal'), calHint=document.getElementById('calHint'),
       calGears=document.getElementById('calGears'),
@@ -31528,6 +32659,7 @@ function renderCar(){
   renderSoglia();
   renderAcc();
   renderAntic();
+  renderVoci();
   gearBox.hidden = isAuto();
   if(!isAuto()){
     calSlider.value=S.cal;
@@ -31575,6 +32707,24 @@ function renderAntic(){
       +'Le style '+STYLES[S.style].nm_fr+' seul en donnerait '+seg(stileAttivo().reaz)+'.'
     : 'You get '+seg(reaz)+' s free between the end of the phrase and the point where braking must start. '
       +'The '+STYLES[S.style].nm_en+' style alone would give '+seg(stileAttivo().reaz)+'.';
+}
+function renderVoci(){
+  voceChips.innerHTML = '';
+  for(const k in VOCI){
+    const v = VOCI[k], b = document.createElement('button'), sub = document.createTextNode('');
+    b.type = 'button'; b.className = 'chip'+(k===S.voce?' on':''); b.dataset.voce = k;
+    b.setAttribute('role','radio'); b.setAttribute('aria-checked', k===S.voce ? 'true' : 'false');
+    const nm = document.createElement('b'); nm.textContent = v['nm_'+L];
+    b.append(nm, sub);
+    b.onclick = () => scegliVoce(k);
+    voceChips.appendChild(b);
+    if(!voceInLingua(k, L)){ sub.nodeValue = tr().voceSoloItChip; continue }
+    voceScaricata(L, k).then(ok => {
+      const mb = v.mb[L];
+      sub.nodeValue = ok ? tr().voceGia : (mb ? (''+mb.toFixed(1)).replace('.', L==='en'?'.':',')+' MB' : '');
+    });
+  }
+  voceDesc.textContent = VOCI[S.voce]['d_'+L] + (voceInLingua(S.voce, L) ? '' : ' ' + tr().voceSoloIt);
 }
 anticSlider.oninput=()=>{ S.antic=parseFloat(anticSlider.value)||0; renderAntic() };
 anticSlider.onchange=()=>{ S.said.clear(); save(); updateNote(); S.need=true };
