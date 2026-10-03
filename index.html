@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v345';
+  const VERSIONE = 'copilota-app-v346';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1418,7 +1418,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '345';
+const APPVER = '346';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -25440,7 +25440,8 @@ function stileAttivo(){
           nm_it: st.moto.nm_it || st.nm_it, nm_en: st.moto.nm_en || st.nm_en, nm_fr: st.moto.nm_fr || st.nm_fr,
           d_it: st.moto.d_it, d_en: st.moto.d_en, d_fr: st.moto.d_fr};
 }
-const piegaDeg = (vms, r) => Math.round(Math.atan(vms*vms/(Math.max(1,r)*9.81))*180/Math.PI);
+const piegaVera = (vms, r) => Math.atan(vms*vms/(Math.max(1,r)*9.81))*180/Math.PI;
+const piegaDeg = (vms, r) => Math.round(piegaVera(vms, r));
 const rpmRif = () => isMoto() ? 4000 : RPM_RIF;
 const MOTO_ATTENZIONE_DEG = 15;
 const MOTO_ATTENZIONE_K = 0.9;
@@ -29328,7 +29329,7 @@ function catenaNota(){
 }
 function chiaviNota(el){
   let ch = chiaviCurva(el[0], !S.pace);
-  if(isMoto() && el[0].c && el[0].c.r > 0 && piegaDeg(S.v, el[0].c.r) >= motoSogliaAttenzione()){
+  if(isMoto() && el.some(x => x.c && x.c.r > 0 && piegaVera(S.v, x.c.r) >= motoSogliaAttenzione())){
     const ix = VOCE.idx[vk()];
     if(ix && ix['k.attenzione']) ch = ['k.attenzione'].concat(ch);
   }
