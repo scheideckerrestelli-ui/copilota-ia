@@ -1,5 +1,5 @@
-/* sorgente: 048e1817cb */
-const APP = 'copilota-app-v346';
+/* sorgente: 5b64a36e7b */
+const APP = 'copilota-app-v347';
 const DATA_PREFIX = 'copilota-data-';
 const MEDIA = 'copilota-media-v1';
 const SHELL = ['./', './manifest.webmanifest', './manifest-a.webmanifest', './regions.json',
@@ -43,7 +43,8 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   { const p = new URL(req.url).pathname;
      if (p.endsWith('/beta.html') || p.endsWith('/beta')) return;
-     if (/^\/(home|come-si-fa)(\.html)?$/.test(p) || p.startsWith('/video/') || p === '/strada.js') return; }
+     if (/^\/(home|come-si-fa)(\.html)?$/.test(p) || p.startsWith('/video/') || p === '/strada.js') return;
+     if (p.startsWith('/p/')) return; }
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
       const copia = (await caches.match(req)) || (await caches.match('./'));

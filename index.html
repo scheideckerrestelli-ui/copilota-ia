@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v346';
+  const VERSIONE = 'copilota-app-v347';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1418,7 +1418,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '346';
+const APPVER = '347';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -25187,7 +25187,10 @@ function segnaLinkAMano(k, auto){
 const pkNelLink = (() => { try{
   const h = location.hash || '';
   const k = new URLSearchParams(h.charAt(0)==='#' ? h.slice(1) : h).get('k');
-  return (k && /^[a-z0-9]{22}$/.test(k)) ? k : null }catch(e){ return null } })();
+  if(!(k && /^[a-z0-9]{22}$/.test(k))) return null;
+  let salvato = null; try{ salvato = localStorage.getItem(PK_K) }catch(e){}
+  if(!profiliNelLink.length && salvato && salvato !== k){ nota('link con k= senza profili e diverso da quello del telefono: ignorato'); return null }
+  return k }catch(e){ return null } })();
 try{
   if(pkNelLink && !LINK_IN_ATTESA && !linkRifiutato) localStorage.setItem(PK_K, pkNelLink);
   if(linkNuovo) segnaLinkAMano(pkNelLink, profiliNelLink);
@@ -26063,7 +26066,10 @@ const testerDalLink = (LINK_IN_ATTESA || linkRifiutato) ? null : (() => {
     const h = location.hash || '';
     const f = new URLSearchParams(h.charAt(0)==='#' ? h.slice(1) : h).get('t');
     const p = q || f;
-    return (p && /^[a-z0-9-]{1,40}$/.test(p)) ? p : null;
+    if(!(p && /^[a-z0-9-]{1,40}$/.test(p))) return null;
+    let salvato = null; try{ salvato = localStorage.getItem('codriver-tester') }catch(e){}
+    if(!profiliNelLink.length && salvato && salvato !== p){ nota('link con t= senza profili e diverso da quello del telefono: ignorato'); return null }
+    return p;
   }catch(e){ return null }
 })();
 try{
@@ -26126,7 +26132,7 @@ try{
   if(st.calPer && typeof st.calPer === 'object') S.calPer = st.calPer;
   if(st.calDi && st.calDi !== chiaveCal(S.car) && !veicoloNuovoDalLink) riprendiCal(S.car);
 }catch(e){}
-if(aNelLink || testerDalLink || profiloDalLink){
+if(aNelLink || testerDalLink || profiloDalLink || (tNelLink && !LINK_IN_ATTESA && !linkRifiutato)){
   try{ const u=new URL(location.href); u.searchParams.delete('a'); u.searchParams.delete('t');
        const fr = new URLSearchParams();
        for(const g of profiliNelLink) fr.append('p', g);
