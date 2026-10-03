@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v343';
+  const VERSIONE = 'copilota-app-v345';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -935,7 +935,7 @@ if ('serviceWorker' in navigator) {
 <div class="sheet" id="sheetCar"><div class="inner">
   <div class="grip"></div>
   <h2><span data-lang="it">Il mio <i class="ac">veicolo</i></span><span data-lang="en">My <i class="ac">vehicle</i></span><span data-lang="fr">Mon <i class="ac">véhicule</i></span></h2>
-  <h3><span data-lang="it">Auto</span><span data-lang="en">Cars</span><span data-lang="fr">Voitures</span></h3>
+  <h3 id="autoTit"><span data-lang="it">Auto</span><span data-lang="en">Cars</span><span data-lang="fr">Voitures</span></h3>
   <div class="row2" id="carChips"></div>
   <div id="invitoBox" hidden>
     <h3><span data-lang="it">Hai un link d'invito?</span><span data-lang="en">Got an invite link?</span><span data-lang="fr">Tu as un lien d'invitation ?</span></h3>
@@ -958,7 +958,7 @@ if ('serviceWorker' in navigator) {
     <p id="calHint" style="margin-bottom:8px"></p>
     <div class="row2 gsel" id="calGears"></div>
     <div class="slider">
-      <input type="range" id="calSlider" min="15" max="85" step="0.5">
+      <input type="range" id="calSlider" min="10" max="85" step="0.5">
       <div class="val"><span id="calVal">72</span><small style="display:block;font-size:9px;
         color:var(--ink2);letter-spacing:.06em">KM/H</small></div>
     </div>
@@ -1127,6 +1127,14 @@ if ('serviceWorker' in navigator) {
   </div>
   <p id="rcEsitoAdesivo" class="disc" aria-live="polite" hidden></p>
   <button class="btn ghost" data-close><span data-lang="it">Chiudi</span><span data-lang="en">Close</span><span data-lang="fr">Fermer</span></button>
+</div></div>
+
+<div class="sheet" id="sheetMoto"><div class="inner">
+  <div class="grip"></div>
+  <h2><span data-lang="it">Moto</span><span data-lang="en">Motorcycle</span><span data-lang="fr">Moto</span></h2>
+  <p class="disc"><span data-lang="it">In moto Co-Driver è solo un avviso a voce: tieni il telefono fisso e non guardarlo né toccarlo mentre guidi. La parola “attenzione” prima di una curva è un richiamo generico, non una valutazione di sicurezza: l'app non vede fondo, gomme, traffico né le tue condizioni, e se l'avviso manca non vuol dire che la curva sia sicura. Resti tu l'unico responsabile della guida e della velocità.</span><span data-lang="en">On a motorcycle, Co-Driver is only a spoken alert: keep the phone mounted and do not look at or touch it while riding. The word “attention” before a corner is a general reminder, not a safety assessment: the app cannot see the road surface, tyres, traffic or your condition, and the absence of an alert does not mean the corner is safe. You remain solely responsible for your riding and speed.</span><span data-lang="fr">À moto, Co-Driver n'est qu'un avertissement vocal : garde le téléphone fixé et ne le regarde ni ne le touche en roulant. Le mot « attention » avant un virage est un rappel général, pas une évaluation de sécurité : l'application ne voit ni la chaussée, ni les pneus, ni la circulation, ni ton état, et l'absence d'avertissement ne signifie pas que le virage est sûr. Tu restes seul responsable de ta conduite et de ta vitesse.</span></p>
+  <p class="disc" id="motoVib"></p>
+  <button class="btn" data-close><span data-lang="it">Ho capito</span><span data-lang="en">Got it</span><span data-lang="fr">Compris</span></button>
 </div></div>
 
 <div class="sheet" id="sheetLink"><div class="inner">
@@ -1398,7 +1406,7 @@ if ('serviceWorker' in navigator) {
 
 <div class="termini" id="termini" hidden>
   <div class="tbox">
-    <div class="ttesto" id="tTesto"><h1>Termini e condizioni della beta di Co-Driver — v5, 20 settembre 2026</h1><ol><li><b>Che cos'è.</b> Co-Driver è un'applicazione web in versione <b>beta</b>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li><li><b>Ausilio informativo. Non un dispositivo di sicurezza, non un navigatore.</b> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <b>informazioni di supporto</b>, non istruzioni di guida né valutazioni della velocità sicura, e non sostituiscono la tua attenzione né il tuo giudizio: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. <b>Gli occhi restano sulla strada</b>, non sullo schermo: tutto quello che serve arriva a voce proprio perché guardare non serva. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada. Gli annunci sono <b>stime generate da un calcolatore</b>: possono essere sbagliati, arrivare <b>in ritardo o in anticipo</b>, oppure <b>non arrivare affatto</b>. Guidare contando sul fatto che la voce parlerà è un uso improprio: la curva va guardata comunque.</li><li><b>Guidi tu: assunzione di rischio.</b> L'uso dell'app avviene <b>a tuo esclusivo rischio</b>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <b>prevalgono sempre</b> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata. <b>Co-Driver non va usata per gareggiare, per cronometrarsi o per inseguire prestazioni su strada aperta</b>, in nessuna forma e con nessuno strumento. Serve a sapere prima cosa ti aspetta, così da rallentare in tempo: l'app non assegna primati, non tiene classifiche e non premia la velocità, e usarla per quello è una violazione di questi termini oltre che, quasi sempre, del codice della strada.</li><li><b>Obblighi di legge.</b> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <b>fissato a un supporto</b> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li><li><b>Dati non garantiti.</b> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li><li><b>Limitazione di responsabilità.</b> <b>Nella misura massima consentita dalla legge applicabile</b>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li><li><b>Dove si usa.</b> L'uso previsto è in auto. Le mappe disponibili coprono <b>Italia, Francia, Spagna, Belgio e Gran Bretagna</b>: dentro l'app vedi l'elenco esatto delle regioni scaricabili, che è l'unico elenco che conta. Fuori da questi territori l'app non va usata. Gli avvisi di autovelox seguono la legge del paese, e non sono una tua impostazione dove la legge non lo permette: · Italia, Spagna e Belgio: gli avvisi ci sono. Puoi spegnerli quando vuoi. · Francia: gli avvisi di posizione degli autovelox sono vietati (art. R413-15 del code de la route). Le mappe francesi non contengono alcun dato autovelox, di proposito, e non è possibile attivarli. · Gran Bretagna: gli avvisi sarebbero leciti, ma oggi le mappe britanniche non contengono dati autovelox. Non contarci. L'app non è destinata all'uso in Germania e in Svizzera, dove i dispositivi che avvisano dei controlli di velocità sono vietati (§23 Abs. 1c StVO in Germania, art. 98a LCStr in Svizzera): lì il divieto riguarda la funzione in sé, non il fatto di sentirla. Se guidi in quei paesi, non usare Co-Driver.</li><li><b>I tuoi feedback.</b> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <b>solo con il tuo permesso esplicito</b>, caso per caso.</li><li><b>Statistiche d'uso.</b> A fine sessione l'app invia automaticamente un rapporto con misure d'uso (durata, minuti di voce, chilometri, numero di annunci, codici di malfunzionamento, versione dell'app e del sistema, dimensioni dello schermo) e il tuo identificativo di tester. Nei rapporti d'uso <b>non viene inviata la posizione</b>, in nessuna forma. La posizione parte solo quando mandi tu una segnalazione dalla bussola. Il dettaglio sta nell'informativa sulla pagina beta.</li><li><b>Gratis ora, a pagamento poi.</b> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li><li><b>Durata e modifiche.</b> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li></ol><p><b>In una riga: sapere prima serve a frenare prima.</b></p><p><b>Privacy in una riga</b> (informativa completa sulla pagina beta): i dati del modulo servono solo a gestire la beta, l'app manda statistiche d'uso a fine sessione e <b>la posizione GPS resta sul telefono</b>: parte solo quando mandi tu una segnalazione dalla bussola.</p></div>
+    <div class="ttesto" id="tTesto"><h1>Termini e condizioni della beta di Co-Driver — v6, 3 ottobre 2026</h1><ol><li><b>Che cos'è.</b> Co-Driver è un'applicazione web in versione <b>beta</b>: un software di prova, non un prodotto finito. Può contenere errori, anche gravi, e viene fornita «così com'è» e «come disponibile», senza alcuna garanzia espressa o implicita di funzionamento, accuratezza o idoneità a uno scopo. La partecipazione è gratuita, personale e revocabile in qualsiasi momento da entrambe le parti.</li><li><b>Ausilio informativo. Non un dispositivo di sicurezza, non un navigatore.</b> Gli annunci vocali e le indicazioni a schermo (curve, severità, dossi, autovelox, velocità suggerite) sono <b>informazioni di supporto</b>, non istruzioni di guida né valutazioni della velocità sicura, e non sostituiscono la tua attenzione né il tuo giudizio: l'app non conosce meteo, fondo stradale, traffico, condizioni del veicolo né le capacità di chi guida. <b>Gli occhi restano sulla strada</b>, non sullo schermo: tutto quello che serve arriva a voce proprio perché guardare non serva. Nessuna indicazione di Co-Driver autorizza a superare i limiti o ad adeguare la guida a ciò che dice l'app anziché a ciò che dice la strada. Gli annunci sono <b>stime generate da un calcolatore</b>: possono essere sbagliati, arrivare <b>in ritardo o in anticipo</b>, oppure <b>non arrivare affatto</b>. Guidare contando sul fatto che la voce parlerà è un uso improprio: la curva va guardata comunque.</li><li><b>Guidi tu: assunzione di rischio.</b> L'uso dell'app avviene <b>a tuo esclusivo rischio</b>. Il conducente resta in ogni momento l'unico responsabile della condotta di guida, della scelta del percorso e di ogni decisione presa al volante, con o senza l'app attiva. Segnaletica, semafori, agenti del traffico e condizioni reali della strada <b>prevalgono sempre</b> su qualunque indicazione di Co-Driver: dove la realtà e l'app differiscono, l'app va ignorata. <b>Co-Driver non va usata per gareggiare, per cronometrarsi o per inseguire prestazioni su strada aperta</b>, in nessuna forma e con nessuno strumento. Serve a sapere prima cosa ti aspetta, così da rallentare in tempo: l'app non assegna primati, non tiene classifiche e non premia la velocità, e usarla per quello è una violazione di questi termini oltre che, quasi sempre, del codice della strada.</li><li><b>Obblighi di legge.</b> Ti impegni a rispettare il codice della strada del paese in cui guidi. In particolare, il telefono deve essere <b>fissato a un supporto</b> e non va tenuto in mano né manipolato in marcia: lo impongono l'art. 173 del Codice della Strada italiano e l'art. 8.4 del codice stradale belga. Ogni impostazione dell'app va effettuata a veicolo fermo.</li><li><b>Dati non garantiti.</b> Mappe, curve, severità, limiti, dossi e autovelox possono essere errati, incompleti o non aggiornati. Chiusure stradali, cantieri, ordinanze locali, meteo e condizioni del fondo restano una tua responsabilità esclusiva, come per qualunque navigatore.</li><li><b>Limitazione di responsabilità.</b> <b>Nella misura massima consentita dalla legge applicabile</b>, chi fornisce Co-Driver non risponde di danni diretti o indiretti — inclusi danni a veicoli, cose o persone, sanzioni, perdita di dati o mancato guadagno — derivanti dall'uso o dall'impossibilità d'uso dell'app, dalle sue indicazioni o dai suoi errori, e in particolare da incidenti occorsi durante la guida: le decisioni al volante restano interamente del conducente (punti 2 e 3). Resta ferma la sola responsabilità che la legge non consente di escludere. Trattandosi di beta gratuita, non è dovuta alcuna garanzia di conformità né alcun indennizzo contrattuale.</li><li><b>Dove si usa.</b> L'uso previsto è in auto e in moto. Le mappe disponibili coprono <b>Italia, Francia, Spagna, Belgio e Gran Bretagna</b>: dentro l'app vedi l'elenco esatto delle regioni scaricabili, che è l'unico elenco che conta. Fuori da questi territori l'app non va usata. Gli avvisi di autovelox seguono la legge del paese, e non sono una tua impostazione dove la legge non lo permette: · Italia, Spagna e Belgio: gli avvisi ci sono. Puoi spegnerli quando vuoi. · Francia: gli avvisi di posizione degli autovelox sono vietati (art. R413-15 del code de la route). Le mappe francesi non contengono alcun dato autovelox, di proposito, e non è possibile attivarli. · Gran Bretagna: gli avvisi sarebbero leciti, ma oggi le mappe britanniche non contengono dati autovelox. Non contarci. L'app non è destinata all'uso in Germania e in Svizzera, dove i dispositivi che avvisano dei controlli di velocità sono vietati (§23 Abs. 1c StVO in Germania, art. 98a LCStr in Svizzera): lì il divieto riguarda la funzione in sé, non il fatto di sentirla. Se guidi in quei paesi, non usare Co-Driver. <b>Moto.</b> In moto Co-Driver è solo un avviso a voce: tieni il telefono fisso e non guardarlo né toccarlo mentre guidi. La parola “attenzione” prima di una curva è un richiamo generico, non una valutazione di sicurezza: l'app non vede fondo, gomme, traffico né le tue condizioni, e se l'avviso manca non vuol dire che la curva sia sicura. Resti tu l'unico responsabile della guida e della velocità.</li><li><b>I tuoi feedback.</b> Segnalazioni, idee e suggerimenti inviati durante la beta possono essere usati liberamente per migliorare il prodotto, senza compenso. Citazioni pubbliche, foto e video vengono pubblicati <b>solo con il tuo permesso esplicito</b>, caso per caso.</li><li><b>Statistiche d'uso.</b> A fine sessione l'app invia automaticamente un rapporto con misure d'uso (durata, minuti di voce, chilometri, numero di annunci, codici di malfunzionamento, versione dell'app e del sistema, dimensioni dello schermo) e il tuo identificativo di tester. Nei rapporti d'uso <b>non viene inviata la posizione</b>, in nessuna forma. La posizione parte solo quando mandi tu una segnalazione dalla bussola. Il dettaglio sta nell'informativa sulla pagina beta.</li><li><b>Gratis ora, a pagamento poi.</b> Co-Driver è gratuita per tutta la beta. Al lancio diventerà freemium (mappa gratuita, voce a pagamento). La partecipazione alla beta non dà diritto a condizioni economiche future: dà l'accesso in anticipo e una voce diretta sullo sviluppo.</li><li><b>Durata e modifiche.</b> La beta può essere sospesa, modificata o chiusa in qualsiasi momento. Questi termini possono essere aggiornati: la versione che accetti è quella indicata in testa, e ogni modifica sostanziale ti verrà comunicata.</li></ol><p><b>In una riga: sapere prima serve a frenare prima.</b></p><p><b>Privacy in una riga</b> (informativa completa sulla pagina beta): i dati del modulo servono solo a gestire la beta, l'app manda statistiche d'uso a fine sessione e <b>la posizione GPS resta sul telefono</b>: parte solo quando mandi tu una segnalazione dalla bussola.</p></div>
     <button class="btn" id="tOk">Ho letto e accetto</button>
   </div>
 </div>
@@ -1410,7 +1418,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '343';
+const APPVER = '345';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -1731,8 +1739,14 @@ function tempoArco(e){
   const f = e.rank<=RANGO.veloce ? TEMPO_VELOCE : inPaese(e) ? TEMPO_PAESE : TEMPO_FUORI;
   return e._t = t*f + attesaArco(e);
 }
+const PEN_AUTOSTRADA = 8;
+function scooterPiccolo(){
+  try{ const c = CARS[S.car]; return !!c && isMoto() && (c.classe === 'sc' || S.car === 'msco') && (c.cv || 0) <= 16 }
+  catch(e){ return false }
+}
 function costo(e){
   const t = tempoArco(e);
+  if(MOTO_ON && ((CLSARCO.get(e.id)|0) >= 1) && scooterPiccolo()) return t * PEN_AUTOSTRADA;
   return e.rank>=RANGO.minore ? t*PEN_MINORE : t;
 }
 const RESTR = new Map();
@@ -24718,17 +24732,17 @@ const CARS = {
        g:[0.339,0.454,0.591,0.742,0.884,1.0],
        d_it:"Naked media: 70-120 CV, coppia piena dai 4.000 giri, sei marce. Il peso include chi "+
             "guida (270 kg), perché su una moto sei un terzo della massa. La piega è la misura di "+
-            "tutto: a 20° passi tranquillo, a 30° stai spingendo — e i numeri escono più alti di "+
+            "tutto: a 17° passi tranquillo, a 26° stai spingendo — e i numeri escono più alti di "+
             "un'auto in Race a parità di stile. Non perché sia più sicuro: perché una moto in piega "+
             "tiene di più, e perde tutto senza preavviso. Per questo le note arrivano prima.",
        d_en:"Mid-size naked: 70-120 hp, full torque from 4,000 rpm, six gears. Weight includes the "+
             "rider (270 kg): on a bike you are a third of the mass. Lean angle is the measure of "+
-            "everything: 20° is relaxed, 30° is pushing — and the figures come out higher than a car "+
+            "everything: 17° is relaxed, 26° is pushing — and the figures come out higher than a car "+
             "in Race at the same style. Not because it is safer: because a leaning bike holds more, "+
             "and loses it all without warning. That is why the calls come earlier.",
        d_fr:"Roadster moyen : 70-120 ch, couple plein dès 4 000 tr/min, six rapports. Le poids "+
             "inclut le pilote (270 kg) : à moto, tu es un tiers de la masse. L'angle est la mesure "+
-            "de tout : 20° c'est tranquille, 30° tu attaques — et les chiffres sortent plus hauts "+
+            "de tout : 17° c'est tranquille, 26° tu attaques — et les chiffres sortent plus hauts "+
             "qu'une voiture en Race à style égal. Pas parce que c'est plus sûr : parce qu'une moto "+
             "sur l'angle tient plus, et perd tout sans prévenir. C'est pour ça que les annonces "+
             "arrivent plus tôt."},
@@ -24840,7 +24854,7 @@ const PROF_SPAZ = {
   8:[0.125,0.205,0.300,0.410,0.545,0.685,0.840,1.0],
   9:[0.1123,0.1855,0.2671,0.3665,0.4967,0.6010,0.6948,0.8382,1.0],
 };
-const MOTO_ON = false;
+const MOTO_ON = true;
 const PROF_MOTO_CLASSI = {nk:'mnak', ss:'mss', ad:'madv', cu:'mcru', sc:'msco', ms:'mmax', al:'mx'};
 function profiloMotoDecodifica(c, s){
   try{
@@ -24917,7 +24931,7 @@ function profiloDecodifica(s){
           stima:'Aerodinamica, attrito e rapportatura sono stime ricavate dalla classe dell\'auto: '+
                 'servono a partire, e se hai i numeri veri si correggono. ',
           stimaDb:'Anche i dati di serie vengono da una scheda stimata, non verificata. ',
-          testa:'Profilo costruito sui numeri della tua auto: ',
+          testa:'Profilo costruito sui numeri del tuo veicolo: ',
           corpo:' CV, ### kg col guidatore, trazione @@@, ',
           coda:'Prima di partire tara i «Rapporti» qui sopra: scegli una marcia e sposta il cursore '+
                'finché il numero non è la velocità che il tuo tachimetro segna a 2.000 giri in quella '+
@@ -25113,7 +25127,8 @@ const extraPrima = (() => { try{ const a = JSON.parse(localStorage.getItem(PROF_
 const carPrima = (() => { try{ return (JSON.parse(localStorage.getItem('copilota2')||'{}')).car || null }
                           catch(e){ return null } })();
 const MIEI = [];
-function chiaveAuto(g){ const c = String(g).split('.'); return (c[1]||'').toLowerCase() + '|' + (c[14]||'') }
+function chiaveAuto(g){ const c = String(g).split('.');
+  return c[0]==='2' ? 'm:' + (c[2]||'').toLowerCase() + '|' + (c[10]||'') : (c[1]||'').toLowerCase() + '|' + (c[14]||'') }
 function unisciGarage(prima, nuovi){
   const out = prima.slice();
   for(const g of nuovi){
@@ -25147,6 +25162,8 @@ try{
     }catch(e){ nota('profilo del link non salvato sul telefono: '+e.message) }
   }else if(profiloPrima && profiloDecodifica(profiloPrima)){
     grezzi = [profiloPrima].concat(extraPrima.filter(g => profiloDecodifica(g))).slice(0, MAX_AUTO);
+  }else if([profiloPrima].concat(extraPrima).some(g => typeof g === 'string' && g.charAt(0) === '2')){
+    grezzi = [profiloPrima].concat(extraPrima).filter(g => g && profiloDecodifica(g)).slice(0, MAX_AUTO);
   }else{
     if(profiloPrima) localStorage.removeItem(PROF_CHIAVE);
     localStorage.removeItem(PROF_EXTRA);
@@ -25334,7 +25351,8 @@ function nomeVeicolo(){
 }
 const boostOf = () => CARS[S.car].boost || 3000;
 const rpmLimOf = () => CARS[S.car].rpmLim || 6500;
-const isAuto = () => !!CARS[S.car].auto || !!S.autoMode;
+const autoModo = () => isMoto() ? !!S.autoModeMoto : !!S.autoMode;
+const isAuto = () => !!CARS[S.car].auto || autoModo();
 
 function vTop(slope){
   const c=CARS[S.car], P=(c.cv||150)*735.5*0.85,
@@ -25370,10 +25388,11 @@ const VOCI = {
 };
 const STYLES = {
   calmo:  {a:2.0, reaz:ECO_ON ? 4.2 : 3.2, dec:2.2,
-           moto:{lean:20, reaz:3.6, dec:2.0,
-             d_it:"Bagnato, buio, strada che non conosci, o semplicemente niente fretta: 20° di piega, un'andatura da passeggio. La voce arriva molto prima: in moto in piega non si frena, quindi la nota deve lasciarti il tempo di rallentare da dritto.",
-             d_en:"Wet, dark, a road you do not know, or simply no hurry: 20° of lean, a strolling pace. The voice comes much earlier: on a bike you do not brake while leaned over, so the call must leave you time to slow down upright.",
-             d_fr:"Mouillé, nuit, route inconnue, ou simplement pas pressé : 20° d'angle, une allure de balade. La voix arrive bien plus tôt : à moto on ne freine pas sur l'angle, donc l'annonce doit te laisser le temps de ralentir droit."},
+           moto:{lean:17, reaz:ECO_ON ? 4.4 : 3.6, dec:2.0,
+             nm_it:'Tranquillo', nm_en:'Calm', nm_fr:'Tranquille',
+             d_it:"Bagnato, buio, strada che non conosci, o semplicemente niente fretta: 17° di piega, un'andatura da passeggio. La voce arriva molto prima: in moto in piega non si frena, quindi la nota deve lasciarti il tempo di rallentare da dritto.",
+             d_en:"Wet, dark, a road you do not know, or simply no hurry: 17° of lean, a strolling pace. The voice comes much earlier: on a bike you do not brake while leaned over, so the call must leave you time to slow down upright.",
+             d_fr:"Mouillé, nuit, route inconnue, ou simplement pas pressé : 17° d'angle, une allure de balade. La voix arrive bien plus tôt : à moto on ne freine pas sur l'angle, donc l'annonce doit te laisser le temps de ralentir droit."},
            nm_it:ECO_ON ? 'Eco' : 'Tranquillo', nm_en:ECO_ON ? 'Eco' : 'Calm', nm_fr:ECO_ON ? 'Éco' : 'Tranquille',
            d_it:'Passeggeri a bordo, bagnato, buio, strada che non conosci. I numeri restano bassi apposta, e la voce avvisa prima.',
            d_en:'Passengers aboard, wet, dark, a road you do not know. The figures stay low on purpose, and the voice warns earlier.',
@@ -25383,28 +25402,28 @@ const STYLES = {
            d_en:'To use less fuel: wide margins in corners, the call comes earlier so you can coast instead of braking and, with a manual gearbox, the voice tells you the gear that pays.',
            d_fr:'Pour consommer moins : marges larges en virage, l\'annonce arrive plus tôt pour laisser rouler la voiture sans freiner et, en boîte manuelle, la voix te dit le rapport qui convient.'} : {})},
   strada: {a:2.6, reaz:2.6, dec:3.0,
-           moto:{lean:25, reaz:3.0, dec:2.6,
-             d_it:"Andatura fluida da strada aperta: 25° di piega, margine per ghiaia, traffico e curve cieche. È il modo di tutti i giorni — e i numeri sono già quelli di un'auto in Race. Non è un invito: è come funziona una moto.",
-             d_en:"Flowing open-road pace: 25° of lean, margin for gravel, traffic and blind corners. The everyday setting — and the figures already match a car in Race. Not an invitation: it is how a bike works.",
-             d_fr:"Allure fluide de route ouverte : 25° d'angle, marge pour le gravier, le trafic et les virages aveugles. Le réglage de tous les jours — et les chiffres sont déjà ceux d'une voiture en Race. Pas une invitation : c'est ainsi qu'une moto fonctionne."},
+           moto:{lean:21, reaz:3.0, dec:2.6,
+             d_it:"Andatura fluida da strada aperta: 21° di piega, margine per ghiaia, traffico e curve cieche. È il modo di tutti i giorni. Non è un invito: è come funziona una moto.",
+             d_en:"Flowing open-road pace: 21° of lean, margin for gravel, traffic and blind corners. The everyday setting. Not an invitation: it is how a bike works.",
+             d_fr:"Allure fluide de route ouverte : 21° d'angle, marge pour le gravier, le trafic et les virages aveugles. Le réglage de tous les jours. Pas une invitation : c'est ainsi qu'une moto fonctionne."},
            nm_it:'Comfort', nm_en:'Comfort', nm_fr:'Confort',
            d_it:'Andatura fluida su strada aperta: margine per traffico, fondo sporco e curve cieche. È il modo di tutti i giorni.',
            d_en:'Flowing pace on an open road: margin for traffic, dirty surface and blind corners. The everyday setting.',
            d_fr:'Allure fluide sur route ouverte : marge pour le trafic, la chaussée sale et les virages sans visibilité. Le réglage de tous les jours.'},
   deciso: {a:3.2, reaz:2.0, dec:3.8,
-           moto:{lean:30, reaz:2.4, dec:3.3,
-             d_it:"Asfalto asciutto e strada che conosci: 30° di piega, pedane vicine a terra su una custom. Resta uso stradale. Sopra questa piega il margine sull'imprevisto — un tombino, una macchia d'olio — è quasi zero.",
-             d_en:"Dry tarmac on a road you know: 30° of lean, pegs close to the ground on a cruiser. Still road use. Above this lean the margin for the unexpected — a manhole cover, an oil patch — is close to zero.",
-             d_fr:"Bitume sec et route connue : 30° d'angle, repose-pieds près du sol sur une custom. Reste un usage routier. Au-delà de cet angle, la marge pour l'imprévu — une plaque, une tache d'huile — est quasi nulle."},
+           moto:{lean:26, reaz:2.4, dec:3.3,
+             d_it:"Asfalto asciutto e strada che conosci: 26° di piega, pedane vicine a terra su una custom. Resta uso stradale. Sopra questa piega il margine sull'imprevisto — un tombino, una macchia d'olio — è quasi zero.",
+             d_en:"Dry tarmac on a road you know: 26° of lean, pegs close to the ground on a cruiser. Still road use. Above this lean the margin for the unexpected — a manhole cover, an oil patch — is close to zero.",
+             d_fr:"Bitume sec et route connue : 26° d'angle, repose-pieds près du sol sur une custom. Reste un usage routier. Au-delà de cet angle, la marge pour l'imprévu — une plaque, une tache d'huile — est quasi nulle."},
            nm_it:'Sport', nm_en:'Sport', nm_fr:'Sport',
            d_it:'Asfalto asciutto e strada che conosci. Resta un uso stradale, non un tempo sul giro.',
            d_en:'Dry tarmac on a road you know. Still road use, not a lap time.',
            d_fr:'Bitume sec et route connue. Cela reste un usage routier, pas un temps au tour.'},
   pista:  {a:4.6, reaz:1.4, dec:4.8,
-           moto:{lean:36, reaz:1.8, dec:4.2,
-             d_it:"36° di piega: numeri da pista. Su strada aperta sono il tetto assoluto, mai un obiettivo, e la voce arriva tardi apposta. Le gomme stradali arrivano oltre, la strada no: nessuna via di fuga, nessuna ghiaia pulita.",
-             d_en:"36° of lean: track figures. On a public road they are the absolute ceiling, never a target, and the voice comes late on purpose. Road tyres go further, the road does not: no run-off, no clean gravel.",
-             d_fr:"36° d'angle : des chiffres de piste. Sur route ouverte c'est le plafond absolu, jamais un objectif, et la voix arrive tard exprès. Les pneus route vont plus loin, la route non : aucun dégagement, aucun gravier propre."},
+           moto:{lean:31, reaz:1.8, dec:4.2,
+             d_it:"31° di piega: numeri da pista. Su strada aperta sono il tetto assoluto, mai un obiettivo, e la voce arriva tardi apposta. Le gomme stradali arrivano oltre, la strada no: nessuna via di fuga, nessuna ghiaia pulita.",
+             d_en:"31° of lean: track figures. On a public road they are the absolute ceiling, never a target, and the voice comes late on purpose. Road tyres go further, the road does not: no run-off, no clean gravel.",
+             d_fr:"31° d'angle : des chiffres de piste. Sur route ouverte c'est le plafond absolu, jamais un objectif, et la voix arrive tard exprès. Les pneus route vont plus loin, la route non : aucun dégagement, aucun gravier propre."},
            nm_it:'Race', nm_en:'Race', nm_fr:'Race',
            d_it:'Numeri da strada chiusa. Su strada aperta sono il tetto assoluto, mai un obiettivo. La voce arriva tardi apposta.',
            d_en:'Closed-road figures. On a public road they are the absolute ceiling, never a target. The voice comes late on purpose.',
@@ -25418,19 +25437,35 @@ function stileAttivo(){
   if(!isMoto()) return st;
   const c = CARS[S.car], lean = Math.min(st.moto.lean, c.leanMax || 60);
   return {a: 9.81*Math.tan(lean*Math.PI/180), lean, reaz: st.moto.reaz, dec: st.moto.dec,
-          nm_it: st.nm_it, nm_en: st.nm_en, nm_fr: st.nm_fr,
+          nm_it: st.moto.nm_it || st.nm_it, nm_en: st.moto.nm_en || st.nm_en, nm_fr: st.moto.nm_fr || st.nm_fr,
           d_it: st.moto.d_it, d_en: st.moto.d_en, d_fr: st.moto.d_fr};
 }
 const piegaDeg = (vms, r) => Math.round(Math.atan(vms*vms/(Math.max(1,r)*9.81))*180/Math.PI);
 const rpmRif = () => isMoto() ? 4000 : RPM_RIF;
+const MOTO_ATTENZIONE_DEG = 15;
+const MOTO_ATTENZIONE_K = 0.9;
+const motoSogliaAttenzione = () => Math.max(MOTO_ATTENZIONE_DEG, MOTO_ATTENZIONE_K * (stileAttivo().lean || 0));
+const MOTO_LA_MIN = 0.7;
+const MOTO_REAZ_MIN = 1.5;
+const MOTO_GUADAGNO_K = 1.4125;
 const MOTO_AVVISO_K = 'copilota-moto-avviso';
 function avvisoMoto(){
   if(!isMoto()) return;
-  try{ if(localStorage.getItem(MOTO_AVVISO_K)) return; localStorage.setItem(MOTO_AVVISO_K, '1') }catch(e){ return }
-  setTimeout(() => toast(tr().motoAvviso, 16000), 1200);
+  try{ if(localStorage.getItem(MOTO_AVVISO_K)) return }catch(e){ return }
+  setTimeout(() => {
+    try{ if(!isMoto() || !sheets.moto || localStorage.getItem(MOTO_AVVISO_K)) return;
+         if(!terminiAccettati() || (S.v||0) > 1 || document.querySelector('.sheet.show')) return;
+         localStorage.setItem(MOTO_AVVISO_K, '1') }catch(e){ return }
+    openSheet('moto');
+  }, 1500);
 }
 function applicaVeicolo(){
   avvisoMoto();
+  S.vc = null; S.rotaEl = null;
+  const tipoOra = isMoto() ? 'moto' : 'auto';
+  if(S.tipoPrec && S.tipoPrec !== tipoOra){ ACC.picchi.length = 0; ACC.ordinati = null; ACC.giu = ACC.avanti = ACC.lato = null; ACC.inCurva = false }
+  S.tipoPrec = tipoOra;
+  try{ if(VOCE.gMain) VOCE.gMain.gain.value = VOCE_GUADAGNO * (isMoto() ? MOTO_GUADAGNO_K : 1) }catch(e){}
   document.documentElement.dataset.veicolo = isMoto() ? 'moto' : 'auto';
   document.documentElement.dataset.moto = MOTO_ON ? 'on' : 'off';
   document.documentElement.dataset.vista = VISTA_PIENA ? 'piena' : 'tester';
@@ -25447,6 +25482,7 @@ const T = {
     noCurve:'nessuna curva nel raggio utile', inC:'IN', inC2:'CURVA', m:'METRI', now:'ORA',
     gear:'MARCIA', then:'poi', radius:'raggio', ref:'rif.', curvLab:'CURVA', lean:'piega', flat:'· in pieno', rpm:'giri',
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
+    imprecisa:'Posizione imprecisa', imprecisaSub:'il GPS dichiara un errore di oltre 100 m: su iPhone attiva «Posizione esatta» per Safari o per l\'app (Impostazioni › Privacy › Localizzazione)',
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale',5:'Strada di paese'},
     roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo', voceAccesa:'Voce accesa', voceSpenta:'Voce spenta', voceScarico:'Scarico la voce…', voceSoloIt:'Questa voce c\'è solo in italiano: nelle altre lingue parla Rally.', voceSoloItChip:'solo italiano', voceNo:'Voce non scaricata: serve la rete. Per ora suona Rally.', voceGia:'scaricata',
     clsAuto:'Autostrada', clsRampa:'Svincolo',
@@ -25457,8 +25493,8 @@ const T = {
     sideW:['destra','sinistra'], hairW:'tornante a ',
     gpsSearch:'Cerco il GPS…',
     avvAuto:(n,mia)=>mia
-      ? 'Stai guidando con «'+n+'», non con la tua auto. Tocca qui per cambiarla.'
-      : '«'+n+'» è un profilo di esempio: le marce non sono quelle della tua auto. Apri il tuo link personale, o tocca qui per incollarlo.',
+      ? 'Stai guidando con «'+n+'», non con il tuo veicolo. Tocca qui per cambiarlo.'
+      : '«'+n+'» è un profilo di esempio: le marce non sono quelle del tuo veicolo. Apri il tuo link personale, o tocca qui per incollarlo.',
     gpsFrame:'Questa è la demo dentro claude.ai: la posizione è bloccata dall\'iframe, non da te. Apri l\'app vera su codriver.pages.dev (o usa la Demo qui).',
     gpsInsecure:'Pagina non su HTTPS: nessun browser dà la posizione. Apri l\'indirizzo https.',
     gpsBlocked:'Posizione bloccata per questo sito. iPhone: Impostazioni → Privacy → Localizzazione → Safari = "Durante l\'uso" + Posizione esatta; poi in Safari aA → Impostazioni sito → Posizione → Consenti. Mac: Impostazioni di Sistema → Privacy → Localizzazione.',
@@ -25486,7 +25522,7 @@ const T = {
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', spenta:'Disattivata', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
     paesi:{it:'Italia', be:'Belgio', nl:'Paesi Bassi', fr:'Francia', gb:'Regno Unito', es:'Spagna', '?':'Altre regioni'},
-    invSpieg:'Se l\'app è in schermata Home su iPhone, ha una memoria sua: il profilo della tua auto non passa da Safari. Incolla qui il link che ti hanno mandato e torna com\'era.',
+    invSpieg:'Se l\'app è in schermata Home su iPhone, ha una memoria sua: il profilo del tuo veicolo non passa da Safari. Incolla qui il link che ti hanno mandato e torna com\'era.',
     invPh:'incolla il link', invGo:'Applica',
     invOk:n=>'Fatto: '+n+'. Riapro l\'app…',
     invNo:'Questo non è un link d\'invito valido. Deve contenere la parte dopo il cancelletto, quella che comincia con «#p=».',
@@ -25533,15 +25569,15 @@ const T = {
     mappeAttiveTot:mb=>'Mappe attive: '+mb,
     motoAvviso:'Prima di partire in moto: le vibrazioni dei motori potenti possono danneggiare la fotocamera dell\'iPhone (Apple HT212803). Usa un supporto con smorzatore e, per sentire la voce, l\'interfono. Il telefono va fissato e impostato prima di partire.',
     inUse:'in uso', at:'a', byLimit:'limite',
-    carCambia:'Cambia veicolo', carCambiaSub:'se non è questa la tua auto',
-    profAgg:n=>'La scheda della tua '+(n||'auto')+' è stata aggiornata.',
+    carCambia:'Cambia veicolo', carCambiaSub:'se non è questo il tuo veicolo',
+    profAgg:n=>'La scheda del tuo '+(n||'veicolo')+' è stata aggiornata.',
     segnNoGps:'Serve la posizione: accendi il GPS e aspetta l\'aggancio.',
     segnFatto:'✓ Segnalato, grazie! · Tocca per annullare',
     segnAnnullata:'Segnalazione annullata.',
     voceSilenzio:'Non senti la voce? Controlla che il telefono non sia in silenzioso o in vibrazione.',
-    garNuova:n=>'🏁 La tua '+(n||'auto')+' è entrata nel garage',
-    garRipiego:n=>'Questa ('+n+') è un\'auto di partenza simile alla tua: il profilo della tua non sono riuscito a leggerlo. Non è colpa tua e non serve che tu faccia niente: scrivici e te lo rimettiamo a posto noi da qui.',
-    garTogli:'Togli un\'auto', garTogliSub:'dal tuo garage', garFine:'Fatto', garFineSub:'non togliere niente',
+    garNuova:n=>'🏁 Il tuo '+(n||'veicolo')+' è entrato nel garage',
+    garRipiego:n=>'Questo ('+n+') è un veicolo di partenza simile al tuo: il profilo del tuo non sono riuscito a leggerlo. Non è colpa tua e non serve che tu faccia niente: scrivici e te lo rimettiamo a posto noi da qui.',
+    garTogli:'Togli un veicolo', garTogliSub:'dal tuo garage', garFine:'Fatto', garFineSub:'non togliere niente',
     garConf:n=>'Togliere «'+n+'» dal tuo garage? Se ti serve di nuovo, riapri il link che te l\'ha data.',
     calRif:'Marcia di riferimento', calHint:(g,r)=>'A '+r+' giri in '+g+' il tachimetro segna:',
     cminTutteOpt:'Tutte le curve',
@@ -25574,7 +25610,7 @@ const T = {
     d3gps:'La vista 3D si accende quando guidi: avvia il GPS.',
     audioTocca:'Tocca lo schermo una volta per attivare la voce: il telefono non la fa partire da sola.',
     vocePausa:'Voce in pausa: tocca lo schermo per riattivarla.',
-    lezEntra: n => 'Il percorso entra nella zona a basse emissioni (LEZ) di '+n+'. Se la tua auto non è ammessa o non è registrata, rischi la multa.',
+    lezEntra: n => 'Il percorso entra nella zona a basse emissioni (LEZ) di '+n+'. Se il tuo veicolo non è ammesso o non è registrato, rischi la multa.',
     lezNomi: {bxl:'Bruxelles', anv:'Anversa', gnt:'Gand'},
     schermoNegato: 'Il telefono non tiene acceso lo schermo: togli il Risparmio energetico. Tocca qui per riprovare.',
     trafficoRotta: m => m > 0 ? 'Percorso cambiato per il traffico: '+m+' min in meno.' : 'Percorso cambiato: strada chiusa più avanti.',
@@ -25627,6 +25663,7 @@ const T = {
     noCurve:'no corner within range', inC:'IN', inC2:'CORNER', m:'METERS', now:'NOW',
     gear:'GEAR', then:'then', radius:'radius', ref:'ref.', curvLab:'CORNER', lean:'lean', flat:'· flat out', rpm:'rpm',
     off:'Off mapped roads', offSub:'get closer to a mapped road to resume pacenotes',
+    imprecisa:'Imprecise position', imprecisaSub:'the GPS reports an error above 100 m: on iPhone turn on Precise Location for Safari or the app (Settings › Privacy › Location Services)',
     roads:{0:'Trunk road',1:'Trunk / Provincial',2:'Provincial road',3:'Minor provincial',4:'Local road',5:'Residential street'},
     roadOff:'off mapped roads', roadLocal:'local road', voiceOn:'co-driver active', voceAccesa:'Voice on', voceSpenta:'Voice off', voceScarico:'Downloading the voice…', voceSoloIt:'This voice is Italian only for now: in other languages Rally speaks.', voceSoloItChip:'Italian only', voceNo:'Voice not downloaded: it needs the network. Rally plays for now.', voceGia:'downloaded',
     clsAuto:'Motorway', clsRampa:'Slip road',
@@ -25638,7 +25675,7 @@ const T = {
     gpsSearch:'Looking for GPS…',
     avvAuto:(n,mia)=>mia
       ? 'You are driving with “'+n+'”, not your own car. Tap here to switch.'
-      : '“'+n+'” is a sample profile: the gears are not your car\'s. Open your personal link, or tap here to paste it.',
+      : '“'+n+'” is a sample profile: the gears are not your vehicle\'s. Open your personal link, or tap here to paste it.',
     gpsFrame:'This is the demo embedded in claude.ai: location is blocked by the iframe, not by you. Open the real app at codriver.pages.dev (or use the Demo here).',
     gpsInsecure:'Page is not on HTTPS: no browser will hand out location. Open the https address.',
     gpsBlocked:'Location is blocked for this site. iPhone: Settings → Privacy → Location Services → Safari = "While Using" + Precise Location; then in Safari aA → Website Settings → Location → Allow. Mac: System Settings → Privacy → Location Services.',
@@ -25666,7 +25703,7 @@ const T = {
     pickMap:'pick a map', maps:'Maps', dl:'Download', spenta:'Inactive', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
     paesi:{it:'Italy', be:'Belgium', nl:'Netherlands', fr:'France', gb:'United Kingdom', es:'Spain', '?':'Other regions'},
-    invSpieg:'A web app on the iPhone Home Screen has its own storage: your car profile does not carry over from Safari. Paste the link you were sent and it comes back.',
+    invSpieg:'A web app on the iPhone Home Screen has its own storage: your vehicle profile does not carry over from Safari. Paste the link you were sent and it comes back.',
     invPh:'paste the link', invGo:'Apply',
     invOk:n=>'Done: '+n+'. Reopening…',
     invNo:'That is not a valid invite link. It must include the part after the hash, the one starting with “#p=”.',
@@ -25713,15 +25750,15 @@ const T = {
     mappeAttiveTot:mb=>'Active maps: '+mb,
     motoAvviso:'Before riding: the vibration of powerful engines can damage the iPhone camera (Apple HT212803). Use a mount with a damper and, to hear the voice, the intercom. The phone must be mounted and set up before you ride.',
     inUse:'in use', at:'at', byLimit:'limit',
-    carCambia:'Change vehicle', carCambiaSub:'if this is not your car',
-    profAgg:n=>'Your '+(n||'car')+' profile has been updated.',
+    carCambia:'Change vehicle', carCambiaSub:'if this is not your vehicle',
+    profAgg:n=>'Your '+(n||'vehicle')+' profile has been updated.',
     segnNoGps:'Position needed: turn the GPS on and wait for a fix.',
     segnFatto:'✓ Reported, thanks! · Tap to undo',
     segnAnnullata:'Report cancelled.',
     voceSilenzio:'Can\'t hear the voice? Make sure your phone is not on silent or vibrate.',
-    garNuova:n=>'🏁 Your '+(n||'car')+' is now in your garage',
-    garRipiego:n=>'This ('+n+') is a starter car similar to yours: I could not read your car\u2019s profile. It is not your fault and you do not have to do anything: write to us and we will fix it from our side.',
-    garTogli:'Remove a car', garTogliSub:'from your garage', garFine:'Done', garFineSub:'remove nothing',
+    garNuova:n=>'🏁 Your '+(n||'vehicle')+' is now in your garage',
+    garRipiego:n=>'This ('+n+') is a starter vehicle similar to yours: I could not read your vehicle\u2019s profile. It is not your fault and you do not have to do anything: write to us and we will fix it from our side.',
+    garTogli:'Remove a vehicle', garTogliSub:'from your garage', garFine:'Done', garFineSub:'remove nothing',
     garConf:n=>'Remove «'+n+'» from your garage? If you need it again, reopen the link it came with.',
     calRif:'Reference gear', calHint:(g,r)=>'At '+r+' rpm in '+g+' the speedo reads:',
     cminTutteOpt:'Every corner',
@@ -25754,7 +25791,7 @@ const T = {
     d3gps:'The 3D view kicks in while driving: start GPS.',
     audioTocca:'Tap the screen once to enable the voice: the phone will not start it on its own.',
     vocePausa:'Voice paused: tap the screen to turn it back on.',
-    lezEntra: n => 'This route enters the '+n+' low emission zone (LEZ). If your car isn\'t allowed or registered, you may be fined.',
+    lezEntra: n => 'This route enters the '+n+' low emission zone (LEZ). If your vehicle isn\'t allowed or registered, you may be fined.',
     lezNomi: {bxl:'Brussels', anv:'Antwerp', gnt:'Ghent'},
     schermoNegato: 'Your phone won\'t keep the screen on: turn off Low Power Mode or Battery Saver. Tap here to try again.',
     trafficoRotta: m => m > 0 ? 'Route changed for traffic: '+m+' min faster.' : 'Route changed: road closed ahead.',
@@ -25807,6 +25844,7 @@ const T = {
     noCurve:'aucun virage à distance utile', inC:'DANS', inC2:'VIRAGE', m:'MÈTRES', now:'MAINTENANT',
     gear:'VITESSE', then:'puis', radius:'rayon', ref:'réf.', curvLab:'VIRAGE', lean:'inclinaison', flat:'· à fond', rpm:'tr/min',
     off:'Hors des routes cartographiées', offSub:'rapproche-toi d\'une route pour reprendre les indications',
+    imprecisa:'Position imprécise', imprecisaSub:'le GPS annonce plus de 100 m d\'erreur : sur iPhone, active Position précise pour Safari ou l\'app (Réglages › Confidentialité › Service de localisation)',
     roads:{0:'Route nationale',1:'Nationale / Provinciale',2:'Route provinciale',3:'Provinciale secondaire',4:'Route locale',5:'Rue de village'},
     roadOff:'hors des routes cartographiées', roadLocal:'route locale', voiceOn:'copilote actif', voceAccesa:'Voix active', voceSpenta:'Voix coupée', voceScarico:'Téléchargement de la voix…', voceSoloIt:'Cette voix n\'existe qu\'en italien pour l\'instant : dans les autres langues, Rally parle.', voceSoloItChip:'italien seulement', voceNo:'Voix non téléchargée : il faut du réseau. Rally parle pour l\'instant.', voceGia:'téléchargée',
     clsAuto:'Autoroute', clsRampa:'Bretelle',
@@ -25817,8 +25855,8 @@ const T = {
     sideW:['droite','gauche'], hairW:'épingle à ',
     gpsSearch:'Recherche du GPS…',
     avvAuto:(n,mia)=>mia
-      ? 'Tu roules avec « '+n+' », pas avec ta voiture. Touche ici pour la changer.'
-      : '« '+n+' » est un profil d\'exemple : les rapports ne sont pas ceux de ta voiture. Ouvre ton lien personnel, ou touche ici pour le coller.',
+      ? 'Tu roules avec « '+n+' », pas avec ton véhicule. Touche ici pour le changer.'
+      : '« '+n+' » est un profil d\'exemple : les rapports ne sont pas ceux de ton véhicule. Ouvre ton lien personnel, ou touche ici pour le coller.',
     gpsFrame:'Ceci est la démo intégrée dans claude.ai : la position est bloquée par l\'iframe, pas par toi. Ouvre l\'application réelle sur codriver.pages.dev (ou utilise la Démo ici).',
     gpsInsecure:'Page non HTTPS : aucun navigateur ne donne la position. Ouvre l\'adresse en https.',
     gpsBlocked:'Position bloquée pour ce site. iPhone : Réglages → Confidentialité → Position → Safari = "Lors de l\'utilisation" + Position précise ; puis dans Safari aA → Réglages du site → Position → Autoriser. Mac : Réglages Système → Confidentialité → Position.',
@@ -25846,7 +25884,7 @@ const T = {
     pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', spenta:'Désactivée', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
     paesi:{it:'Italie', be:'Belgique', nl:'Pays-Bas', fr:'France', gb:'Royaume-Uni', es:'Espagne', '?':'Autres régions'},
-    invSpieg:'Sur l\'écran d\'accueil de l\'iPhone, l\'app a sa propre mémoire : le profil de ta voiture ne vient pas de Safari. Colle ici le lien qu\'on t\'a envoyé et tout revient.',
+    invSpieg:'Sur l\'écran d\'accueil de l\'iPhone, l\'app a sa propre mémoire : le profil de ton véhicule ne vient pas de Safari. Colle ici le lien qu\'on t\'a envoyé et tout revient.',
     invPh:'colle le lien', invGo:'Appliquer',
     invOk:n=>'C\'est fait : '+n+'. Je rouvre l\'app…',
     invNo:'Ce n\'est pas un lien d\'invitation valide. Il doit contenir la partie après le dièse, celle qui commence par « #p= ».',
@@ -25893,15 +25931,15 @@ const T = {
     mappeAttiveTot:mb=>'Cartes actives : '+mb,
     motoAvviso:'Avant de rouler : les vibrations des moteurs puissants peuvent endommager l\'appareil photo de l\'iPhone (Apple HT212803). Utilise un support avec amortisseur et, pour entendre la voix, l\'interphone. Le téléphone doit être fixé et réglé avant de partir.',
     inUse:'en cours', at:'à', byLimit:'limite',
-    carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ta voiture',
-    profAgg:n=>'La fiche de ta '+(n||'voiture')+' a été mise à jour.',
+    carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ton véhicule',
+    profAgg:n=>'La fiche de ton '+(n||'véhicule')+' a été mise à jour.',
     segnNoGps:'La position est nécessaire : active le GPS et attends le point.',
     segnFatto:'✓ Signalé, merci ! · Touche pour annuler',
     segnAnnullata:'Signalement annulé.',
     voceSilenzio:'Tu n\'entends pas la voix ? Vérifie que le téléphone n\'est pas en silencieux ou en vibreur.',
-    garNuova:n=>'🏁 Ta '+(n||'voiture')+' est entrée dans ton garage',
-    garRipiego:n=>'Celle-ci ('+n+') est une voiture de départ proche de la tienne : je n\'ai pas réussi à lire le profil de la tienne. Ce n\'est pas ta faute et tu n\'as rien à faire : écris-nous et on corrige tout de notre côté.',
-    garTogli:'Retirer une voiture', garTogliSub:'de ton garage', garFine:'Terminé', garFineSub:'ne rien retirer',
+    garNuova:n=>'🏁 Ton '+(n||'véhicule')+' est entré dans ton garage',
+    garRipiego:n=>'Celui-ci ('+n+') est un véhicule de départ proche du tien : je n\'ai pas réussi à lire le profil du tien. Ce n\'est pas ta faute et tu n\'as rien à faire : écris-nous et on corrige tout de notre côté.',
+    garTogli:'Retirer un véhicule', garTogliSub:'de ton garage', garFine:'Terminé', garFineSub:'ne rien retirer',
     garConf:n=>'Retirer «'+n+'» de ton garage ? Si tu en as de nouveau besoin, rouvre le lien qui te l\'a donnée.',
     calRif:'Vitesse de référence', calHint:(g,r)=>'À '+r+' tr/min en '+g+', le compteur affiche :',
     cminTutteOpt:'Tous les virages',
@@ -25934,7 +25972,7 @@ const T = {
     d3gps:'La vue 3D s\'active quand tu conduis : démarre le GPS.',
     audioTocca:'Touche l\'écran une fois pour activer la voix : le téléphone ne la démarre pas tout seul.',
     vocePausa:'Voix en pause : touche l\'écran pour la réactiver.',
-    lezEntra: n => 'Cet itinéraire entre dans la zone de basses émissions (LEZ) '+n+'. Si ta voiture n\'est pas autorisée ou enregistrée, tu risques une amende.',
+    lezEntra: n => 'Cet itinéraire entre dans la zone de basses émissions (LEZ) '+n+'. Si ton véhicule n\'est pas autorisé ou enregistré, tu risques une amende.',
     lezNomi: {bxl:'de Bruxelles', anv:'d\'Anvers', gnt:'de Gand'},
     schermoNegato: 'Le téléphone ne garde pas l\'écran allumé : désactive le mode Économie d\'énergie. Touche ici pour réessayer.',
     trafficoRotta: m => m > 0 ? 'Itinéraire modifié à cause du trafic : '+m+' min de moins.' : 'Itinéraire modifié : route fermée plus loin.',
@@ -25988,7 +26026,7 @@ const S = {
   d3:false,
   pitchLibero:false,
   zoomLibero:false,
-  mode:'free', audio:false, autoMode:false, pace:true, watchId:null, wake:null,
+  mode:'free', audio:false, autoMode:false, autoModeMoto:false, pace:true, watchId:null, wake:null,
   pos:null, acc:0, v:0, hd:null,
   dp:null, dhd:null, avanti:0,
   dvx:0, dvy:0, dvh:0, dva:0,
@@ -26052,6 +26090,7 @@ try{
   if(typeof st.rcAvvisoVisto==='boolean')S.rcAvvisoVisto=st.rcAvvisoVisto;
   if(typeof st.rotatorie==='boolean')S.rotatorie=st.rotatorie;
   if(typeof st.autoMode==='boolean')S.autoMode=st.autoMode;
+  if(typeof st.autoModeMoto==='boolean')S.autoModeMoto=st.autoModeMoto;
   if(typeof st.pace==='boolean')S.pace=st.pace;
   if(typeof st.vetro==='boolean')S.vetro=st.vetro;
   if(st.audio)S.audio=true;
@@ -26096,7 +26135,7 @@ if(aNelLink || testerDalLink || profiloDalLink){
        window.history.replaceState(null, '', u.pathname + (u.search||'') + u.hash) }catch(e){}
 }
 const save=()=>{try{ricordaCal();localStorage.setItem('copilota2',JSON.stringify(
-  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,trafficoVivo:S.trafficoVivo,rcRegistra:S.rcRegistra,rcAvvisoVisto:S.rcAvvisoVisto,antic:S.antic,voce:S.voce,autoMode:S.autoMode,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema,vetro:S.vetro}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,trafficoVivo:S.trafficoVivo,rcRegistra:S.rcRegistra,rcAvvisoVisto:S.rcAvvisoVisto,antic:S.antic,voce:S.voce,autoMode:S.autoMode,autoModeMoto:S.autoModeMoto,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema,vetro:S.vetro}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 if(autoDalLink || profiloDalLink) save();
 
 (function (globale) {
@@ -26876,7 +26915,7 @@ function anomaliaDi(msg){
 }
 
 function snAvvia(){
-  window.SN.avvia({build: APPVER, paese: paeseAttivo(), veicolo: nomeVeicolo(),
+  window.SN.avvia({build: APPVER, paese: paeseAttivo(), veicolo: nomeVeicolo() + (MOTO_ON && isMoto() ? ' · moto' : ''),
                    regione: regioneAttiva()});
   try{ if(localStorage.getItem('copilota-datiko-avvio')){
     localStorage.removeItem('copilota-datiko-avvio'); window.SN.anomalia('dati-ko') } }catch(e){}
@@ -26918,7 +26957,7 @@ function bestGear(kmh){
   if(pick==null) pick = 1;
   else if(rpmAt(kmh,pick)>hi && pick<n) pick+=1;
   if(pick===1 && rpmAt(kmh,2)>=boostOf()*0.81) pick=2;
-  if(pick===1 && n>=2 && !isMoto() && kmh > PRIMA_MAX_KMH) pick=2;
+  if(pick===1 && n>=2 && kmh > PRIMA_MAX_KMH) pick=2;
   return pick;
 }
 const GEAR_SLANCIO = 1.35;
@@ -27028,6 +27067,7 @@ function accCampione(ev){
   const ora = performance.now();
   const dt = ev.interval ? ev.interval/1000 : (ACC.tPrec ? Math.min(0.2,(ora-ACC.tPrec)/1000) : 0.016);
   ACC.tPrec = ora;
+  rsCampione(_d3(vacc, ACC.avanti), dt, ora);
   const k = dt/(dt+ACC_TAU);
   ACC.latF += k*(_d3(vacc, ACC.lato) - ACC.latF);
   ACC.lonF += k*(_d3(vacc, ACC.avanti) - ACC.lonF);
@@ -27071,6 +27111,73 @@ function accAvvia(){
   }catch(e){ nota('accelerometro non partito: ' + e.message) }
 }
 
+const RS_PASSO = 0.1, RS_N = 16, RS_OBLIO = 0.985;
+const RS_R2_MIN = 0.40, RS_ENERGIA_MIN = 5, RS_W_MIN = 25;
+const RS = { T:[], A:[], acc:0, tUltimo:0, fix:null, d:null, ok:false, r2:0, W:0, energia:0, n:0, S:null, salvato:null, tSalva:0 };
+try{ const x = parseFloat(localStorage.getItem('cd-eta-gps')); if(x >= 0 && x <= 1.5) RS.salvato = x }catch(e){}
+function rsReset(){ RS.S = { W:0, y:0, yy:0, x:new Float64Array(RS_N), xx:new Float64Array(RS_N), xy:new Float64Array(RS_N) } }
+rsReset();
+function rsCampione(lon, dt, ora){
+  RS.acc += lon*dt; RS.tAcc = ora/1000;
+  if(ora - RS.tUltimo < 50) return;
+  RS.tUltimo = ora;
+  RS.T.push(ora/1000); RS.A.push(RS.acc);
+  if(RS.T.length > 3000){ RS.T.splice(0, 600); RS.A.splice(0, 600) }
+}
+function rsA(t){
+  const T = RS.T, n = T.length;
+  if(n < 2 || t < T[0]) return null;
+  if(t > T[n-1]) return t - RS.tAcc < 0.12 ? RS.acc : null;
+  let lo = 0, hi = n-1;
+  while(hi - lo > 1){ const m = (lo+hi) >> 1; if(T[m] <= t) lo = m; else hi = m }
+  if(T[hi] - T[lo] > 0.3) return null;
+  return RS.A[lo] + (RS.A[hi]-RS.A[lo]) * (T[hi] > T[lo] ? (t-T[lo])/(T[hi]-T[lo]) : 0);
+}
+function rsFix(Ts, v){
+  const f = RS.fix; RS.fix = { t:Ts, v };
+  if(!f || !(v >= 0) || RS.T.length < 40) return;
+  const dt = Ts - f.t; if(dt < 0.5 || dt > 2.5) return;
+  const dv = v - f.v, X = new Float64Array(RS_N);
+  for(let k = 0; k < RS_N; k++){
+    const a1 = rsA(Ts - k*RS_PASSO), a0 = rsA(f.t - k*RS_PASSO);
+    if(a1 == null || a0 == null) return;
+    X[k] = a1 - a0;
+  }
+  const s = RS.S;
+  s.W = s.W*RS_OBLIO + 1; s.y = s.y*RS_OBLIO + dv; s.yy = s.yy*RS_OBLIO + dv*dv;
+  for(let k = 0; k < RS_N; k++){
+    s.x[k] = s.x[k]*RS_OBLIO + X[k]; s.xx[k] = s.xx[k]*RS_OBLIO + X[k]*X[k]; s.xy[k] = s.xy[k]*RS_OBLIO + X[k]*dv;
+  }
+  RS.n++;
+  const W = s.W, vy = s.yy - s.y*s.y/W;
+  RS.W = W; RS.energia = vy;
+  if(W < RS_W_MIN || vy < RS_ENERGIA_MIN) { RS.ok = false; return }
+  const r2 = new Float64Array(RS_N); let kb = -1, mb = -1, somma = 0;
+  for(let k = 0; k < RS_N; k++){
+    const vx = s.xx[k] - s.x[k]*s.x[k]/W, cv = s.xy[k] - s.x[k]*s.y/W;
+    r2[k] = vx > 1e-9 && cv > 0 ? cv*cv/(vx*vy) : 0;
+    somma += r2[k]; if(r2[k] > mb){ mb = r2[k]; kb = k }
+  }
+  RS.r2 = mb;
+  if(kb < 0 || kb >= RS_N-1 || mb < RS_R2_MIN){ RS.ok = false; return }
+  let d = kb;
+  if(kb > 0 && kb < RS_N-1){
+    const y0 = r2[kb-1], y1 = r2[kb], y2 = r2[kb+1], den = y0 - 2*y1 + y2;
+    if(den < 0) d = kb + Math.max(-0.5, Math.min(0.5, 0.5*(y0-y2)/den));
+  }
+  d = Math.max(0, Math.min(1.5, d*RS_PASSO));
+  RS.d = RS.d == null ? d : RS.d*0.7 + d*0.3;
+  RS.ok = true;
+  const ora = Ts;
+  if(ora - RS.tSalva > 30){ RS.tSalva = ora; try{ localStorage.setItem('cd-eta-gps', RS.d.toFixed(2)) }catch(e){} }
+}
+function etaGpsStimata(){
+  if(RS.d != null && RS.ok) return RS.d;
+  if(RS.d != null) return RS.d;
+  if(RS.salvato != null) return RS.salvato;
+  return (PRIOR_SU_TUTTI || IOS) ? ETA_PRIOR : 0;
+}
+
 const BAGNATO_K = 0.7;
 const BAGNATO_K_MOTO = 0.65;
 const aderenza = () => S.bagnato ? (isMoto() ? BAGNATO_K_MOTO : BAGNATO_K) : 1;
@@ -27079,7 +27186,7 @@ function latA(){
   if(!S.accel) return base;
   const m = accStima();
   if(m == null) return base;
-  return Math.min(Math.max(m*k, base*ACC_GIU), base*ACC_SU);
+  return Math.min(Math.max(m*k, base*ACC_GIU), isMoto() ? base : base*ACC_SU);
 }
 const rawCurveKmh = r => Math.round(Math.sqrt(latA()*Math.min(r,900))*3.6);
 function curveKmh(r, e, dir, d, sempreLegale){
@@ -28328,13 +28435,15 @@ function cameraTickAuto(now){
              S.dvx=0; S.dvy=0; S.dvh=0; S.dva=0;
              if(guida){ S.cx=S.dp[0]; S.cy=S.dp[1] }
              return true }
-  const dt = Math.min(2.5, (now-(S.fixT||now))/1000);
-  let tx = S.pos[0] + (S.vx||0)*dt, ty = S.pos[1] + (S.vy||0)*dt;
+  const dt = Math.min(POS_V2 && S.snap ? 8 : 2.5, (now-(S.fixT||now))/1000);
+  const dtL = POS_V2 ? dt + SM_POS : dt;
+  let tx = S.pos[0] + (S.vx||0)*dtL, ty = S.pos[1] + (S.vy||0)*dtL;
   let hdStrada=null;
   if(S.snap && S.snap.e){
-    const e=S.snap.e, pr=projectOn(e,S.pos[0],S.pos[1]);
-    if(pr.d<40){
-      const w=avanzaSuStrada(e, S.snap.dir, pr.i, pr.t, (S.v||0)*dt);
+    const e=S.snap.e;
+    const pr = (POS_V2 && (S.snap.tenuto || S.snap.filtrato)) ? {i:S.snap.i, t:S.snap.t, d:0} : projectOn(e,S.pos[0],S.pos[1]);
+    if(pr.d<40 || POS_V2){
+      const w=avanzaSuStrada(e, S.snap.dir, pr.i, pr.t, (S.v||0)*dtL);
       tx=w[0]; ty=w[1];
       if(S.v>2) hdStrada = w[2];
     }
@@ -28476,10 +28585,10 @@ function matchRoad(x,y,hd){
       const dv=Math.abs(angDiff(hd,sh)), db=Math.abs(angDiff(hd,sh+Math.PI));
       dir = dv<=db?1:-1;
       score += Math.min(dv,db)*26;
-      if(e.ow && dir!==e.ow) score += 15;
+      if(e.ow && dir!==e.ow) score += POS_V2 ? 15 + 45*Math.min(1, Math.max(0, (S.v-5)/10)) : 15;
       if(pr.d<=15 && Math.min(dv,db)<=0.35) allineati++;
     }
-    if(S.snap && S.snap.e.id===id && !oltreIlCapo(e, pr, S.snap.dir)) score -= 22;
+    if(S.snap && S.snap.e.id===id && !oltreIlCapo(e, pr, S.snap.dir)) score -= (POS_V2 && S.v>25 && e.rank<=1) ? 40 : 22;
     if(S.nav && S.nav.idx.has(id)) score -= 16;
     score += e.rank>=RANGO.minore ? 9 : -(RANGO.cima-e.rank)*1.5;
     if(!best||score<best.score) best={e,i:pr.i,t:pr.t,d:pr.d,dir,score};
@@ -28549,6 +28658,28 @@ function avanzaSuStrada(e, dir, i, t, metri){
   return [p[0], p[1], segHeading(cur,p[2]) + (cd<0?Math.PI:0)];
 }
 
+function avanzaArco(e, dir, i, t, metri){
+  let cur=e, cd=dir||1, bivio=false;
+  let d=distAlong(e,i,t);
+  if(cd<0) d=e.len-d;
+  let resta=Math.max(0,metri), giri=0;
+  while(resta>0 && giri++<6){
+    const spazio=cur.len-d;
+    if(resta<=spazio){ d+=resta; break }
+    resta-=spazio;
+    const jn = cd>0 ? cur.j1 : cur.j0, lista = JUN.get(jn);
+    if(lista){
+      let alt = 0;
+      for(const id of lista){ const o=E[id]; if(id!==cur.id && o.rank<RANGO.minore && percorribile(o,jn)) alt++; }
+      if(alt>=2) bivio = true;
+    }
+    const nx=prossimoArco(cur,cd);
+    if(!nx){ d=cur.len; break }
+    cur=nx.e; cd=nx.dir||1; d=0;
+  }
+  return {e:cur, dir:cd, dm: cd>0 ? d : cur.len-d, bivio};
+}
+
 const SPEZZATA_STACCO_M = 20;
 const SPEZZATA_CONTRO = 0.35;
 function curvaSpezzata(prec, e, dir, c, dist){
@@ -28608,6 +28739,10 @@ function buildAhead(){
   const sn=S.snap; if(!sn){ S.pend=0; S.quota=null; return }
   const HORIZON = Math.max(420, Math.min(1100, S.v*11 + 260));
   let e=sn.e, dir=sn.dir, d0=distAlong(e,sn.i,sn.t), acc=0, hops=0;
+  if(POS_V2 && S.etaUsata>0 && S.v>1){
+    const w=avanzaArco(sn.e, sn.dir, sn.i, sn.t, S.v*S.etaUsata);
+    e=w.e; dir=w.dir; d0=w.dm;
+  }
   let ultE=null, ultDir=0, accFine=0, ultD0=0;
   S.pend = pendTratto(e, d0, dir, 250);
   S.quota = quotaAt(e, d0);
@@ -28795,7 +28930,7 @@ function tracciaCurva(g, cls, right){
   g.lineTo(px+Math.cos(hd-2.6)*ah, py+Math.sin(hd-2.6)*ah);
   g.stroke();
 }
-const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, comp:null, lim:null, testa:null, sorgente:null, sost:{}};
+const VOCE = {ctx:null, buf:{}, idx:{}, on:{}, gain:null, gMain:null, comp:null, lim:null, testa:null, sorgente:null, sost:{}};
 function vk(lang, voce){ return (lang || L) + '/' + (voce || S.voce) }
 function voceInLingua(voce, lang){ const v = VOCI[voce]; return !v || !v.lingue || v.lingue.indexOf(lang) >= 0 }
 function vbase(lang, voce){ voce = voce || S.voce; return voce === 'rally' ? 'voce-' + lang : 'voce-' + voce + '-' + lang }
@@ -28956,6 +29091,24 @@ for(const ev of ['pointerdown','touchend','keydown'])
   addEventListener(ev, sbloccaAudio, {capture:true, passive:true});
 
 const GAP = 0;
+const ANTIC_V2 = false;
+const ANTIC_TICK_S = ANTIC_V2 ? 0.25 : 0;
+function voceTick(){
+  if(!ANTIC_V2) return;
+  const c = S.vc; if(!c || !S.audio || S.gpsBuco) return;
+  const ora = performance.now(), dt = (ora - c.t)/1000;
+  if(dt > 2.5 || S.said.has(c.av.key)) { if(dt > 2.5) S.vc = null; return }
+  const resta = c.av.dist - S.v*dt;
+  if(resta < 0){ S.vc = null; return }
+  if(resta - S.v*ANTIC_TICK_S > c.lead) return;
+  if(ora - S.lastSaid <= 900) return;
+  const durN = dilo(c.ch, false);
+  if(durN > 0){
+    c.el.forEach(x => { S.said.add(x.key); if(x.pezzi) x.pezzi.forEach(k => S.said.add(k)) });
+    S.lastSaid = ora; S.fineNota = ora + durN*1000; S.rotaEl = c.el.map(x => x.key); S.vc = null;
+  }
+}
+setInterval(voceTick, 200);
 function durataFrase(chiavi){
   const ix = VOCE.idx[vk()]; if(!ix) return 0;
   let t=0;
@@ -29019,7 +29172,8 @@ function creaCtx(){
       c.threshold.value = -18; c.knee.value = 6; c.ratio.value = 4;
       c.attack.value = 0.005; c.release.value = 0.2;
       const g = VOCE.ctx.createGain();
-      g.gain.value = VOCE_GUADAGNO;
+      VOCE.gMain = g;
+      g.gain.value = VOCE_GUADAGNO * (isMoto() ? MOTO_GUADAGNO_K : 1);
       const L = VOCE.ctx.createDynamicsCompressor();
       L.threshold.value = -5; L.knee.value = 0; L.ratio.value = 20;
       L.attack.value = 0.0003; L.release.value = 0.04;
@@ -29174,6 +29328,10 @@ function catenaNota(){
 }
 function chiaviNota(el){
   let ch = chiaviCurva(el[0], !S.pace);
+  if(isMoto() && el[0].c && el[0].c.r > 0 && piegaDeg(S.v, el[0].c.r) >= motoSogliaAttenzione()){
+    const ix = VOCE.idx[vk()];
+    if(ix && ix['k.attenzione']) ch = ['k.attenzione'].concat(ch);
+  }
   if(S.pace){ const dk=clipDistDetta(el[0].dist, 0, true); if(dk) ch=metriDi(dk).concat(ch) }
   for(let n=1;n<el.length;n++){
     const dritto = el[n].dist - (el[n-1].dist + el[n-1].len);
@@ -29338,10 +29496,11 @@ function updateNote(){
   const mostra = (...c) => { if(!esplorando) nEl.classList.add(...c) };
   if(!S.pos || (esplorando && S.v < V_ESPLORA_MUTO)){ nEl.classList.remove('show'); return }
   if(esplorando) nEl.classList.remove('show');
-  if(!S.snap || S.snap.d>70){
+  if(!S.snap || S.snap.d>70 || (POS_V2 && S.posImprecisa)){
     mostra('show','off'); nCall.style.color='';
-    nCall.textContent = S.local ? t0.localCall : t0.off;
-    nSub.textContent  = S.local ? t0.localSub  : t0.offSub;
+    const imp = POS_V2 && S.posImprecisa && !S.local;
+    nCall.textContent = imp ? t0.imprecisa : S.local ? t0.localCall : t0.off;
+    nSub.textContent  = imp ? t0.imprecisaSub : S.local ? t0.localSub  : t0.offSub;
     nDist.textContent='—'; nLab.textContent=''; nGear.hidden=true;
     return;
   }
@@ -29439,9 +29598,10 @@ function updateNote(){
         const dk = clipDistDetta(st0.dist, 0, true);
         if(metriDi(dk).length) chS = metriDi(dk).concat([parolaStop]);
       }
-      const stS = stileAttivo(), reazS = Math.max(0.6, stS.reaz + (S.antic||0));
+      const stS = stileAttivo(), reazS = Math.max(isMoto() ? MOTO_REAZ_MIN : 0.6, stS.reaz + (S.antic||0));
       const decS = Math.max(1.2, stS.dec*aderenza() + 9.81*Math.min(SALITA_MAX, S.pend||0));
-      const leadS = Math.max(S.v*2.2, S.v*(durataFrase(chS) + reazS) + S.v*S.v/(2*decS));
+      const laS = isMoto() ? MOTO_LA_MIN : 0;
+      const leadS = Math.max(S.v*(2.2 + laS), S.v*(durataFrase(chS) + reazS + laS) + S.v*S.v/(2*decS));
       if(st0.dist <= leadS + S.v) musicaPreavvisa(st0.key);
       const now = performance.now();
       if(st0.dist <= leadS && now-S.lastSaid > 900 && dilo(chS, false) > 0){
@@ -29514,8 +29674,11 @@ function updateNote(){
   const decPend = Math.max(1.2, st.dec*aderenza() + 9.81*Math.min(SALITA_MAX, S.pend||0));
   const frenata = (av && S.v>vRif) ? (S.v*S.v - vRif*vRif)/(2*decPend) : 0;
   const parlato = (ch ? durataFrase(ch) : 0) || 1.2;
-  const reaz = Math.max(0.6, st.reaz + (S.antic||0));
-  const lead = Math.max(S.v*2.2, S.v*(parlato + reaz) + frenata);
+  const reaz = Math.max(isMoto() ? MOTO_REAZ_MIN : 0.6, st.reaz + (S.antic||0));
+  const la = (() => { if(!ANTIC_V2) return isMoto() ? MOTO_LA_MIN : 0; const c = VOCE.ctx; const u = c && ((c.outputLatency || 0) + (c.baseLatency || 0));
+                      const l = Math.min(0.9, Math.max(0.3, 0.02 + 0.5*DUCK_MATURA + (u > 0.01 ? u : (ANTIC_TICK_S <= 0.5 ? 0.45 : 0.25))));
+                      return isMoto() ? Math.max(l, MOTO_LA_MIN) : l })();
+  const lead = Math.max(S.v*(2.2 + la), S.v*(parlato + reaz + la) + frenata);
   const prossimoInMezzo = av && S.ahead.find(z => z !== av && z.dist < av.dist);
   const tornanteInMezzo = !!(prossimoInMezzo && prossimoInMezzo.c && prossimoInMezzo.c.c === 0 && S.said.has(prossimoInMezzo.key) && av.dist > lead);
   const dicibile = !!av && !av.inside && !S.said.has(av.key) && !S.gpsBuco && !agganciIncerto() && !appenaArrivato()
@@ -29527,7 +29690,8 @@ function updateNote(){
     return (!primo || primo.inside) && !!ultimo;
   })());
   const presto = dicibile && rotaIn && av.dist <= S.v*ROTA_S && now >= (S.fineNota||0) + ROTA_PAUSA_MS;
-  if(dicibile && (av.dist<=lead || presto) && !stopDetto){
+  S.vc = (ANTIC_V2 && dicibile && !presto && !stopDetto) ? {av, el, ch, lead, t: now} : null;
+  if(dicibile && (av.dist - S.v*ANTIC_TICK_S <= lead || presto) && !stopDetto){
     if(now-S.lastSaid>900){
       const durN = dilo(ch, false);
       if(durN > 0){
@@ -30016,9 +30180,103 @@ function saltiAggancio(prev, nuovo, dt){
   contaAnomalia(tipo);
 }
 let lastFix=null;
+let POS_V2 = true;
+let ETA_PRIOR = 0.4;
+let PRIOR_SU_TUTTI = false;
+let RS_ON = true;
+const ETA_MAX = 3;
+const T_PERSA = 4, T_PERSA_VELOCE = 6;
+const ACC_ALTA_M = 100, ACC_ALTA_S = 5;
+const T_IMPRECISA = 15;
+
+function filtraPosizione(sn, tMis, acc){
+  const R = Math.pow(1.5*Math.max(acc||0, 5), 2);
+  const f = S.filt;
+  const dt = f ? (tMis - f.tMis)/1000 : -1;
+  const riparti = () => (S.filt = {e:sn.e, i:sn.i, t:sn.t, dir:sn.dir, tMis, vr:R, out:0});
+  if(!f || dt < 0 || dt > 6) return riparti();
+  const w = avanzaArco(f.e, f.dir, f.i, f.t, Math.max(0, S.v)*dt);
+  const lim = x => Math.max(0, Math.min(w.e.len, x));
+  const varP = f.vr + Math.pow(2*dt, 2) + 1;
+  if(sn.tenuto){
+    const q = posAt(w.e, lim(w.dm));
+    return (S.filt = {e:w.e, i:q[2], t:q[3], dir:w.dir, tMis, vr:varP, out:0});
+  }
+  const pq = posAt(w.e, lim(w.dm));
+  const ph = segHeading(w.e, pq[2]) + (w.dir<0 ? Math.PI : 0);
+  const pr = projectOn(sn.e, S.pos[0], S.pos[1]);
+  const mq = posAt(sn.e, distAlong(sn.e, pr.i, pr.t));
+  const dx = mq[0]-pq[0], dy = mq[1]-pq[1];
+  const y = dx*Math.cos(ph) + dy*Math.sin(ph);
+  const lat = -dx*Math.sin(ph) + dy*Math.cos(ph);
+  const Sv = varP + R;
+  if(y*y > 9*Sv || Math.abs(lat) > 20){
+    const out = (f.out|0) + 1;
+    if(out >= 2) return riparti();
+    return (S.filt = {e:w.e, i:pq[2], t:pq[3], dir:w.dir, tMis, vr:varP, out});
+  }
+  const K = varP / Sv;
+  const dm = w.dm + (w.dir>0 ? 1 : -1)*K*y;
+  if(dm < 0 || dm > w.e.len) return riparti();
+  const q = posAt(w.e, dm);
+  return (S.filt = {e:w.e, i:q[2], t:q[3], dir:w.dir, tMis, vr:(1-K)*varP, out:0});
+}
+const RIT = /(^|[#&])ritardi/.test(location.hash) ? {t0:Date.now(), F:[], A:[], ult:0, att:false} : null;
+function ritFix(p){
+  const ar = Date.now();
+  RIT.F.push([ar-RIT.t0, Number.isFinite(p.timestamp) ? Math.round(p.timestamp-RIT.t0) : '',
+              Math.round((p.coords.speed||0)*100)/100, Math.round(p.coords.accuracy||0)]);
+  if(RIT.F.length > 20000) RIT.F.shift();
+}
+function ritMoto(ev){
+  const ar = Date.now(); if(ar - RIT.ult < 45) return; RIT.ult = ar;
+  const a = ev.acceleration, g = ev.accelerationIncludingGravity;
+  const n = (a && a.x != null) ? Math.hypot(a.x||0, a.y||0, a.z||0)
+          : g ? Math.abs(Math.hypot(g.x||0, g.y||0, g.z||0) - 9.81) : null;
+  if(n == null) return;
+  RIT.A.push([ar-RIT.t0, Math.round(n*100)/100]);
+  if(RIT.A.length > 60000) RIT.A.shift();
+}
+function ritCsv(){
+  const m = /iPhone|iPad/.test(navigator.userAgent) ? 'ios' : /Android/.test(navigator.userAgent) ? 'android' : 'altro';
+  return '# ritardi-gps v1 piattaforma=' + m + ' colonne F: arrivo_ms,timestamp_ms,velocita_ms,precisione_m; A: t_ms,modulo_acc\n'
+       + RIT.F.map(r => 'F,' + r.join(',')).join('\n') + '\n' + RIT.A.map(r => 'A,' + r.join(',')).join('\n') + '\n';
+}
+if(RIT){
+  const avvia = () => {
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:8px;bottom:84px;z-index:99999;font:11px/1.3 -apple-system,system-ui,sans-serif;background:rgba(0,0,0,.6);color:#fff;padding:6px 9px;border-radius:9px;max-width:60vw';
+    document.body.appendChild(box);
+    const mediana = v => { v = v.filter(x => x != null && !isNaN(x)).sort((x,y) => x-y); return v.length ? v[v.length>>1] : null };
+    const agg = () => {
+      const f = RIT.F.slice(-30), eta = mediana(f.map(r => r[1] === '' ? null : (r[0]-r[1])/1000));
+      const it = mediana(f.slice(1).map((r,i) => (r[0]-f[i][0])/1000));
+      box.textContent = 'ritardi · fix ' + RIT.F.length + ' · mov ' + RIT.A.length + (eta != null ? ' · età ' + eta.toFixed(2) + ' s' : '') + (it != null ? ' · ogni ' + it.toFixed(1) + ' s' : '') + ' · ' + (RIT.att ? 'tocca = copia' : 'tocca = attiva sensore');
+    };
+    setInterval(agg, 1000); agg();
+    setInterval(() => { try{ localStorage.setItem('codriver-rit', ritCsv().slice(-1800000)) }catch(e){} }, 30000);
+    box.onclick = () => {
+      if(!RIT.att){
+        const ok = () => { addEventListener('devicemotion', ritMoto); RIT.att = true; agg() };
+        try{
+          if(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function')
+            DeviceMotionEvent.requestPermission().then(e => { if(e === 'granted') ok(); else box.textContent = 'sensore: permesso negato' }).catch(e => { box.textContent = 'sensore: ' + e.message });
+          else ok();
+        }catch(e){ box.textContent = 'sensore: ' + e.message }
+        return;
+      }
+      const t = ritCsv();
+      (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { box.textContent = 'copiato: ' + Math.round(t.length/1024) + ' KB, incollalo nel messaggio' }).catch(() => { box.textContent = 'copia non riuscita' });
+    };
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', avvia); else avvia();
+}
+window.POS_QUALITA = () => ({ imprecisa: !!S.posImprecisa, acc: S.acc||0, etaMisurata: S.gpsEta==null ? null : +S.gpsEta.toFixed(2),
+                              etaUsata: +(S.etaUsata||0).toFixed(2), tenuto: !!(S.snap && S.snap.tenuto),
+                              sigmaS: S.filt ? +Math.sqrt(S.filt.vr).toFixed(1) : null });
 const AGG_MOTO = 2;
 let ultimoMoto = 0, fixMuro = 0;
-function feed(x,y,hd,v,acc){
+function feed(x,y,hd,v,acc,eta){
   gpsGuai=0; gpsUltimo=Date.now();
   if(S.gpsBuco){
     if((acc||999) < 40 && ++gpsPuliti>=2){ S.gpsBuco=false; gpsPuliti=0; S.said.clear() }
@@ -30030,9 +30288,43 @@ function feed(x,y,hd,v,acc){
   else if(lastFix && Math.hypot(x-lastFix[0],y-lastFix[1])>3 && S.v>1.2)
     S.hd=Math.atan2(y-lastFix[1],x-lastFix[0]);
   lastFix=[x,y];
+  S.etaUsata = POS_V2 ? Math.max(0, Math.min(ETA_MAX, +eta||0)) : 0;
+  if(POS_V2){
+    const tM = performance.now() - S.etaUsata*1000;
+    if((acc||0) > ACC_ALTA_M){
+      if(S.accAltaDa==null) S.accAltaDa = tM;
+      const era = !!S.posImprecisa;
+      S.posImprecisa = (tM - S.accAltaDa) >= ACC_ALTA_S*1000;
+      if(S.posImprecisa && !era) nota('posizione imprecisa: precisione '+Math.round(acc)+' m da piu\' di '+ACC_ALTA_S+' s');
+    } else { S.accAltaDa = null; S.posImprecisa = false }
+  }
   const m=matchRoad(x,y,S.hd);
   const snapPrima = S.snap;
-  S.snap = (m && m.d<70) ? m : null;
+  let nuovo = (m && m.d < (POS_V2 ? Math.max(70, 2.5*(acc||0)) : 70)) ? m : null;
+  if(POS_V2 && S.posImprecisa) nuovo = null;
+  if(POS_V2){
+    const tMis = performance.now() - S.etaUsata*1000;
+    if(nuovo){ S.snapBuono = nuovo; S.snapBuonoT = tMis }
+    else if(S.snapBuono && S.v > 1.5){
+      const trasc = (tMis - S.snapBuonoT)/1000, sb = S.snapBuono;
+      const veloce = sb.e.rank <= 1 && S.v > 25;
+      if(trasc >= 0 && trasc <= (S.posImprecisa ? T_IMPRECISA : veloce ? T_PERSA_VELOCE : T_PERSA)){
+        const w = avanzaArco(sb.e, sb.dir, sb.i, sb.t, S.v*trasc);
+        if(!w.bivio){
+          const q = posAt(w.e, Math.max(0, Math.min(w.e.len, w.dm)));
+          nuovo = {e:w.e, i:q[2], t:q[3], d:0, dir:w.dir, score:0, ambiguo:false, tenuto:true, impreciso:!!S.posImprecisa};
+        }
+      }
+    }
+    if(!nuovo) S.snapBuono = null;
+  }
+  S.snap = nuovo;
+  if(POS_V2){
+    if(S.snap){
+      const f = filtraPosizione(S.snap, performance.now() - S.etaUsata*1000, acc);
+      S.snap = Object.assign({}, S.snap, {e:f.e, i:f.i, t:f.t, dir:f.dir, filtrato:true});
+    } else S.filt = null;
+  }
   saltiAggancio(snapPrima, S.snap, (performance.now()-(S.fixT||0))/1000);
   if(S.snap) S.snapFix = (S.snapId===S.snap.e.id) ? (S.snapFix|0)+1 : 1;
   S.snapId = S.snap ? S.snap.e.id : null;
@@ -30061,7 +30353,8 @@ function feed(x,y,hd,v,acc){
   }
   if(S.nav) tickNav();
   buildAhead();
-  S.fixT = performance.now();
+  S.fixT = performance.now() - S.etaUsata*1000;
+  S.gpsEtaUsata = S.etaUsata;
   S.vx = S.hd!=null ? Math.cos(S.hd)*S.v : 0;
   S.vy = S.hd!=null ? Math.sin(S.hd)*S.v : 0;
   const kmhNow=Math.round(S.v*3.6);
@@ -30112,6 +30405,7 @@ function toast(m,ms,tocco){
 let linkProposto = false;
 function numeriAuto(g){
   const c = String(g).split('.'), d = profiloDecodifica(g) || {};
+  if(c[0] === '2') return { nm: d.nm || '?', an: +c[10] || '', cv: +c[3], kg: +c[4], n: +c[5], bo: '', rl: +c[6] };
   return { nm: d.nm || '?', an: +c[14] || '', cv: +c[2], kg: +c[3], n: +c[5], bo: +c[9], rl: +c[10] };
 }
 async function leggiFileProfilo(pk, ms){
@@ -30478,7 +30772,17 @@ function startGps(){
     window.SN.passo(p.coords.latitude, p.coords.longitude, p.coords.accuracy||null);
     ricordaDove(p.coords.latitude, p.coords.longitude);
     suggestRegion(p.coords.latitude, p.coords.longitude);
-    feed(x,y,hd,p.coords.speed||0,p.coords.accuracy||0);
+    let eta = 0;
+    if(POS_V2){
+      const dich = Number.isFinite(p.timestamp) ? (Date.now()-p.timestamp)/1000 : 0;
+      const ok = dich>=0 && dich<=ETA_MAX ? dich : 0;
+      S.gpsEta = S.gpsEta==null ? ok : S.gpsEta*0.7 + ok*0.3;
+      if(RS_ON) rsFix(performance.now()/1000, p.coords.speed);
+      eta = S.gpsEta >= 0.15 ? S.gpsEta : (RS_ON ? etaGpsStimata() : ETA_PRIOR);
+      S.etaStimata = RS_ON && RS.d != null ? RS.d : null;
+    }
+    feed(x,y,hd,p.coords.speed||0,p.coords.accuracy||0,eta);
+    if(RIT) ritFix(p);
     rcPasso(p);
     regPasso(p);
     rcAggiornaTasto();
@@ -31716,9 +32020,11 @@ function rcDisegna(ctx, g, titolo){
   var pctTxt = function(v){ return totRif>0 ? Math.round(v/totRif*100)+'%' : '—'; };
   sezione(tLbl.guida, Y1+40);
   riga(tLbl.velMedia, velMediaTxt, 48, Y1+80);
-  riga(tLbl.inLinea, pctTxt(g.velRifLinea||0), 306, Y1+80);
-  riga(tLbl.sotto, pctTxt(g.velRifSotto||0), 48, Y1+146);
-  riga(tLbl.sopra, pctTxt(g.velRifSopra||0), 306, Y1+146);
+  if(!(MOTO_ON && isMoto())){
+    riga(tLbl.inLinea, pctTxt(g.velRifLinea||0), 306, Y1+80);
+    riga(tLbl.sotto, pctTxt(g.velRifSotto||0), 48, Y1+146);
+    riga(tLbl.sopra, pctTxt(g.velRifSopra||0), 306, Y1+146);
+  }
 
   separatore(Y1+192);
   ctx.textAlign='left'; ctx.fillStyle='#8b98a5'; ctx.font="20px system-ui, sans-serif";
@@ -32031,6 +32337,7 @@ const sheets={set:document.getElementById('sheetSet'),car:document.getElementByI
               legend:document.getElementById('sheetLegend'),
               giri:document.getElementById('sheetGiri'),
               roadcard:document.getElementById('sheetRoadCard'),
+              moto:document.getElementById('sheetMoto'),
               info:document.getElementById('sheetInfo')};
 sheets.segna=document.getElementById('sheetSegna');
 sheets.aiuto=document.getElementById('sheetAiuto');
@@ -32046,6 +32353,7 @@ function openSheet(k){
   if(sheets[k]) vetroEspandi(sheets[k]);
   if(k==='info') mostraPerf();
   if(k==='giri') rcRenderGiri();
+  if(k==='moto'){ const v=document.getElementById('motoVib'); if(v) v.textContent = tr().motoAvviso }
   if(k==='aiuto' && typeof aggiornaTastoGps === 'function') aggiornaTastoGps();
 }
 document.getElementById('bGiri').onclick=()=>openSheet('giri');
@@ -32551,7 +32859,7 @@ function montaInvito(){
       const grezzi = [], re = /[#&?]p=([^&\s#]+)/g;
       let mp;
       while((mp = re.exec(testo))){ try{ grezzi.push(decodeURIComponent(mp[1])) }catch(e){} }
-      if(!grezzi.length){ const solo = testo.match(/^(1\.[^\s&#]+)$/); if(solo) grezzi.push(solo[1]) }
+      if(!grezzi.length){ const solo = testo.match(/^([12]\.[^\s&#]+)$/); if(solo) grezzi.push(solo[1]) }
       const mt = testo.match(/[?&]t=([a-z0-9-]{1,40})\b/);
       const buoni = grezzi.filter(g => profiloDecodifica(g)).slice(0, MAX_AUTO);
       const profs = buoni.map(profiloDecodifica);
@@ -32627,10 +32935,12 @@ function renderCar(){
     if(modoTogli) continue;
     b.onclick=()=>{ricordaCal(); S.car=k; S.carScelto=true; carApertoTutto=false;
                    riprendiCal(k); S.said.clear(); applicaVeicolo();
-                   try{ window.SN && window.SN.veicolo(nomeVeicolo()) }catch(e){}
+                   try{ window.SN && window.SN.veicolo(nomeVeicolo() + (MOTO_ON && isMoto() ? ' · moto' : '')) }catch(e){}
                    renderCar(); save(); updateNote(); S.need=true};
     (c.tipo==='moto' ? motoChips : carChips).appendChild(b);
   }
+  { const ta=document.getElementById('autoTit'), tm=document.getElementById('motoTit');
+    if(ta) ta.hidden = !carChips.children.length; if(tm) tm.hidden = !motoChips.children.length; }
   if(MIEI.length > 1){
     const b=document.createElement('button');
     b.className='chip'+(modoTogli?' on':'');
@@ -32651,7 +32961,7 @@ function renderCar(){
   for(const k in STYLES){
     const s=STYLES[k], b=document.createElement('button');
     b.className='chip'+(k===S.style?' on':''); b.dataset.stile=k;
-    b.innerHTML='<b>'+s['nm_'+L]+'</b>'+(moto ? Math.min(s.moto.lean,tetto)+'° '+tr().lean : s.a.toFixed(1)+' m/s²');
+    b.innerHTML='<b>'+((moto && s.moto['nm_'+L]) || s['nm_'+L])+'</b>'+(moto ? Math.min(s.moto.lean,tetto)+'° '+tr().lean : s.a.toFixed(1)+' m/s²');
     b.onclick=()=>{S.style=k;renderCar();save();updateNote();S.need=true};
     styleChips.appendChild(b);
   }
@@ -32667,7 +32977,7 @@ function renderCar(){
       ? 'repeat(auto-fit,minmax(62px,1fr))' : 'repeat('+CARS[S.car].n+',1fr)';
     renderCal();
   }
-  autoChk.checked=S.autoMode;
+  autoChk.checked=autoModo();
   legalChk.checked=S.legal;
   legalDesc.textContent=tr()[S.legal?'legalOn':'legalOff'];
   camChk.checked=S.cams;
@@ -32774,7 +33084,7 @@ incrociChk.onchange=()=>{ S.incroci=incrociChk.checked; save(); renderCar(); S.s
 rotatorieChk.onchange=()=>{ S.rotatorie=rotatorieChk.checked; save(); renderCar(); S.said.clear(); updateNote(); S.need=true };
 trafficoChk.onchange=()=>{ S.trafficoVivo=trafficoChk.checked; save(); renderCar();
   if(!S.trafficoVivo){ S.traffico=null; S.trafficoChiesto=null } S.need=true };
-autoChk.onchange=()=>{S.autoMode=autoChk.checked; S.said.clear(); save(); renderCar();
+autoChk.onchange=()=>{ if(isMoto()) S.autoModeMoto=autoChk.checked; else S.autoMode=autoChk.checked; S.said.clear(); save(); renderCar();
   updateNote(); S.need=true};
 const paceChk=document.getElementById('paceChk');
 paceChk.checked=S.pace;
@@ -33709,7 +34019,7 @@ async function boot(){
   avvisoGarage();
   console.log('boot in',Math.round(performance.now()-t0),'ms ·',E.length,'archi');
 }
-const TERMINI_VER = 'v5';
+const TERMINI_VER = 'v6';
 const TERMINI_K = 'copilota-termini';
 function terminiAccettati(){
   try{ const d=JSON.parse(localStorage.getItem(TERMINI_K)||'null');
@@ -33750,9 +34060,9 @@ function proponiCandidatura(prove){
     || Object.values(sheets).some(x => x.classList.contains('show'));
   if(occupato){ if((prove|0) < 120) setTimeout(() => proponiCandidatura((prove|0) + 1), 2000); return }
   const TC = {
-    it:{t:'Co-Driver è in beta', p:'Stai usando l\'app senza un invito. Candidati: ti mandiamo il link con il profilo della tua auto, così curve e marce sono tarate su di lei.', b:'Candidati alla beta', l:'Ho già un link'},
-    en:{t:'Co-Driver is in beta', p:'You\'re using the app without an invite. Apply and we\'ll send you a link with your car\'s profile, so curves and gears are tuned to it.', b:'Apply for the beta', l:'I have a link'},
-    fr:{t:'Co-Driver est en bêta', p:'Tu utilises l\'app sans invitation. Candidate : on t\'envoie le lien avec le profil de ta voiture, pour que les virages et les rapports soient réglés sur elle.', b:'Candidater à la bêta', l:'J\'ai déjà un lien'}
+    it:{t:'Co-Driver è in beta', p:'Stai usando l\'app senza un invito. Candidati: ti mandiamo il link con il profilo del tuo veicolo, così curve e marce sono tarate su di lui.', b:'Candidati alla beta', l:'Ho già un link'},
+    en:{t:'Co-Driver is in beta', p:'You\'re using the app without an invite. Apply and we\'ll send you a link with your vehicle\'s profile, so curves and gears are tuned to it.', b:'Apply for the beta', l:'I have a link'},
+    fr:{t:'Co-Driver est en bêta', p:'Tu utilises l\'app sans invitation. Candidate : on t\'envoie le lien avec le profil de ton véhicule, pour que les virages et les rapports soient réglés dessus.', b:'Candidater à la bêta', l:'J\'ai déjà un lien'}
   }[L] || null;
   if(!TC) return;
   const pop = document.getElementById('candPop');
