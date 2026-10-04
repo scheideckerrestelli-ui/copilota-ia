@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v349';
+  const VERSIONE = 'copilota-app-v350';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -397,6 +397,8 @@ if ('serviceWorker' in navigator) {
 
   .soglia-b:not(.parla) canvas{filter:grayscale(1);opacity:.45}
   .soglia-b:not(.parla) b{color:var(--ink2)}
+  .soglia-b.tre-b{min-height:52px;padding:6px 4px;text-align:center;font-size:13px;line-height:1.2;color:var(--ink)}
+  .soglia-b.tre-b::after{display:none}
   .soglia-b.scelta{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 
   .soglia-b:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
@@ -1006,6 +1008,16 @@ if ('serviceWorker' in navigator) {
     <span data-lang="it">Avviso alle rotatorie</span>
     <span data-lang="en">Roundabout calls</span><span data-lang="fr">Annonce des ronds-points</span></label>
   <p style="margin-top:6px;font-size:11.5px" id="rotatorieDesc"></p>
+  <h3 id="cittaTit"><span data-lang="it">Curve in città e nei paesi</span><span data-lang="en">Corners in towns and cities</span><span data-lang="fr">Virages en ville et dans les villages</span></h3>
+  <div class="soglia" role="radiogroup" aria-labelledby="cittaTit" id="cittaSel">
+    <label class="soglia-b tre-b"><input type="radio" name="citta" value="0"><span>
+      <span data-lang="it">Nessuna</span><span data-lang="en">None</span><span data-lang="fr">Aucun</span></span></label>
+    <label class="soglia-b tre-b"><input type="radio" name="citta" value="1"><span>
+      <span data-lang="it">Solo le strette</span><span data-lang="en">Tight ones only</span><span data-lang="fr">Seulement les serrés</span></span></label>
+    <label class="soglia-b tre-b"><input type="radio" name="citta" value="2"><span>
+      <span data-lang="it">Tutte</span><span data-lang="en">All</span><span data-lang="fr">Tous</span></span></label>
+  </div>
+  <p style="margin-top:6px;font-size:11.5px" id="cittaDesc"></p>
   <label class="opt"><input type="checkbox" id="legalChk">
     <span data-lang="it">Non superare mai il limite della strada</span>
     <span data-lang="en">Never exceed the road speed limit</span><span data-lang="fr">Ne jamais dépasser la limite de la route</span></label>
@@ -1418,7 +1430,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '349';
+const APPVER = '350';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -25529,6 +25541,9 @@ const T = {
     incrociOff:'Nessun «incrocio». Stop e dai la precedenza li dice sempre.',
     rotatorieOn:'Dice «alla rotatoria» prima di ogni rotatoria. Con un percorso parla il navigatore.',
     rotatorieOff:'Zitta alle rotatorie quando non segui un percorso. Con un percorso parla il navigatore.',
+    citta0:'Nessuna nota di curva in città e nei paesi. Fuori città resta tutto come prima.',
+    citta1:'In città e nei paesi dice solo le curve strette. Salta quelle larghe agli incroci, dove conta l\'incrocio.',
+    citta2:'In città e nei paesi dice le curve come fuori, anche quelle larghe agli incroci e nelle zone 30. Alle rotatorie resta zitta.',
     primaIcona:'Stai usando Co-Driver in una scheda del browser. Aggiungi prima l\'icona alla schermata Home e scarica da lì: l\'app in Home ha una memoria sua, e queste mappe non ci passerebbero.',
     instSafariT:'Su iPhone conviene aggiungere l\'icona: l\'app in schermata Home ha una memoria sua, e le mappe vanno scaricate da lì.',
     instSafari:['tocca il tasto Condividi in basso <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
@@ -25710,6 +25725,9 @@ const T = {
     incrociOff:'No «junction» calls. Stop and give-way signs are always called.',
     rotatorieOn:'Says «roundabout» before every roundabout. With a route, the navigator speaks.',
     rotatorieOff:'Quiet at roundabouts when you are not following a route. With a route, the navigator speaks.',
+    citta0:'No corner calls in towns and cities. Outside town nothing changes.',
+    citta1:'In towns and cities it calls only the tight corners. It skips the wide ones at junctions, where the junction matters more.',
+    citta2:'In towns and cities it calls corners like it does outside, including wide ones at junctions and in 30 zones. Still quiet at roundabouts.',
     primaIcona:'You are using Co-Driver in a browser tab. Add the icon to your Home Screen first and download from there: the Home Screen app has its own storage, and these maps would not carry over.',
     instSafariT:'On iPhone it is worth adding the icon: the Home Screen app has its own storage, and maps have to be downloaded there.',
     instSafari:['tap the Share button at the bottom <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
@@ -25891,6 +25909,9 @@ const T = {
     incrociOff:'Aucun «croisement». Stop et cédez le passage sont toujours annoncés.',
     rotatorieOn:'Annonce «au rond-point» avant chaque rond-point. Avec un itinéraire, c\'est le navigateur qui parle.',
     rotatorieOff:'Muette aux ronds-points quand tu ne suis pas d\'itinéraire. Avec un itinéraire, c\'est le navigateur qui parle.',
+    citta0:'Aucune annonce de virage en ville et dans les villages. Hors agglomération, rien ne change.',
+    citta1:'En ville et dans les villages, elle annonce seulement les virages serrés. Elle saute les larges aux carrefours, où c\'est le carrefour qui compte.',
+    citta2:'En ville et dans les villages, elle annonce les virages comme ailleurs, y compris les larges aux carrefours et en zone 30. Toujours muette aux ronds-points.',
     primaIcona:'Tu utilises Co-Driver dans un onglet du navigateur. Ajoute d\'abord l\'icône à l\'écran d\'accueil et télécharge depuis là : l\'app de l\'écran d\'accueil a sa propre mémoire, et ces cartes n\'y passeraient pas.',
     instSafariT:'Sur iPhone mieux vaut ajouter l\'icône : l\'app de l\'écran d\'accueil a sa propre mémoire, et les cartes se téléchargent là.',
     instSafari:['touche le bouton Partager en bas <svg class="cond" viewBox="0 0 13 16" aria-hidden="true"><path d="M6.5 1.2v8.3"/><path d="M3.6 4.1 6.5 1.2 9.4 4.1"/><path d="M2.2 7.2h-1v7.6h10.6V7.2h-1"/></svg>',
@@ -26053,7 +26074,7 @@ const S = {
   dp:null, dhd:null, avanti:0,
   dvx:0, dvy:0, dvh:0, dva:0,
   fixT:0, vx:0, vy:0,
-  car:'m5', cal:36, calG:0, style:'strada', legal:true, cams:true, incroci:true, rotatorie:false, trafficoVivo:true,
+  car:'m5', cal:36, calG:0, style:'strada', legal:true, cams:true, incroci:true, rotatorie:false, citta:1, trafficoVivo:true,
   rcRegistra:true,
   rcAvvisoVisto:false,
   accel:true,
@@ -26114,6 +26135,7 @@ try{
   if(typeof st.rcRegistra==='boolean')S.rcRegistra=st.rcRegistra;
   if(typeof st.rcAvvisoVisto==='boolean')S.rcAvvisoVisto=st.rcAvvisoVisto;
   if(typeof st.rotatorie==='boolean')S.rotatorie=st.rotatorie;
+  if(st.citta===0||st.citta===1||st.citta===2)S.citta=st.citta;
   if(typeof st.autoMode==='boolean')S.autoMode=st.autoMode;
   if(typeof st.autoModeMoto==='boolean')S.autoModeMoto=st.autoModeMoto;
   if(typeof st.pace==='boolean')S.pace=st.pace;
@@ -26160,7 +26182,7 @@ if(aNelLink || testerDalLink || profiloDalLink || (tNelLink && !LINK_IN_ATTESA &
        window.history.replaceState(null, '', u.pathname + (u.search||'') + u.hash) }catch(e){}
 }
 const save=()=>{try{ricordaCal();localStorage.setItem('copilota2',JSON.stringify(
-  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,trafficoVivo:S.trafficoVivo,rcRegistra:S.rcRegistra,rcAvvisoVisto:S.rcAvvisoVisto,antic:S.antic,voce:S.voce,autoMode:S.autoMode,autoModeMoto:S.autoModeMoto,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema,vetro:S.vetro}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
+  {calPer:S.calPer,calDi:chiaveCal(S.car),car:S.car,style:S.style,cal:S.cal,calG:S.calG,legal:S.legal,accel:S.accel,cmin:S.cmin,cams:S.cams,incroci:S.incroci,rotatorie:S.rotatorie,citta:S.citta,trafficoVivo:S.trafficoVivo,rcRegistra:S.rcRegistra,rcAvvisoVisto:S.rcAvvisoVisto,antic:S.antic,voce:S.voce,autoMode:S.autoMode,autoModeMoto:S.autoModeMoto,pace:S.pace,audio:S.audio,d3:S.d3,lang:L,tema:S.tema,vetro:S.vetro}))}catch(e){ nota('impostazioni auto non salvate: '+e.message) }};
 if(autoDalLink || profiloDalLink) save();
 
 (function (globale) {
@@ -29458,7 +29480,7 @@ const inPaese = e => e.ms !== 0 && Math.abs(e.ms) <= 50;
 function allIncrocio(a){
   const gj = a.gj; if(!gj || !gj.length) return false;
   if(S.aheadSvolte && gj.some(j => S.aheadSvolte.has(j))) return true;
-  return inPaese(a.e) && a.c.c > DEDOTTA_CLS;
+  return S.citta !== 2 && inPaese(a.e) && a.c.c > DEDOTTA_CLS;
 }
 const suAnello = a => !!(a.gj && a.gj.some(j => (JUN.get(j)||[]).some(id => ROTONDA.has(id))));
 const RAGGIO_PAESE = [3000, 1200, 600];
@@ -29473,12 +29495,14 @@ function fuoriPaese(a){
   }
   return (c._fuori = fuori);
 }
+const inCitta = a => !!a.e && (a.e.rank|0) < 5 && inPaese(a.e);
 const mutoQui = a => !!a.e && ((CLSARCO.get(a.e.id)|0) === 2
                                || ROTONDA.has(a.e.id)
                                || suAnello(a)
-                               || (a.e.ms > 0 && a.e.ms <= 30 && !(a.e.rank <= 2 && fuoriPaese(a)))
+                               || (S.citta !== 2 && a.e.ms > 0 && a.e.ms <= 30 && !(a.e.rank <= 2 && fuoriPaese(a)))
                                || dopoStop(a)
-                               || allIncrocio(a));
+                               || allIncrocio(a)
+                               || (S.citta === 0 && inCitta(a)));
 
 const PIATTA_MIN_KMH  = 8;
 const PIATTA_FRAZIONE = 0.12;
@@ -32852,7 +32876,8 @@ const carChips=document.getElementById('carChips'), motoChips=document.getElemen
       camChk=document.getElementById('camChk'), camDesc=document.getElementById('camDesc'),
       incrociChk=document.getElementById('incrociChk'), incrociDesc=document.getElementById('incrociDesc'),
       trafficoChk=document.getElementById('trafficoChk'), trafficoDesc=document.getElementById('trafficoDesc'),
-      rotatorieChk=document.getElementById('rotatorieChk'), rotatorieDesc=document.getElementById('rotatorieDesc');
+      rotatorieChk=document.getElementById('rotatorieChk'), rotatorieDesc=document.getElementById('rotatorieDesc'),
+      cittaSel=document.getElementById('cittaSel'), cittaDesc=document.getElementById('cittaDesc');
 function gearTableHtml(){
   const t=gearKmh(), lo=boostOf(), hi=rpmLimOf(), top=vTop(0);
   const celle=t.map((v,i)=>{
@@ -33011,6 +33036,8 @@ function renderCar(){
   incrociDesc.textContent = tr()[S.incroci !== false ? 'incrociOn' : 'incrociOff'];
   rotatorieChk.checked = S.rotatorie === true;
   rotatorieDesc.textContent = tr()[S.rotatorie === true ? 'rotatorieOn' : 'rotatorieOff'];
+  cittaSel.querySelectorAll('input').forEach(r => { r.checked = (+r.value) === (S.citta|0); r.parentNode.classList.toggle('scelta', r.checked) });
+  cittaDesc.textContent = tr()['citta' + (S.citta|0)];
   trafficoChk.checked = S.trafficoVivo !== false;
   trafficoDesc.textContent = tr()[S.trafficoVivo !== false ? 'trafficoOn' : 'trafficoOff'];
 }
@@ -33107,6 +33134,7 @@ camChk.onchange=()=>{S.cams=camChk.checked; save(); renderCar(); S.said.clear();
                      S.aheadCams=[]; updateNote(); S.need=true};
 incrociChk.onchange=()=>{ S.incroci=incrociChk.checked; save(); renderCar(); S.said.clear(); updateNote(); S.need=true };
 rotatorieChk.onchange=()=>{ S.rotatorie=rotatorieChk.checked; save(); renderCar(); S.said.clear(); updateNote(); S.need=true };
+cittaSel.onchange=e=>{ const v = +e.target.value; if(v!==0 && v!==1 && v!==2) return; S.citta=v; save(); renderCar(); S.said.clear(); updateNote(); S.need=true };
 trafficoChk.onchange=()=>{ S.trafficoVivo=trafficoChk.checked; save(); renderCar();
   if(!S.trafficoVivo){ S.traffico=null; S.trafficoChiesto=null } S.need=true };
 autoChk.onchange=()=>{ if(isMoto()) S.autoModeMoto=autoChk.checked; else S.autoMode=autoChk.checked; S.said.clear(); save(); renderCar();
