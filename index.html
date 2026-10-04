@@ -10,6 +10,86 @@ I DATI MAPPA NON RICADONO IN QUESTO AVVISO: derivano da OpenStreetMap e sono
 distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<script id="telStato">
+var STATO;
+(function(){
+  'use strict';
+  var ON = true;
+  var B = parseInt('353', 10);
+  var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
+  var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
+  var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
+  var coda = {}, nChiavi = 0, nEventi = 0, timer = 0, smesso = false;
+  var attivo = function(){ return ON && B > 0 && location.host === HOST };
+  var valido = function(s){ return !!s && s.v === 1 && typeof s.min === 'number' && Object.prototype.toString.call(s.off) === '[object Array]' };
+  var applica = function(s){
+    st = {v: 1, min: s.min | 0, off: s.off.filter(function(n){ return typeof n === 'string' }).slice(0, 20), tele: s.tele === true};
+  };
+  window.STATO = {
+    off: function(n){ return attivo() && st.off.indexOf(n) >= 0 },
+      _stato: function(){ return {on: attivo(), st: st, fresco: fresco, coda: nChiavi} }
+  };
+  var registra = function(t, nome, riga, col){
+    if(!attivo() || smesso || ++nEventi > MAX_EVENTI) return;
+    var n = String(nome || 'Error').replace(/[^A-Za-z]/g, '').slice(0, 30) || 'Error';
+    var k = t + '|' + n + '|' + (riga | 0) + ':' + (col | 0);
+    if(coda[k]) coda[k].k++;
+    else if(nChiavi < MAX_CHIAVI){ nChiavi++; coda[k] = {t: t, n: n, l: riga | 0, c: col | 0, k: 1} }
+    if(!timer) timer = setTimeout(manda, 20000);
+  };
+  var manda = function(){
+    timer = 0;
+    if(!st.tele){ if(fresco){ coda = {}; nChiavi = 0; smesso = true } return }
+    var e = []; for(var k in coda) e.push(coda[k]);
+    coda = {}; nChiavi = 0;
+    for(var i = 0; i < e.length; i += 10){
+      var corpo = JSON.stringify({b: B, e: e.slice(i, i + 10)});
+      try{ if(navigator.sendBeacon) navigator.sendBeacon(URL_TELE, corpo);
+           else fetch(URL_TELE, {method: 'POST', body: corpo, keepalive: true, cache: 'no-store'}).catch(function(){}) }catch(x){}
+    }
+  };
+  var daStack = function(e){
+    var r = /:(\d+):(\d+)\)?\s*$/m.exec(String(e && e.stack || '').split('\n').filter(function(r){ return /:\d+:\d+\)?\s*$/.test(r) })[0] || '');
+    return r ? [+r[1], +r[2]] : [0, 0];
+  };
+  addEventListener('error', function(ev){
+    if(!attivo() || (ev.target && ev.target !== window)) return;
+    if(ev.filename && ev.filename.indexOf(location.origin) !== 0) return;
+    var e = ev.error;
+    if(!e && !ev.lineno) return;
+    registra('err', e && e.name, ev.lineno, ev.colno);
+  });
+  addEventListener('unhandledrejection', function(ev){
+    if(!attivo()) return;
+    var e = ev.reason, p = daStack(e);
+    registra('rej', e && e.name || 'Reason', p[0], p[1]);
+  });
+  var controllaMin = function(){
+    if(!(st.min > B)) return;
+    try{ if(sessionStorage.getItem('codriver-min-ric')) return; sessionStorage.setItem('codriver-min-ric', '1') }catch(x){ return }
+    var avvisa = function(){ window.VERSIONE_NUOVA = 'v' + st.min; try{ dispatchEvent(new Event('versione-nuova')) }catch(x){} };
+    try{ navigator.serviceWorker.getRegistration().then(function(r){ return r ? r.update() : null }).then(avvisa, avvisa) }catch(x){ avvisa() }
+  };
+  var carica = function(){
+    if(!attivo() || !window.fetch || Date.now() - ultimo < OGNI_MS) return;
+    ultimo = Date.now();
+    var o = {cache: 'no-store'}; if(window.AbortSignal && AbortSignal.timeout) o.signal = AbortSignal.timeout(5000);
+    fetch(URL_STATO + '?b=' + B, o).then(function(r){ return r.ok ? r.json() : null }).then(function(s){
+      if(!valido(s)) return;
+      applica(s); fresco = true;
+      try{ localStorage.setItem(CH, JSON.stringify(s)) }catch(x){}
+      controllaMin();
+      if(!st.tele) manda(); else if(nChiavi && !timer) timer = setTimeout(manda, 2000);
+      try{ dispatchEvent(new Event('stato')) }catch(x){}
+    }).catch(function(){});
+  };
+  if(attivo()){
+    try{ var c = JSON.parse(localStorage.getItem(CH)); if(valido(c)) applica(c) }catch(x){}
+    addEventListener('load', function(){ setTimeout(carica, 4000) });
+    document.addEventListener('visibilitychange', function(){ if(document.hidden) manda(); else carica() });
+  }
+})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Co-Driver">
@@ -44,7 +124,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v351';
+  const VERSIONE = 'copilota-app-v353';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1430,7 +1510,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '351';
+const APPVER = '353';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -26929,6 +27009,7 @@ if(testerDalLink){
 
 const SN_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSd9VTUrFgtgGYqR_Sl4f2FblTzXQuzcLzHGgtFy-Peo6AzNvg/formResponse';
 function spedisciRapporto(tester, json){
+  if(window.STATO && STATO.off('rapporti')) return false;
   try{
     const d = new URLSearchParams();
     d.set('entry.2096580042', tester || '?');
@@ -30160,9 +30241,11 @@ async function rottaColTraffico(avvio){
 }
 async function chiediTraffico(nv, pr){
   if(!nv || !pr || !trafficoAcceso() || navigator.onLine === false) return;
+  if(window.STATO && STATO.off('traffico')) return;
   const U = S.trafficoChiesto || (S.trafficoChiesto = {t: 0, sn: 0, via: false});
   const ora = Date.now();
-  if(U.via || (U.sn === nv.sn && ora - U.t < TRAFFICO_OGNI_MS)) return;
+  const ogni = U.ogni || TRAFFICO_OGNI_MS;
+  if(U.via || (U.sn === nv.sn && ora - U.t < ogni)) return;
   const p = puntiAvanti(nv, pr.fatto); if(!p) return;
   const base = pr.fatto, sn = nv.sn, fino = p.fino;
   U.via = true; U.sn = sn; U.t = ora;
@@ -30174,16 +30257,17 @@ async function chiediTraffico(nv, pr){
     const j = await r.json().catch(() => null);
     if(!S.nav || S.nav.sn !== sn) return;
     if(!r.ok || !j || !Array.isArray(j.eventi)){
-      if(r.status !== 429) U.t = ora - TRAFFICO_OGNI_MS + TRAFFICO_RIPROVA_MS;
+      if(r.status !== 429) U.t = ora - ogni + TRAFFICO_RIPROVA_MS;
       return;
     }
+    U.ogni = j.ri >= 60 && j.ri <= 900 ? Math.round(j.ri) * 1000 : 0;
     const nuovoPeso = j.eventi.some(e => (e.tipo === 'chiusa' || e.ritardo >= TR_NUOVO_S) && !trafficoGiaNoto(S.nav, base + e.s));
     S.traffico = {t: Date.now(), sn, eventi: j.eventi.map(e => ({
       id: e.tipo + ':' + Math.round((base + e.s) / 250), s: base + e.s,
       len: e.len, tipo: e.tipo, ritardo: e.ritardo})),
       tempo: j.tempo > 0 ? j.tempo : 0, da: base, a: fino};
     if(nuovoPeso) rottaColTraffico(false);
-  }catch(e){ U.t = ora - TRAFFICO_OGNI_MS + TRAFFICO_RIPROVA_MS }
+  }catch(e){ U.t = ora - ogni + TRAFFICO_RIPROVA_MS }
   finally{ U.via = false }
 }
 navX.onclick=()=>fermaNav();
