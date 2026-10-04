@@ -44,7 +44,7 @@ distribuiti sotto Open Database License (ODbL) 1.0, vedi la pagina Licenze.
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v347';
+  const VERSIONE = 'copilota-app-v349';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1418,7 +1418,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '347';
+const APPVER = '349';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -24244,13 +24244,26 @@ function contaCuratiPersi(){
   return CURATI_PERSI;
 }
 
-function buildEdges(rid, map){
+const FETTA_MS = 40;
+const cedi = (() => {
+  try{ const sch = globalThis.scheduler; if(sch && typeof sch.yield === 'function') return () => sch.yield() }catch(e){}
+  const ch = new MessageChannel(), coda = [];
+  ch.port1.onmessage = () => { const f = coda.shift(); if(f) f() };
+  return () => new Promise(r => { coda.push(r); ch.port2.postMessage(0) });
+})();
+async function buildEdges(rid, map, avanza){
   VIE[rid] = RAW.vie || [];
   RIF[rid] = (RAW.refs || []).map(normRif);
   const jn = RAW.jn || null;
   const J = jn ? (i => gjun(jn[i])) : (i => gjun(rid+':'+i));
   let zpos = 0;
-  for (let k=0;k<RAW.edges.length;k++){
+  const nArchi = RAW.edges.length;
+  let t0 = performance.now();
+  for (let k=0;k<nArchi;k++){
+    if((k & 255) === 0 && performance.now() - t0 > FETTA_MS){
+      if(avanza) avanza(k / nArchi);
+      await cedi(); t0 = performance.now();
+    }
     const arr = RAW.edges[k];
     RAW.edges[k] = null;
     const [poly, runs, cflat, rank, len, j0, j1, ms, wid, ow, nomeIdx] = arr;
@@ -24326,9 +24339,11 @@ function buildEdges(rid, map){
   }
 }
 const GREY = [], GGRID = new Map();
-function buildGrey(){
-  for (const s of RAW.grey){
-    const g = decodePoly(s);
+async function buildGrey(){
+  let t0 = performance.now();
+  for (let q=0;q<RAW.grey.length;q++){
+    if((q & 255) === 0 && performance.now() - t0 > FETTA_MS){ await cedi(); t0 = performance.now() }
+    const g = decodePoly(RAW.grey[q]);
     const np = g.length>>1;
     if (np<2) continue;
     const gk = Math.round(g[0])+','+Math.round(g[1])+','+
@@ -24370,10 +24385,13 @@ const DOSSI = [];
 const DISSESTATE = [];
 let SEGN_X = null, SEGN_Y = null, SEGN_T = null;
 const SEGN_GRID = new Map();
-function buildDossi(){
+async function buildDossi(){
   DOSSI.length = 0; DISSESTATE.length = 0;
   const sx = [], sy = [], st = [];
-  for(const e of E){
+  let t0 = performance.now();
+  for(let n=0;n<E.length;n++){
+    if((n & 1023) === 0 && performance.now() - t0 > FETTA_MS){ await cedi(); t0 = performance.now() }
+    const e = E[n];
     const o = e.dos;
     if(o && o.length) for(let q=0;q<o.length;q++){
       const d = o[q];
@@ -33946,7 +33964,10 @@ async function boot(){
     try{ preparaCase(await leggiFile(caseUrl(r), r.id), r) }
     catch(err){ console.warn('case non caricate:', err.message) }
     const map = new Int32Array(RAW.edges.length);
-    buildEdges(r.id, map); buildGrey(); buildCams(map); buildRestr();
+    const scritta = splashMsg.textContent; let pct = -1;
+    await buildEdges(r.id, map, f => { const q = Math.round(f*100);
+      if(q !== pct){ pct = q; splashMsg.textContent = scritta + ' ' + q + '%' } });
+    await buildGrey(); buildCams(map); buildRestr();
     for(const p of RAW.places){
       const pk = p[0]+'|'+Math.round(p[1]*100)+','+Math.round(p[2]*100);
       if(PSEEN.has(pk)) continue;
@@ -33961,7 +33982,7 @@ async function boot(){
   }
 
   aggiornaVmax();
-  buildDossi();
+  await buildDossi();
   contaCuratiPersi();
   if(MAPPEVECCHIE.size){
     const nomi=[...MAPPEVECCHIE].map(id=>{const r=rById(id); return r?r.nm:id}).join(', ');

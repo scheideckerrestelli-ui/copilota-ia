@@ -1,5 +1,5 @@
-/* sorgente: 5b64a36e7b */
-const APP = 'copilota-app-v347';
+/* sorgente: 1aa15d1502 */
+const APP = 'copilota-app-v349';
 const DATA_PREFIX = 'copilota-data-';
 const MEDIA = 'copilota-media-v1';
 const SHELL = ['./', './manifest.webmanifest', './manifest-a.webmanifest', './regions.json',
