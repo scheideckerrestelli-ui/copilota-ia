@@ -15,7 +15,7 @@ var STATO;
 (function(){
   'use strict';
   var ON = true;
-  var B = parseInt('353', 10);
+  var B = parseInt('354', 10);
   var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
   var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
   var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
@@ -124,7 +124,7 @@ var STATO;
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v353';
+  const VERSIONE = 'copilota-app-v354';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1510,7 +1510,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '353';
+const APPVER = '354';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -25598,7 +25598,7 @@ const T = {
     off:'Fuori strada mappata', offSub:'avvicinati a una strada per riprendere le note',
     imprecisa:'Posizione imprecisa', imprecisaSub:'il GPS dichiara un errore di oltre 100 m: su iPhone attiva «Posizione esatta» per Safari o per l\'app (Impostazioni › Privacy › Localizzazione)',
     roads:{0:'Statale',1:'Statale / Provinciale',2:'Provinciale',3:'Provinciale minore',4:'Strada locale',5:'Strada di paese'},
-    roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'copilota attivo', voceAccesa:'Voce accesa', voceSpenta:'Voce spenta', voceScarico:'Scarico la voce…', voceSoloIt:'Questa voce c\'è solo in italiano: nelle altre lingue parla Rally.', voceSoloItChip:'solo italiano', voceNo:'Voce non scaricata: serve la rete. Per ora suona Rally.', voceGia:'scaricata',
+    roadOff:'fuori strada mappata', roadLocal:'strada locale', voiceOn:'Co-dràiver attivo', voceAccesa:'Voce accesa', voceSpenta:'Voce spenta', voceScarico:'Scarico la voce…', voceSoloIt:'Questa voce c\'è solo in italiano: nelle altre lingue parla Rally.', voceSoloItChip:'solo italiano', voceNo:'Voce non scaricata: serve la rete. Per ora suona Rally.', voceGia:'scaricata',
     clsAuto:'Autostrada', clsRampa:'Svincolo',
     localCall:'Strada locale', localSub:'strada urbana: nessuna nota di curva, limite dedotto',
     gWords:['prima','seconda','terza','quarta','quinta','sesta','settima','ottava','nona'],
@@ -29064,7 +29064,7 @@ function voceInLingua(voce, lang){ const v = VOCI[voce]; return !v || !v.lingue 
 function vbase(lang, voce){ voce = voce || S.voce; return voce === 'rally' ? 'voce-' + lang : 'voce-' + voce + '-' + lang }
 
 const CACHE_VOCE = 'copilota-voce-v1';
-const VOCE_VER = '8';
+const VOCE_VER = '9';
 async function prendi(url){
   if(self.caches){
     try{
@@ -32670,9 +32670,14 @@ function rigaRegione(r){
     row.appendChild(minimappa(r));
     const nm=document.createElement('div');
     nm.className='rnm';
-    nm.innerHTML='<b>'+r.nm+'</b><span>'+MB(pesoTot(r))+' · '+r.km.toLocaleString('it-IT')+' km · '+
+    const nmB=document.createElement('b');
+    nmB.textContent=r.nm;
+    const nmS=document.createElement('span');
+    nmS.textContent=MB(pesoTot(r))+' · '+r.km.toLocaleString('it-IT')+' km · '+
       r.curve.toLocaleString('it-IT')+(L==='it'?' curve':L==='fr'?' virages':' corners')+
-      (r.vie?' · '+r.vie.toLocaleString('it-IT')+(L==='it'?' vie':L==='fr'?' rues':' streets'):'')+'</span>';
+      (r.vie?' · '+r.vie.toLocaleString('it-IT')+(L==='it'?' vie':L==='fr'?' rues':' streets'):'');
+    nm.appendChild(nmB);
+    nm.appendChild(nmS);
     row.appendChild(nm);
 
     if(inst && !att) row.classList.add('daattivare');
@@ -34107,9 +34112,10 @@ async function boot(){
   const kmN = att.reduce((a,r)=>a+r.km,0), ncN = att.reduce((a,r)=>a+r.curve,0);
   const km=kmN.toLocaleString('it-IT'), nc=ncN.toLocaleString('it-IT'),
         ne=E.length.toLocaleString('it-IT');
-  const nomi = att.map(r=>r.nm), gen = att.map(r=>r.gen).sort().pop();
-  const lista = n => n.length===1 ? '<b>'+n[0]+'</b>'
-    : n.slice(0,-1).map(x=>'<b>'+x+'</b>').join(', ')+(L==='it'?' e ':L==='fr'?' et ':' and ')+'<b>'+n[n.length-1]+'</b>';
+  const htmlSicuro = x => String(x==null?'':x).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const nomi = att.map(r=>r.nm), gen = htmlSicuro(att.map(r=>r.gen).sort().pop());
+  const lista = n => n.length===1 ? '<b>'+htmlSicuro(n[0])+'</b>'
+    : n.slice(0,-1).map(x=>'<b>'+htmlSicuro(x)+'</b>').join(', ')+(L==='it'?' e ':L==='fr'?' et ':' and ')+'<b>'+htmlSicuro(n[n.length-1])+'</b>';
   BRAND = {n:att.length, nome:nomi[0], km, nc};
   setBrandSub();
   document.getElementById('infoStats').innerHTML =
