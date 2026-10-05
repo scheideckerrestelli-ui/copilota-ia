@@ -15,7 +15,7 @@ var STATO;
 (function(){
   'use strict';
   var ON = true;
-  var B = parseInt('354', 10);
+  var B = parseInt('356', 10);
   var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
   var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
   var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
@@ -124,7 +124,7 @@ var STATO;
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v354';
+  const VERSIONE = 'copilota-app-v356';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1510,7 +1510,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '354';
+const APPVER = '356';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -29278,8 +29278,48 @@ function livelliVoce(buf, ix){
 }
 
 const SESSIONE = ('audioSession' in navigator) ? navigator.audioSession : null;
+const DUCK_ANDROID_ACCESO = true;
+const duckAcceso = () => {
+  try{
+    if(/[?&]duck=1\b/.test(location.search)) localStorage.setItem('cd_duck', '1');
+    else if(/[?&]duck=0\b/.test(location.search)) localStorage.setItem('cd_duck', '0');
+    const v = localStorage.getItem('cd_duck');
+    return v === '0' ? false : (v === '1' || DUCK_ANDROID_ACCESO);
+  }catch(e){
+    return /[?&]duck=0\b/.test(location.search) ? false : (DUCK_ANDROID_ACCESO || /[?&]duck=1\b/.test(location.search));
+  }
+};
+const DUCK_ANDROID = !SESSIONE && /Android/i.test(navigator.userAgent) && duckAcceso();
+const DUCK_POSSIBILE = !!SESSIONE || DUCK_ANDROID;
 nota(SESSIONE ? 'sessione audio disponibile: si puo\' CHIEDERE al sistema di abbassare la musica'
-              : 'sessione audio non disponibile: la musica non si abbassera\' (normale fuori da Safari)');
+              : DUCK_ANDROID ? 'Android: la musica si abbassa chiedendo il focus audio con un <audio> breve (da provare in auto)'
+                             : 'sessione audio non disponibile: la musica non si abbassera\' (normale fuori da Safari)');
+let duckEl = null, duckUrl = '', duckErrore = false;
+function silenzioWav(){
+  const sr = 8000, n = sr, b = new Uint8Array(44 + n*2), v = new DataView(b.buffer);
+  const t = (o, x) => { for(let i=0;i<x.length;i++) b[o+i] = x.charCodeAt(i) };
+  t(0,'RIFF'); v.setUint32(4, 36+n*2, true); t(8,'WAVE'); t(12,'fmt '); v.setUint32(16,16,true);
+  v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,sr,true); v.setUint32(28,sr*2,true);
+  v.setUint16(32,2,true); v.setUint16(34,16,true); t(36,'data'); v.setUint32(40,n*2,true);
+  return URL.createObjectURL(new Blob([b], {type:'audio/wav'}));
+}
+function duckAndroid(su){
+  try{
+    if(su){
+      if(!duckEl){ duckEl = new Audio(); duckEl.loop = true; duckEl.volume = 0.01 }
+      if(!duckUrl) duckUrl = silenzioWav();
+      duckEl.src = duckUrl;
+      const p = duckEl.play();
+      if(p && p.catch) p.catch(e => { if(!duckErrore){ duckErrore = true; nota('musica (Android): focus audio negato: '+e.name) } });
+    }else if(duckEl){
+      duckEl.pause(); duckEl.removeAttribute('src'); duckEl.load();
+    }
+  }catch(e){ nota('musica (Android): '+e.message) }
+}
+function duckApplica(su){
+  if(SESSIONE){ SESSIONE.type = su ? TIPO_GIU : 'auto'; return }
+  if(DUCK_ANDROID) duckAndroid(su);
+}
 let duckFino = 0, duckTimer = 0, duckDetto = false, duckChiesto = 0, duckKey = null;
 const TIPO_GIU = 'transient';
 const VOCE_GUADAGNO = 2.2;
@@ -29318,15 +29358,17 @@ function creaCtx(){
 }
 const DUCK_MATURA = 0.35;
 function musicaGiu(){
-  if(!SESSIONE) return 0;
+  if(!DUCK_POSSIBILE) return 0;
   const ora = performance.now();
   if(!duckChiesto){
-    try{ SESSIONE.type = TIPO_GIU }
+    try{ duckApplica(true) }
     catch(e){ nota('tipo di sessione audio rifiutato: '+e.message); return 0 }
     duckChiesto = ora;
     if(!duckDetto){
       duckDetto = true;
-      nota(SESSIONE.type === TIPO_GIU
+      nota(DUCK_ANDROID
+           ? 'musica: chiesto il focus audio «transient may duck» (Android). Che poi la abbassi davvero, la pagina non puo\' saperlo: lo dice solo l\'orecchio in auto'
+           : SESSIONE.type === TIPO_GIU
            ? 'musica: chiesto il tipo «'+TIPO_GIU+'». Che poi la abbassi davvero, la pagina non puo\' saperlo: lo dice solo l\'orecchio in auto'
            : 'musica: il sistema ha RIFIUTATO l\'abbassamento (tipo rimasto "'+SESSIONE.type+'")');
     }
@@ -29334,19 +29376,19 @@ function musicaGiu(){
   return Math.max(0, DUCK_MATURA - (ora - duckChiesto)/1000);
 }
 function musicaPreavvisa(key){
-  if(!SESSIONE) return;
+  if(!DUCK_POSSIBILE) return;
   if(duckKey === key) return;
   duckKey = key;
   musicaGiu();
   musicaSu(0.8);
 }
 function musicaSu(secondi){
-  if(!SESSIONE || !(secondi > 0)) return;
+  if(!DUCK_POSSIBILE || !(secondi > 0)) return;
   const CODA = TIPO_GIU === 'transient-solo' ? 1800 : 250;
   duckFino = Math.max(duckFino, performance.now() + secondi*1000 + CODA);
   clearTimeout(duckTimer);
   duckTimer = setTimeout(() => {
-    try{ SESSIONE.type = 'auto' }catch(e){}
+    try{ duckApplica(false) }catch(e){}
     duckChiesto = 0;
   }, Math.max(0, duckFino - performance.now()));
 }
