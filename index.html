@@ -15,7 +15,7 @@ var STATO;
 (function(){
   'use strict';
   var ON = true;
-  var B = parseInt('356', 10);
+  var B = parseInt('357', 10);
   var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
   var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
   var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
@@ -124,7 +124,7 @@ var STATO;
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v356';
+  const VERSIONE = 'copilota-app-v357';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1510,7 +1510,9 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '356';
+const APPVER = '357';
+const REG_EXTRA = 'regions-libero.json';
+const REG_EXTRA_K = 'codriver-regions-libero-v1';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
@@ -1851,12 +1853,14 @@ function svoltaVietata(jn, wDa, wA){
 
 const RAGGIO_MINORI = 3000, PESO_H = 1.25;
 let VMAX_RETE = 36.2;
+const MS_LIBERO = 999;
+const msLibero = ms => ms >= MS_LIBERO || ms <= -MS_LIBERO;
 function aggiornaVmax(){
   let m=0;
   for(const id of RSTATE.att){
     const mt=RMETA[id];
     if(!mt || !mt.msMax){ VMAX_RETE=36.2; return }
-    m=Math.max(m, mt.msMax);
+    m=Math.max(m, msLibero(mt.msMax) ? 130 : mt.msMax);
   }
   if(m) VMAX_RETE = m/3.6;
 }
@@ -24531,6 +24535,7 @@ async function buildDossi(){
     }
 }
 function edgeLimit(e){
+  if(msLibero(e.ms)) return {v:Infinity, sure:true, libero:true};
   if(e.ms>0) return {v:e.ms, sure:true};
   if(e.ms<0) return {v:-e.ms, sure:false};
   return {v:90, sure:false};
@@ -25638,7 +25643,7 @@ const T = {
     primaIconaCome:'Come si fa',
     pickMap:'scegli una mappa', maps:'Mappe', dl:'Scarica', spenta:'Disattivata', active:'Attiva',
     emptyTitle:'Nessuna mappa caricata', emptyHint:'Apri Mappe e scarica la regione dove guidi',
-    paesi:{it:'Italia', be:'Belgio', nl:'Paesi Bassi', fr:'Francia', gb:'Regno Unito', es:'Spagna', '?':'Altre regioni'},
+    paesi:{it:'Italia', be:'Belgio', nl:'Paesi Bassi', fr:'Francia', gb:'Regno Unito', es:'Spagna', de:'Germania', '?':'Altre regioni'},
     invSpieg:'Se l\'app è in schermata Home su iPhone, ha una memoria sua: il profilo del tuo veicolo non passa da Safari. Incolla qui il link che ti hanno mandato e torna com\'era.',
     invPh:'incolla il link', invGo:'Applica',
     invOk:n=>'Fatto: '+n+'. Riapro l\'app…',
@@ -25822,7 +25827,7 @@ const T = {
     primaIconaCome:'How to do it',
     pickMap:'pick a map', maps:'Maps', dl:'Download', spenta:'Inactive', active:'Active',
     emptyTitle:'No map loaded', emptyHint:'Open Maps and download the region you drive in',
-    paesi:{it:'Italy', be:'Belgium', nl:'Netherlands', fr:'France', gb:'United Kingdom', es:'Spain', '?':'Other regions'},
+    paesi:{it:'Italy', be:'Belgium', nl:'Netherlands', fr:'France', gb:'United Kingdom', es:'Spain', de:'Germany', '?':'Other regions'},
     invSpieg:'A web app on the iPhone Home Screen has its own storage: your vehicle profile does not carry over from Safari. Paste the link you were sent and it comes back.',
     invPh:'paste the link', invGo:'Apply',
     invOk:n=>'Done: '+n+'. Reopening…',
@@ -26006,7 +26011,7 @@ const T = {
     primaIconaCome:'Comment faire',
     pickMap:'choisis une carte', maps:'Cartes', dl:'Télécharger', spenta:'Désactivée', active:'Active',
     emptyTitle:'Aucune carte chargée', emptyHint:'Ouvre Cartes et télécharge la région où tu conduis',
-    paesi:{it:'Italie', be:'Belgique', nl:'Pays-Bas', fr:'France', gb:'Royaume-Uni', es:'Espagne', '?':'Autres régions'},
+    paesi:{it:'Italie', be:'Belgique', nl:'Pays-Bas', fr:'France', gb:'Royaume-Uni', es:'Espagne', de:'Allemagne', '?':'Autres régions'},
     invSpieg:'Sur l\'écran d\'accueil de l\'iPhone, l\'app a sa propre mémoire : le profil de ton véhicule ne vient pas de Safari. Colle ici le lien qu\'on t\'a envoyé et tout revient.',
     invPh:'colle le lien', invGo:'Appliquer',
     invOk:n=>'C\'est fait : '+n+'. Je rouvre l\'app…',
@@ -30537,9 +30542,14 @@ function feed(x,y,hd,v,acc,eta){
   mostraPendenza();
   mostraCurva();
   const limSign=document.getElementById('limSign');
+  const limLibero = !!(S.snap && edgeLimit(S.snap.e).libero);
+  limSign.style.borderColor = limLibero ? '#222' : '#e02020';
+  limSign.style.background = limLibero
+    ? 'linear-gradient(135deg,#fff 0 36%,#222 36% 41%,#fff 41% 46%,#222 46% 51%,#fff 51% 56%,#222 56% 61%,#fff 61%)'
+    : '#fff';
   if(S.snap){
     const lim=edgeLimit(S.snap.e);
-    limSign.textContent=(lim.sure?'':'~')+lim.v;
+    limSign.textContent = lim.libero ? '' : (lim.sure?'':'~')+lim.v;
     limSign.style.opacity=lim.sure?1:0.72;
     limSign.style.borderStyle=lim.sure?'solid':'dashed';
     speedV.style.color = kmhNow>lim.v+5 ? 'var(--vfuori)' : kmhNow>lim.v ? 'var(--vsopra)' : '';
@@ -30919,7 +30929,7 @@ function rcPasso(p){
       if(Number.isFinite(c) && c>0) rifKmh = c;
     } else if(S.snap && S.snap.e){
       var lim = edgeLimit(S.snap.e);
-      if(lim && lim.sure) rifKmh = lim.v;
+      if(lim && lim.sure && !lim.libero) rifKmh = lim.v;
     }
   }catch(err){}
   try{ window.RC.fix(lat, lon, p.coords.accuracy||null, p.coords.speed, altM, altAcc, via, rifKmh); }catch(err){}
@@ -34036,6 +34046,21 @@ async function boot(){
     splashMsg.textContent = 'elenco mappe non caricato ('+err.message+'), ricarica la pagina';
     return;
   }
+  try{
+    let ex = null;
+    try{
+      ex = await (await fetch(REG_EXTRA)).json();
+      if(Array.isArray(ex)) localStorage.setItem(REG_EXTRA_K, JSON.stringify(ex));
+    }catch(err){
+      try{ ex = JSON.parse(localStorage.getItem(REG_EXTRA_K)||'null') }catch(e2){}
+    }
+    if(Array.isArray(ex)){
+      const gia = new Set(REG.map(r=>r.id));
+      for(const r of ex){
+        if(r && typeof r.id==='string' && r.id && r.file && !gia.has(r.id)){ REG.push(r); gia.add(r.id) }
+      }
+    }
+  }catch(err){}
   rload();
   RSTATE.inst = RSTATE.inst.filter(id=>rById(id));
   RSTATE.att  = RSTATE.att.filter(id=>rById(id) && RSTATE.inst.includes(id));
