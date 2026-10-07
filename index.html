@@ -15,7 +15,7 @@ var STATO;
 (function(){
   'use strict';
   var ON = true;
-  var B = parseInt('357', 10);
+  var B = parseInt('358', 10);
   var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
   var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
   var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
@@ -124,7 +124,7 @@ var STATO;
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v357';
+  const VERSIONE = 'copilota-app-v358';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -916,6 +916,7 @@ if ('serviceWorker' in navigator) {
   <p class="instpop-t" id="posPopT"></p>
   <ol class="instpop-l" id="posPopL" hidden></ol>
   <button class="btn" id="posPopB" type="button"></button>
+  <button class="btn" id="posPopR" type="button" hidden></button>
 </div>
 
 <div class="instpop" id="candPop" hidden>
@@ -1510,7 +1511,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '357';
+const APPVER = '358';
 const REG_EXTRA = 'regions-libero.json';
 const REG_EXTRA_K = 'codriver-regions-libero-v1';
 let RAW = null;
@@ -25658,6 +25659,8 @@ const T = {
     posPreB:'Attiva la posizione',
     posNeg:'La posizione è bloccata per Co-Driver, e il telefono non la chiede più. Ecco come si rimette:',
     posNegB:'Ho capito',
+    posRiprova:'Ho cambiato, riprova',
+    posAncora:'È ancora bloccata. Segui i passi qui sotto, poi tocca di nuovo «Ho cambiato, riprova».',
     posDentroT:'Stai usando Co-Driver dentro un\'altra app (Instagram o Telegram): da qui il telefono spesso non dà la posizione.',
     posDentroIosL:['tocca il menu <b>···</b> in alto (o il tasto Condividi)',
                    'scegli la voce che apre il link nel browser (di solito «Apri in Safari»)',
@@ -25842,6 +25845,8 @@ const T = {
     posPreB:'Turn on location',
     posNeg:'Location is blocked for Co-Driver and your phone will not ask again. Here is how to restore it:',
     posNegB:'Got it',
+    posRiprova:'I changed it, try again',
+    posAncora:'Still blocked. Follow the steps below, then tap «I changed it, try again» once more.',
     posDentroT:'You\'re using Co-Driver inside another app (Instagram or Telegram): from here your phone often can\'t share its location.',
     posDentroIosL:['tap the <b>···</b> menu at the top (or the Share button)',
                    'choose the option that opens the link in your browser (usually "Open in Safari")',
@@ -26026,6 +26031,8 @@ const T = {
     posPreB:'Activer la position',
     posNeg:'La position est bloquée pour Co-Driver et le téléphone ne la demande plus. Voici comment la rétablir :',
     posNegB:'J\'ai compris',
+    posRiprova:'J\'ai changé, réessaie',
+    posAncora:'Toujours bloquée. Suis les étapes ci-dessous, puis touche de nouveau «J\'ai changé, réessaie».',
     posDentroT:'Tu utilises Co-Driver dans une autre app (Instagram ou Telegram) : d\'ici, le téléphone ne donne souvent pas la position.',
     posDentroIosL:['touche le menu <b>···</b> en haut (ou le bouton Partager)',
                    'choisis l\'option qui ouvre le lien dans le navigateur (souvent « Ouvrir dans Safari »)',
@@ -29326,7 +29333,7 @@ function duckApplica(su){
   if(DUCK_ANDROID) duckAndroid(su);
 }
 let duckFino = 0, duckTimer = 0, duckDetto = false, duckChiesto = 0, duckKey = null;
-const TIPO_GIU = 'transient';
+const TIPO_GIU = 'playback';
 const VOCE_GUADAGNO = 2.2;
 function creaCtx(){
   if(!VOCE.ctx){
@@ -29374,7 +29381,7 @@ function musicaGiu(){
       nota(DUCK_ANDROID
            ? 'musica: chiesto il focus audio «transient may duck» (Android). Che poi la abbassi davvero, la pagina non puo\' saperlo: lo dice solo l\'orecchio in auto'
            : SESSIONE.type === TIPO_GIU
-           ? 'musica: chiesto il tipo «'+TIPO_GIU+'». Che poi la abbassi davvero, la pagina non puo\' saperlo: lo dice solo l\'orecchio in auto'
+           ? 'musica: chiesto il tipo «'+TIPO_GIU+'»'+(TIPO_GIU === 'transient' ? '' : ' (la voce suona anche in silenzioso e ferma la musica per la durata dell\'avviso)')+'. Che poi la musica riprenda davvero, la pagina non puo\' saperlo: lo dice solo l\'orecchio in auto'
            : 'musica: il sistema ha RIFIUTATO l\'abbassamento (tipo rimasto "'+SESSIONE.type+'")');
     }
   }
@@ -29389,7 +29396,7 @@ function musicaPreavvisa(key){
 }
 function musicaSu(secondi){
   if(!DUCK_POSSIBILE || !(secondi > 0)) return;
-  const CODA = TIPO_GIU === 'transient-solo' ? 1800 : 250;
+  const CODA = TIPO_GIU === 'transient' ? 250 : 1800;
   duckFino = Math.max(duckFino, performance.now() + secondi*1000 + CODA);
   clearTimeout(duckTimer);
   duckTimer = setTimeout(() => {
@@ -29917,7 +29924,7 @@ function disegnaNavIcona(ang){
   niv.lineTo(tip[0]+Math.cos(dir-2.8)*13, tip[1]+Math.sin(dir-2.8)*13);
   niv.closePath(); niv.fill();
 }
-const CHIAVE_ROTTA='copilota-rotta', ROTTA_MAX=15*60*1000;
+const CHIAVE_ROTTA='copilota-rotta', ROTTA_MAX=6*60*60*1000;
 let rottaT=0;
 function ricordaDest(x,y,nome){
   try{ const [lon,lat]=toLL(x,y);
@@ -30897,6 +30904,18 @@ function mostraPosPop(negato){
     }
   }
   b.textContent = negato ? tr().posNegB : tr().posPreB;
+  const r = document.getElementById('posPopR');
+  if(r){
+    r.hidden = !negato;
+    r.textContent = tr().posRiprova;
+    r.onclick = async () => {
+      const st = await statoPermesso();
+      nota('posizione: «riprova» toccato · permesso: ' + st);
+      if(st === 'denied'){ t.textContent = tr().posAncora; return }
+      pop.hidden = true;
+      startGps();
+    };
+  }
   b.onclick = () => {
     pop.hidden = true;
     if(!negato) startGps();
@@ -33831,7 +33850,9 @@ function ricercheRecenti(){
 function ricordaRicerca(n, s, x, y, z){
   try{
     const [lo,la] = toLL(x,y);
-    const v = (JSON.parse(localStorage.getItem(RICERCHE_K)) || []).filter(r => r && r.n!==n);
+    const generico = n === tr().navDest;
+    const v = (JSON.parse(localStorage.getItem(RICERCHE_K)) || []).filter(r => r &&
+      (generico ? (r.n!==n || Math.hypot(r.la-la, (r.lo-lo)*Math.cos(la*Math.PI/180)) > 0.0006) : r.n!==n));
     v.unshift({n, s:s||'', la:+la.toFixed(5), lo:+lo.toFixed(5), z:+(z||1.4).toFixed(2)});
     localStorage.setItem(RICERCHE_K, JSON.stringify(v.slice(0,3)));
   }catch(e){ nota('ricerca non memorizzata: '+e.message) }
@@ -33951,7 +33972,9 @@ cv.addEventListener('pointerdown',e=>{
       press=null;
       const [x,y]=s2w(sx,sy);
       if(navigator.vibrate) navigator.vibrate(28);
-      avviaNav(x,y,nomePunto(x,y));
+      const nome=nomePunto(x,y);
+      ricordaRicerca(nome, '', x, y, 2.2);
+      avviaNav(x,y,nome);
     },560)};
   }
   cv.classList.add('drag');
