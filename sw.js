@@ -1,5 +1,5 @@
-/* sorgente: 99340d0bf2 */
-const APP = 'copilota-app-v358';
+/* sorgente: fea220efa7 */
+const APP = 'copilota-app-v359';
 const DATA_PREFIX = 'copilota-data-';
 const MEDIA = 'copilota-media-v1';
 const SHELL = ['./', './manifest.webmanifest', './manifest-a.webmanifest', './regions.json',
@@ -63,6 +63,23 @@ self.addEventListener('fetch', e => {
       fetch(req).then(res => { if (res.ok) c.put(req, res.clone()).catch(() => {}); return res; }))));
     return;
   }
+  { const pm = new URL(req.url).pathname;
+     if (/\/regions(-libero)?\.json$/.test(pm)) {
+       e.respondWith((async () => {
+         const copia = await caches.match(req);
+         try {
+           const rete = fetch(req.url, { cache: 'no-cache' });
+           const r = copia
+             ? await Promise.race([rete, new Promise((_, no) => setTimeout(() => no(new Error('rete lenta')), 3000))])
+             : await rete;
+           if (!r.ok) return copia || r;
+           const copy = r.clone();
+           e.waitUntil(caches.open(APP).then(c => c.put(req, copy)).catch(() => {}));
+           return r;
+         } catch (err) { if (copia) return copia; throw err; }
+       })());
+       return;
+     } }
   const id = dataId(req.url);
   if (id) {
     e.respondWith(caches.open(DATA_PREFIX + id).then(c => c.match(req).then(hit => hit ||

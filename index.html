@@ -15,7 +15,7 @@ var STATO;
 (function(){
   'use strict';
   var ON = true;
-  var B = parseInt('358', 10);
+  var B = parseInt('359', 10);
   var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
   var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
   var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
@@ -124,7 +124,7 @@ var STATO;
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v358';
+  const VERSIONE = 'copilota-app-v359';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -542,6 +542,12 @@ if ('serviceWorker' in navigator) {
   .segn-b[data-cosa="polizia"]{color:#4c8dff}
   .segn-b[data-cosa="dosso"]{color:#f5c518}
   .segn-b[data-cosa="dissestata"]{color:#c98b3a}
+  .segn-b[data-cosa="limite"]{color:#e5484d}
+  .segn-b[data-cosa="curva"]{color:#9a7bff}
+
+  .segn-sub-t{margin:10px 0 2px;font-weight:700}
+  .segn-b.piccolo{flex:1 1 64px;min-height:52px;font-size:17px;color:var(--ink)}
+  .segn-b.piccolo.testo{flex:1 1 140px;font-size:14px}
   .solo-voce{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
   .segn-b:active{transform:scale(.97);filter:brightness(1.25)}
   .segn-b:disabled{opacity:.4;cursor:default}
@@ -1251,6 +1257,13 @@ if ('serviceWorker' in navigator) {
     <button class="segn-b" type="button" data-cosa="polizia" title="Polizia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5h8v7.5H6.5a2.5 2.5 0 0 1-2.5-2.5z" fill="#e04b4b"/><path d="M12 11.5h8v5a2.5 2.5 0 0 1-2.5 2.5H12z" fill="#4c8dff"/><path class="ic-buco" d="M11.2 11.5h1.6v7.5h-1.6z"/><path class="ic-linea" d="M2.5 21.5h19"/><path class="ic-linea" d="M6.5 4.5l2 2.6M17.5 4.5l-2 2.6M12 3v3"/></svg><span class="solo-voce" data-lang="it">Polizia</span><span class="solo-voce" data-lang="en">Police</span><span class="solo-voce" data-lang="fr">Police</span></button>
     <button class="segn-b" type="button" data-cosa="dosso" title="Dosso"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-tag" d="M2.5 17.5c0-5.5 4.2-8.5 9.5-8.5s9.5 3 9.5 8.5z"/><path class="ic-buco" d="M8.6 10.2l1.8.6-2.4 6.7H6.2zM13.4 10.1l1.8.8-2.7 6.6h-2z"/><path class="ic-linea" d="M1.5 20.5h21"/></svg><span class="solo-voce" data-lang="it">Dosso</span><span class="solo-voce" data-lang="en">Speed bump</span><span class="solo-voce" data-lang="fr">Dos-d’âne</span></button>
     <button class="segn-b" type="button" data-cosa="dissestata" title="Strada dissestata"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-tag" d="M3 21 8.1 4h7.8L21 21z"/><path class="ic-buco" d="M11.15 6h1.7l.3 2.5h-2.3zM10.75 10.7h2.5l.35 2.7h-3.2z"/><path class="ic-buco" d="M8.3 15.1c3-1 5.3.5 4.9 2.5-.4 2.1-4.1 3-5.8 1.6-1.3-1.1-1-3.3.9-4.1z"/></svg><span class="solo-voce" data-lang="it">Strada dissestata</span><span class="solo-voce" data-lang="en">Damaged road</span><span class="solo-voce" data-lang="fr">Route dégradée</span></button>
+    <button class="segn-b" type="button" data-cosa="limite" id="segnLimite" hidden title="Limite sbagliato"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="ic-tag" cx="12" cy="12" r="10"/><circle class="ic-buco" cx="12" cy="12" r="6.6"/><rect class="ic-tag" x="8" y="11" width="8" height="2" rx="1"/></svg><span class="solo-voce" data-lang="it">Limite sbagliato</span><span class="solo-voce" data-lang="en">Wrong speed limit</span><span class="solo-voce" data-lang="fr">Limite erronée</span></button>
+    <button class="segn-b" type="button" data-cosa="curva" id="segnCurva" hidden title="Curva sbagliata"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-linea" style="stroke:currentColor;stroke-width:3" d="M5 21c0-7 14-3 14-12"/><path class="ic-tag" d="M15 7l4-4 4 4z"/></svg><span class="solo-voce" data-lang="it">Curva sbagliata</span><span class="solo-voce" data-lang="en">Wrong corner</span><span class="solo-voce" data-lang="fr">Virage erroné</span></button>
+  </div>
+  <div id="segnSub" hidden>
+    <p class="segn-sub-t" id="segnSubT"></p>
+    <div class="segn-grid" id="segnSubG"></div>
+    <button class="btn ghost" type="button" id="segnSubIndietro" style="margin-bottom:6px"></button>
   </div>
   <p class="disc segn-nota"><span data-lang="it">Grazie per la tua segnalazione!</span><span data-lang="en">Thanks for your report!</span><span data-lang="fr">Merci pour ton signalement !</span>
     <a href="https://codriver.pages.dev/beta#privacy" target="_blank" rel="noopener"><span data-lang="it">Informativa</span><span data-lang="en">Privacy</span><span data-lang="fr">Confidentialité</span></a></p>
@@ -1511,7 +1524,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '358';
+const APPVER = '359';
 const REG_EXTRA = 'regions-libero.json';
 const REG_EXTRA_K = 'codriver-regions-libero-v1';
 let RAW = null;
@@ -1583,6 +1596,7 @@ const dosUrl = r => scUrl(r, SIDECAR[3]);
 const camsUrl = r => scUrl(r, SIDECAR[4]);
 const stpUrl = r => scUrl(r, SIDECAR.find(s => s.url === 'stp'));
 const disUrl = r => scUrl(r, SIDECAR.find(s => s.url === 'dis'));
+const corUrl = r => scUrl(r, SIDECAR.find(s => s.url === 'cor'));
 const basUrl = r => scUrl(r, SIDECAR[5]);
 const caseUrl = r => null;
 const SIDECAR = [
@@ -1594,6 +1608,7 @@ const SIDECAR = [
   {url:'bas',  ver:'bsv', peso:'bsb', ok:j=>!!(j.a||j.v||j.u)},
   {url:'stp',  ver:'spv', peso:'spb', ok:j=>typeof j.s === 'string'},
   {url:'dis',  ver:'disv', peso:'disb', ok:j=>!!j.d},
+  {url:'cor',  ver:'corv', peso:'corb', ok:j=>Array.isArray(j.c) || Array.isArray(j.l)},
 ];
 function scUrl(r, s){ return r[s.url] ? r[s.url]+'?v='+r[s.ver] : null }
 const pesoTot = r => SIDECAR.reduce((s,x)=>s+(r[x.peso]||0), r.bytes||0);
@@ -1779,7 +1794,7 @@ function percorribile(e, da){
 }
 function posGiun(j){
   const lista=JUN.get(j); if(!lista||!lista.length) return null;
-  const e=E[lista[0]];
+  const e=E.get(lista[0]);
   return e.j0===j ? [e.xy[0],e.xy[1]] : [e.xy[2*e.np-2], e.xy[2*e.np-1]];
 }
 const RANGO = {
@@ -1882,7 +1897,7 @@ function calcolaRotta(jDa, jA, limite=900000, da=null){
     (orig && (x-orig[0])*(x-orig[0]) + (y-orig[1])*(y-orig[1]) < R2) ||
     ((x-meta[0])*(x-meta[0]) + (y-meta[1])*(y-meta[1]) < R2);
   const h=j=>{ const p=posGiun(j); return p ? Math.hypot(p[0]-meta[0],p[1]-meta[1])/VMAX_RETE*TEMPO_MIN : 0 };
-  const testa = s => { const e=E[s>>1]; return (s&1) ? e.j0 : e.j1 };
+  const testa = s => { const e=E.get(s>>1); return (s&1) ? e.j0 : e.j1 };
   statiPronti(E.length);
   agen++;
   const gGet = s => AGEN[s]===agen ? AG[s] : Infinity;
@@ -1890,7 +1905,7 @@ function calcolaRotta(jDa, jA, limite=900000, da=null){
   const TR = trafficoArchi();
   const q=new Coda();
   for(const id of (JUN.get(jDa)||[])){
-    const e=E[id];
+    const e=E.get(id);
     if(!percorribile(e,jDa)) continue;
     if(da && svoltaVietata(jDa, da.wid, e.wid)) continue;
     const s = id*2 + (e.j0===jDa ? 0 : 1);
@@ -1906,9 +1921,9 @@ function calcolaRotta(jDa, jA, limite=900000, da=null){
     if(++visti>limite) return null;
     const jn=testa(s);
     if(jn===jA){ fine=s; break }
-    const e=E[s>>1], gc=gGet(s);
+    const e=E.get(s>>1), gc=gGet(s);
     for(const id of (JUN.get(jn)||[])){
-      const o=E[id];
+      const o=E.get(id);
       if(!percorribile(o,jn)) continue;
       if(o.rank>=RANGO.minore){
         const m=(o.np>>1)*2;
@@ -1927,7 +1942,7 @@ function calcolaRotta(jDa, jA, limite=900000, da=null){
   if(fine<0) return null;
   const archi=[]; let s=fine;
   while(s>=0){
-    archi.push({e:E[s>>1], verso:(s&1)?-1:1});
+    archi.push({e:E.get(s>>1), verso:(s&1)?-1:1});
     s = APREV[s];
     if(archi.length>20000) break;
   }
@@ -1945,7 +1960,7 @@ function componenteGrande(j, soglia=300){
   while(coda.length && visti.size<soglia){
     const c=coda.pop();
     for(const id of (JUN.get(c)||[])){
-      const e=E[id], alt = e.j0===c ? e.j1 : e.j0;
+      const e=E.get(id), alt = e.j0===c ? e.j1 : e.j0;
       if(!visti.has(alt)){ visti.add(alt); coda.push(alt) }
     }
   }
@@ -1961,7 +1976,7 @@ function raggiunge(j, verso, soglia=300){
   while(coda.length && visti.size<soglia){
     const cur=coda.pop();
     for(const id of (JUN.get(cur)||[])){
-      const e=E[id], alt = e.j0===cur ? e.j1 : e.j0;
+      const e=E.get(id), alt = e.j0===cur ? e.j1 : e.j0;
       if(!percorribile(e, verso>0 ? cur : alt)) continue;
       if(!visti.has(alt)){ visti.add(alt); coda.push(alt) }
     }
@@ -1973,7 +1988,7 @@ function raggiunge(j, verso, soglia=300){
 function giunzioneVicina(x,y,rad=1500,verso=0,hd=null){
   let best=null;
   for(const id of nearEdges(x,y,rad)){
-    const e=E[id];
+    const e=E.get(id);
     for(const j of (e.j0===e.j1?[e.j0]:[e.j0,e.j1])){
       const p=posGiun(j); if(!p) continue;
       const d=Math.hypot(p[0]-x,p[1]-y);
@@ -2027,7 +2042,7 @@ function contaUscite(archi, kDa, kA){
     for(const id of (JUN.get(jn)||[])){
       if(anello.has(id)) continue;
       if(ROTONDA.has(id) && ROTONDA.has(a.e.id)) continue;
-      if(!percorribile(E[id], jn)) continue;
+      if(!percorribile(E.get(id), jn)) continue;
       n++; break;
     }
   }
@@ -2054,7 +2069,7 @@ function anelloChiuso(archi, kDa, kA){
     let next=null;
     for(const id of (JUN.get(nodo)||[])){
       if(dentro.has(id)) continue;
-      const c=E[id];
+      const c=E.get(id);
       if(!c.ow || c.len>200) continue;
       if(!percorribile(c,nodo)) continue;
       next=c; break;
@@ -2081,7 +2096,7 @@ function costruisciManovre(archi){
       let alt=null, altRank=-1;
       for(const id of (JUN.get(jn)||[])){
         if(id===a.e.id||id===b.e.id) continue;
-        const o=E[id]; let oh;
+        const o=E.get(id); let oh;
         if(o.j0===jn)      oh=hdTratto(o,true);
         else if(o.j1===jn) oh=hdTratto(o,false)+Math.PI;
         else continue;
@@ -2262,9 +2277,481 @@ function decodePoly(str){
   return Float32Array.from(out);
 }
 
-const E = [];
-const GRID = new Map();
-const JUN = new Map();
+function growTyped(old, needed) {
+  if (old.length >= needed) return old;
+  let size = Math.max(16, old.length);
+  while (size < needed) size *= 2;
+  const next = new old.constructor(size);
+  next.set(old);
+  return next;
+}
+
+class EdgeStore {
+  constructor(opts) {
+    opts = opts || {};
+    this.senzaCurve = opts.senzaCurve;
+    if (!Array.isArray(this.senzaCurve) || !Object.isFrozen(this.senzaCurve)) {
+      throw new TypeError('senzaCurve deve essere un array congelato');
+    }
+
+    const bits = opts.cacheBits === undefined ? 14 : opts.cacheBits;
+    if (!Number.isInteger(bits) || bits < 0 || bits > 24) {
+      throw new RangeError('cacheBits non valido');
+    }
+    this.cache = new Array(2 ** bits);
+    this.mask = this.cache.length - 1;
+
+    this.n = 0;
+    this.blocks = [];
+    this.blockSize = 2 ** 20;
+
+    this.np = new Uint32Array(0);
+    this.block = new Uint32Array(0);
+    this.pointOffset = new Uint32Array(0);
+    this.L = new Float64Array(0);
+    this.len = new Float64Array(0);
+    this.sc = new Float64Array(0);
+    this.rank = new Uint8Array(0);
+    this.j0 = new Int32Array(0);
+    this.j1 = new Int32Array(0);
+    this.ms = new Int16Array(0);
+    this.zo = new Int32Array(0);
+    this.zn = new Int32Array(0);
+    this.ow = new Int8Array(0);
+    this.wid = new Float64Array(0);
+
+    this.runOffset = new Uint32Array(0);
+    this.runCount = new Uint32Array(0);
+    this.curveOffset = new Uint32Array(0);
+    this.curveCount = new Uint32Array(0);
+
+    this.runs = new Int32Array(0);
+    this.runsUsed = 0;
+    this.curves = new Float64Array(0);
+    this.stPresent = new Uint8Array(0);
+    this.curvesUsed = 0;
+
+    this.rgIndex = new Uint16Array(0);
+    this.viaIndex = new Int32Array(0);
+    this.rifIndex = new Int32Array(0);
+    this.zbIndex = new Uint16Array(0);
+
+    this.rgTable = [];
+    this.viaTable = [];
+    this.rifTable = [];
+    this.zbTable = [];
+    this.rgCodes = new Map();
+    this.viaCodes = new Map();
+    this.rifCodes = new Map();
+    this.zbCodes = new Map();
+
+    this.sparse = new Map();
+  }
+
+  get length() {
+    return this.n;
+  }
+
+  _code(value, table, codes, limit) {
+    let code = codes.get(value);
+    if (code !== undefined) return code;
+    code = table.length;
+    if (code >= limit) throw new RangeError('tabella di riferimenti esaurita');
+    table.push(value);
+    codes.set(value, code);
+    return code;
+  }
+
+  _growColumns(needed) {
+    const names = [
+      'np', 'block', 'pointOffset', 'L', 'len', 'sc', 'rank',
+      'j0', 'j1', 'ms', 'zo', 'zn', 'ow', 'wid',
+      'runOffset', 'runCount', 'curveOffset', 'curveCount',
+      'rgIndex', 'viaIndex', 'rifIndex', 'zbIndex'
+    ];
+    for (const name of names) this[name] = growTyped(this[name], needed);
+  }
+
+  push(e) {
+    const i = this.n;
+    if (!Number.isInteger(e.np) || e.np < 0 || e.np > this.blockSize) {
+      throw new RangeError('np non valido');
+    }
+    this._growColumns(i + 1);
+
+    let b = this.blocks[this.blocks.length - 1];
+    if (!b || b.used + e.np > this.blockSize) {
+      b = {
+        xy: new Float32Array(2 * this.blockSize),
+        cum: new Float32Array(this.blockSize),
+        used: 0
+      };
+      this.blocks.push(b);
+    }
+    const p = b.used;
+    b.xy.set(e.xy, 2 * p);
+    b.cum.set(e.cum, p);
+    b.used += e.np;
+
+    this.np[i] = e.np;
+    this.block[i] = this.blocks.length - 1;
+    this.pointOffset[i] = p;
+    this.L[i] = e.L;
+    this.len[i] = e.len;
+    this.sc[i] = e.sc;
+    this.rank[i] = e.rank;
+    this.j0[i] = e.j0;
+    this.j1[i] = e.j1;
+    this.ms[i] = e.ms;
+    this.zo[i] = e.zo;
+    this.zn[i] = e.zn;
+    this.ow[i] = e.ow;
+    this.wid[i] = e.wid;
+
+    if (this.rank[i] !== e.rank || this.j0[i] !== e.j0 || this.j1[i] !== e.j1 || this.ms[i] !== e.ms ||
+        this.zo[i] !== e.zo || this.zn[i] !== e.zn || this.ow[i] !== e.ow || this.np[i] !== e.np) {
+      throw new Error('EdgeStore: valore fuori colonna nell\'arco ' + i);
+    }
+
+    this.runOffset[i] = this.runsUsed;
+    this.runCount[i] = e.runs.length;
+    this.runs = growTyped(this.runs, this.runsUsed + e.runs.length);
+    this.runs.set(e.runs, this.runsUsed);
+    this.runsUsed += e.runs.length;
+
+    this.curveOffset[i] = this.curvesUsed;
+    this.curveCount[i] = e.curves.length;
+    const nextCurves = this.curvesUsed + e.curves.length;
+    this.curves = growTyped(this.curves, 6 * nextCurves);
+    this.stPresent = growTyped(this.stPresent, nextCurves);
+    for (const c of e.curves) {
+      const k = this.curvesUsed++;
+      const o = 6 * k;
+      this.curves[o] = c.d0;
+      this.curves[o + 1] = c.d1;
+      this.curves[o + 2] = c.dir;
+      this.curves[o + 3] = c.c;
+      this.curves[o + 4] = c.r;
+      this.stPresent[k] = Object.prototype.hasOwnProperty.call(c, 'st') ? 1 : 0;
+      this.curves[o + 5] = this.stPresent[k] ? c.st : NaN;
+    }
+
+    this.rgIndex[i] = this._code(e.rg, this.rgTable, this.rgCodes, 65536);
+    this.viaIndex[i] = this._code(e.via, this.viaTable, this.viaCodes, 2 ** 31);
+    this.rifIndex[i] = this._code(e.rif, this.rifTable, this.rifCodes, 2 ** 31);
+    this.zbIndex[i] = e.zb === null
+      ? 65535
+      : this._code(e.zb, this.zbTable, this.zbCodes, 65535);
+
+    if (e.dos !== null || e.dis !== null || e.stp !== null || e.nv !== null) {
+      this.sparse.set(i, { dos: e.dos, dis: e.dis, stp: e.stp, nv: e.nv });
+    }
+
+    this.n++;
+    return i;
+  }
+
+  _valid(i) {
+    return Number.isInteger(i) && i >= 0 && i < this.n;
+  }
+
+  _materialize(i) {
+    const b = this.blocks[this.block[i]];
+    const p = this.pointOffset[i];
+    const curves = this.curveCount[i] === 0 ? this.senzaCurve : [];
+    for (let k = this.curveOffset[i];
+         k < this.curveOffset[i] + this.curveCount[i]; k++) {
+      const o = 6 * k;
+      const c = {
+        d0: this.curves[o],
+        d1: this.curves[o + 1],
+        dir: this.curves[o + 2],
+        c: this.curves[o + 3],
+        r: this.curves[o + 4]
+      };
+      if (this.stPresent[k]) c.st = this.curves[o + 5];
+      curves.push(c);
+    }
+    const sparse = this.sparse.get(i);
+    const zi = this.zbIndex[i];
+    return {
+      xy: b.xy.subarray(2 * p, 2 * (p + this.np[i])),
+      cum: b.cum.subarray(p, p + this.np[i]),
+      np: this.np[i],
+      L: this.L[i],
+      len: this.len[i],
+      sc: this.sc[i],
+      runs: Array.from(this.runs.subarray(
+        this.runOffset[i], this.runOffset[i] + this.runCount[i]
+      )),
+      curves,
+      rank: this.rank[i],
+      j0: this.j0[i],
+      j1: this.j1[i],
+      ms: this.ms[i],
+      zb: zi === 65535 ? null : this.zbTable[zi],
+      zo: this.zo[i],
+      zn: this.zn[i],
+      zs: undefined,
+      zsR: undefined,
+      dos: sparse ? sparse.dos : null,
+      dis: sparse ? sparse.dis : null,
+      stp: sparse ? sparse.stp : null,
+      nv: sparse ? sparse.nv : null,
+      id: i,
+      rg: this.rgTable[this.rgIndex[i]],
+      ow: this.ow[i],
+      wid: this.wid[i],
+      via: this.viaTable[this.viaIndex[i]],
+      rif: this.rifTable[this.rifIndex[i]]
+    };
+  }
+
+  get(i) {
+    if (!this._valid(i)) return undefined;
+    const slot = i & this.mask;
+    let e = this.cache[slot];
+    if (!e || e.id !== i) {
+      e = this._materialize(i);
+      this.cache[slot] = e;
+    }
+    return e;
+  }
+
+  fresh(i) { return this._valid(i) ? this._materialize(i) : undefined; }
+
+  *[Symbol.iterator]() {
+    for (let i = 0; i < this.n; i++) yield this._materialize(i);
+  }
+
+  ptsOf(i) {
+    if (!this._valid(i)) return undefined;
+    return {
+      pool: this.blocks[this.block[i]].xy,
+      o: 2 * this.pointOffset[i],
+      np: this.np[i]
+    };
+  }
+
+  rankOf(i) { return this._valid(i) ? this.rank[i] : undefined; }
+  lenOf(i) { return this._valid(i) ? this.len[i] : undefined; }
+  j0Of(i) { return this._valid(i) ? this.j0[i] : undefined; }
+  j1Of(i) { return this._valid(i) ? this.j1[i] : undefined; }
+  msOf(i) { return this._valid(i) ? this.ms[i] : undefined; }
+
+  memBytes() {
+    const columns = [
+      this.np, this.block, this.pointOffset, this.L, this.len, this.sc,
+      this.rank, this.j0, this.j1, this.ms, this.zo, this.zn,
+      this.ow, this.wid, this.runOffset, this.runCount,
+      this.curveOffset, this.curveCount, this.rgIndex,
+      this.viaIndex, this.rifIndex, this.zbIndex
+    ];
+    let bytes = columns.reduce((sum, a) => sum + this.n * a.BYTES_PER_ELEMENT, 0);
+    bytes += 4 * this.runsUsed + 8 * 6 * this.curvesUsed + this.curvesUsed;
+    for (const b of this.blocks) bytes += 12 * b.used;
+    for (const table of [this.rgTable, this.viaTable, this.rifTable]) {
+      for (const s of table) bytes += 2 * s.length;
+    }
+    return bytes;
+  }
+}
+
+class GridIndex {
+  constructor() {
+    this.pairs = [];
+    this.count = 0;
+    this.finished = false;
+    this.minX = Infinity;
+    this.maxX = -Infinity;
+    this.minY = Infinity;
+    this.maxY = -Infinity;
+  }
+
+  add(cx, cy, value) {
+    if (this.finished) throw new Error('GridIndex: finish già chiamato');
+    if (!Number.isInteger(cx) || cx < -2147483648 || cx > 2147483647 ||
+        !Number.isInteger(cy) || cy < -2147483648 || cy > 2147483647 ||
+        !Number.isInteger(value) || value < 0 || value > 4294967295) {
+      throw new RangeError('GridIndex: coordinate o valore non validi');
+    }
+    const blockPairs = 32768;
+    if (this.count % blockPairs === 0) {
+      this.pairs.push(new Int32Array(3 * blockPairs));
+    }
+    const a = this.pairs[Math.floor(this.count / blockPairs)];
+    const o = 3 * (this.count % blockPairs);
+    a[o] = cx;
+    a[o + 1] = cy;
+    a[o + 2] = value;
+    this.count++;
+    this.minX = Math.min(this.minX, cx);
+    this.maxX = Math.max(this.maxX, cx);
+    this.minY = Math.min(this.minY, cy);
+    this.maxY = Math.max(this.maxY, cy);
+  }
+
+  finish() {
+    if (this.finished) return;
+    if (this.count === 0) {
+      this.width = 0;
+      this.start = new Uint32Array(1);
+      this.vals = new Uint32Array(0);
+      this.pairs = [];
+      this.finished = true;
+      return;
+    }
+    this.width = this.maxX - this.minX + 1;
+    const height = this.maxY - this.minY + 1;
+    const cells = this.width * height;
+    if (!Number.isSafeInteger(cells) || cells > 4294967294) {
+      throw new RangeError('GridIndex: griglia troppo grande');
+    }
+
+    const start = new Uint32Array(cells + 1);
+    const blockPairs = 32768;
+    for (let i = 0; i < this.count; i++) {
+      const a = this.pairs[Math.floor(i / blockPairs)];
+      const o = 3 * (i % blockPairs);
+      const cell = (a[o + 1] - this.minY) * this.width + a[o] - this.minX;
+      start[cell + 1]++;
+    }
+    for (let c = 0; c < cells; c++) start[c + 1] += start[c];
+
+    const next = start.slice(0, cells);
+    const sorted = new Uint32Array(this.count);
+    for (let i = 0; i < this.count; i++) {
+      const a = this.pairs[Math.floor(i / blockPairs)];
+      const o = 3 * (i % blockPairs);
+      const cell = (a[o + 1] - this.minY) * this.width + a[o] - this.minX;
+      sorted[next[cell]++] = a[o + 2] >>> 0;
+    }
+
+    const compactStart = new Uint32Array(cells + 1);
+    let used = 0;
+    for (let c = 0; c < cells; c++) {
+      compactStart[c] = used;
+      let previous;
+      let first = true;
+      for (let p = start[c]; p < start[c + 1]; p++) {
+        const value = sorted[p];
+        if (first || value !== previous) sorted[used++] = value;
+        previous = value;
+        first = false;
+      }
+    }
+    compactStart[cells] = used;
+    this.start = compactStart;
+    this.vals = sorted.slice(0, used);
+    this.pairs = [];
+    this.finished = true;
+  }
+
+  cell(cx, cy) {
+    if (!this.finished) return undefined;
+    if (!Number.isInteger(cx) || !Number.isInteger(cy) ||
+        cx < this.minX || cx > this.maxX ||
+        cy < this.minY || cy > this.maxY) return undefined;
+    const c = (cy - this.minY) * this.width + cx - this.minX;
+    const begin = this.start[c];
+    const end = this.start[c + 1];
+    return begin === end ? undefined : this.vals.subarray(begin, end);
+  }
+}
+
+class KeyIndex {
+  constructor(nChiavi) {
+    if (nChiavi !== undefined &&
+        (!Number.isInteger(nChiavi) || nChiavi < 0 || nChiavi > 4294967294)) {
+      throw new RangeError('nChiavi non valido');
+    }
+    this.nChiavi = nChiavi;
+    this.maxKey = -1;
+    this.pairs = [];
+    this.count = 0;
+    this.finished = false;
+  }
+
+  add(key, value) {
+    if (this.finished) throw new Error('KeyIndex: finish già chiamato');
+    if (!Number.isInteger(key) || key < 0 ||
+        (this.nChiavi !== undefined && key >= this.nChiavi) ||
+        !Number.isInteger(value) || value < 0 || value > 4294967295) {
+      throw new RangeError('KeyIndex: chiave o valore non validi');
+    }
+    const blockPairs = 32768;
+    if (this.count % blockPairs === 0) {
+      this.pairs.push(new Int32Array(2 * blockPairs));
+    }
+    const a = this.pairs[Math.floor(this.count / blockPairs)];
+    const o = 2 * (this.count % blockPairs);
+    a[o] = key;
+    a[o + 1] = value;
+    if (key > this.maxKey) this.maxKey = key;
+    this.count++;
+  }
+
+  finish() {
+    if (this.finished) return;
+    if (this.nChiavi === undefined) this.nChiavi = this.maxKey + 1;
+    const start = new Uint32Array(this.nChiavi + 1);
+    const blockPairs = 32768;
+    for (let i = 0; i < this.count; i++) {
+      const a = this.pairs[Math.floor(i / blockPairs)];
+      start[a[2 * (i % blockPairs)] + 1]++;
+    }
+    for (let k = 0; k < this.nChiavi; k++) start[k + 1] += start[k];
+
+    const next = start.slice(0, this.nChiavi);
+    const vals = new Uint32Array(this.count);
+    for (let i = 0; i < this.count; i++) {
+      const a = this.pairs[Math.floor(i / blockPairs)];
+      const o = 2 * (i % blockPairs);
+      vals[next[a[o]]++] = a[o + 1] >>> 0;
+    }
+    this.start = start;
+    this.vals = vals;
+    this.pairs = [];
+    this.finished = true;
+  }
+
+  get(key) {
+    if (!this.finished) return undefined;
+    if (!Number.isInteger(key) || key < 0 || key >= this.nChiavi) return undefined;
+    const begin = this.start[key];
+    const end = this.start[key + 1];
+    return begin === end ? undefined : this.vals.subarray(begin, end);
+  }
+}
+
+const MOTORE_NUOVO = (() => { try{
+  const m = /[?&]motore=(vecchio|nuovo)\b/.exec(location.search);
+  const ric = +localStorage.getItem('cd_motore_ricaduta') || 0;
+  if(m && Date.now() - ric > 60000) localStorage.setItem('cd_motore', m[1]);
+  return localStorage.getItem('cd_motore') === 'nuovo';
+}catch(e){ return false } })();
+const SENZA_CURVE = Object.freeze([]);
+class ArchiVecchi extends Array { get(i){ return this[i] } fresh(i){ return this[i] } rankOf(i){ return this[i].rank } }
+class GrigliaCompat {
+  constructor(){ this.ix = new GridIndex() }
+  get(k){ const cx = Math.round(k/100000); return this.ix.cell(cx, k - cx*100000) }
+  finish(){ this.ix.finish() }
+}
+class GiunzioniCompat {
+  constructor(){ this.ix = new KeyIndex() }
+  get(j){ return this.ix.get(j) }
+  finish(){ this.ix.finish() }
+}
+const E = MOTORE_NUOVO ? new EdgeStore({senzaCurve:SENZA_CURVE}) : new ArchiVecchi();
+const GRID = MOTORE_NUOVO ? new GrigliaCompat() : new Map();
+const JUN = MOTORE_NUOVO ? new GiunzioniCompat() : new Map();
+function motoreRicaduta(err){
+  try{
+    nota('motore compatto: errore in caricamento ('+((err && err.message) || err)+'), torno al vecchio');
+    localStorage.setItem('cd_motore', 'vecchio'); localStorage.setItem('cd_motore_ricaduta', String(Date.now()));
+  }catch(e){}
+  location.reload();
+}
 const QUOTA_CORTO_M = 150;
 const _quotaCanCache = new Map();
 const CELL = 1500;
@@ -2274,7 +2761,6 @@ let BB = [1e12,1e12,-1e12,-1e12];
 const JKEY = new Map();
 function gjun(osm){ let g=JKEY.get(osm); if(g===undefined){ g=JKEY.size; JKEY.set(osm,g) } return g }
 
-const SENZA_CURVE = Object.freeze([]);
 const WOWN = new Map();
 const GSEEN = new Set(), CSEEN = new Set(), PSEEN = new Set();
 const VIE = {};
@@ -24309,12 +24795,49 @@ const CURATI = [
 ];
 const CURATI_M = 20;
 let CURATI_PER_VIA = null, CURATI_PRESI = 0, CURATI_PERSI = 0;
-function correggiCurati(curves, xy, np, cum, sc, wid){
+function curatiMappa(){
   if(!CURATI_PER_VIA){
     CURATI_PER_VIA = new Map();
     for(const k of CURATI){ if(!CURATI_PER_VIA.has(k[0])) CURATI_PER_VIA.set(k[0], []); CURATI_PER_VIA.get(k[0]).push(k) }
   }
-  const qui = wid ? CURATI_PER_VIA.get(wid) : null;
+  return CURATI_PER_VIA;
+}
+let COR_LIM = null;
+const COR_VISTE = new Set();
+let COR_CURVE_N = 0, COR_LIM_N = 0, COR_LIM_PRESI = 0;
+function preparaCor(j, r){
+  if(!j || !(Array.isArray(j.c) || Array.isArray(j.l))) return null;
+  const mappa = curatiMappa();
+  for(const k of (Array.isArray(j.c) ? j.c : [])){
+    if(!Array.isArray(k) || k.length < 4 || !(k[0] > 0) || !isFinite(k[1]) || !isFinite(k[2])) continue;
+    if(!(k[3] === 't' || (Number.isInteger(k[3]) && k[3] >= 0 && k[3] <= 6))) continue;
+    const ch = 'c|' + k[0] + '|' + k[1] + '|' + k[2] + '|' + k[3];
+    if(COR_VISTE.has(ch)) continue; COR_VISTE.add(ch);
+    if(!mappa.has(k[0])) mappa.set(k[0], []);
+    mappa.get(k[0]).push([k[0], k[1], k[2], k[3]]); COR_CURVE_N++;
+  }
+  for(const k of (Array.isArray(j.l) ? j.l : [])){
+    if(!Array.isArray(k) || k.length < 4 || !(k[0] > 0) || !isFinite(k[1]) || !isFinite(k[2])) continue;
+    if(!(Number.isInteger(k[3]) && k[3] >= 10 && k[3] <= 130 && k[3] % 10 === 0)) continue;
+    const ch = 'l|' + k[0] + '|' + k[1] + '|' + k[2] + '|' + k[3];
+    if(COR_VISTE.has(ch)) continue; COR_VISTE.add(ch);
+    if(!COR_LIM) COR_LIM = new Map();
+    if(!COR_LIM.has(k[0])) COR_LIM.set(k[0], []);
+    COR_LIM.get(k[0]).push([k[1], k[2], k[3]]); COR_LIM_N++;
+  }
+  console.log('correzioni', r.id + ':', COR_CURVE_N, 'curve,', COR_LIM_N, 'limiti');
+  return {curve: COR_CURVE_N, limiti: COR_LIM_N};
+}
+function applicaCorLimiti(e){
+  if(!COR_LIM || !e.wid) return;
+  const q = COR_LIM.get(e.wid); if(!q) return;
+  if(msLibero(e.ms)) return;
+  let best = null, bd = CURATI_M;
+  for(const k of q){ const [x, y] = toXY(k[1], k[0]); const d = projectOn(e, x, y).d; if(d <= bd){ bd = d; best = k } }
+  if(best){ e.ms = best[2]; COR_LIM_PRESI++ }
+}
+function correggiCurati(curves, xy, np, cum, sc, wid){
+  const qui = wid ? curatiMappa().get(wid) : null;
   if(!qui) return curves;
   let togli = null;
   for(const k of qui){
@@ -24408,14 +24931,20 @@ async function buildEdges(rid, map, avanza){
                id:E.length, rg:rid, ow:ow||0, wid:Math.abs(wid||0),
                via:(nomeIdx!=null && nomeIdx>=0 && VIE[rid]) ? VIE[rid][nomeIdx] : '',
                rif:(rifIdx>=0 && RIF[rid]) ? (RIF[rid][rifIdx]||'') : ''};
+    applicaCorLimiti(e);
     if(rotondaTag===1) ROTONDA.add(e.id);
     if(clsTag) CLSARCO.set(e.id, clsTag);
     map[k] = e.id;
     E.push(e);
-    if (!JUN.has(gj0)) JUN.set(gj0,[]); JUN.get(gj0).push(e.id);
-    if (!JUN.has(gj1)) JUN.set(gj1,[]); JUN.get(gj1).push(e.id);
-    for (const gj of [gj0, gj1]) if (_quotaCanCache.delete(gj))
-      for (const id of JUN.get(gj)) { const o=E[id]; if (o.len<QUOTA_CORTO_M) o.zs=undefined; }
+    if (MOTORE_NUOVO) { JUN.ix.add(gj0, e.id); JUN.ix.add(gj1, e.id) }
+    else {
+      if (!JUN.has(gj0)) JUN.set(gj0,[]); JUN.get(gj0).push(e.id);
+      if (!JUN.has(gj1)) JUN.set(gj1,[]); JUN.get(gj1).push(e.id);
+    }
+    for (const gj of [gj0, gj1]) if (_quotaCanCache.delete(gj)) {
+      if (MOTORE_NUOVO) throw new Error('cache delle quote viva durante il caricamento');
+      for (const id of JUN.get(gj)) { const o=E.get(id); if (o.len<QUOTA_CORTO_M) o.zs=undefined; }
+    }
     for (let i=0;i<np;i++){
       const x=xy[2*i], y=xy[2*i+1];
       if(x<BB[0])BB[0]=x; if(y<BB[1])BB[1]=y; if(x>BB[2])BB[2]=x; if(y>BB[3])BB[3]=y;
@@ -24429,8 +24958,9 @@ async function buildEdges(rid, map, avanza){
         const kk = ckey(Math.floor(px/CELL), Math.floor(py/CELL));
         if (kk===pk) continue;
         pk=kk;
-        let a = GRID.get(kk); if(!a){a=[];GRID.set(kk,a)}
-        if (a[a.length-1] !== e.id) a.push(e.id);
+        if (MOTORE_NUOVO) GRID.ix.add(Math.floor(px/CELL), Math.floor(py/CELL), e.id);
+        else { let a = GRID.get(kk); if(!a){a=[];GRID.set(kk,a)}
+          if (a[a.length-1] !== e.id) a.push(e.id); }
       }
     }
   }
@@ -24488,7 +25018,7 @@ async function buildDossi(){
   let t0 = performance.now();
   for(let n=0;n<E.length;n++){
     if((n & 1023) === 0 && performance.now() - t0 > FETTA_MS){ await cedi(); t0 = performance.now() }
-    const e = E[n];
+    const e = E.get(n);
     const o = e.dos;
     if(o && o.length) for(let q=0;q<o.length;q++){
       const d = o[q];
@@ -25697,6 +26227,8 @@ const T = {
     carCambia:'Cambia veicolo', carCambiaSub:'se non è questo il tuo veicolo',
     profAgg:n=>'La scheda del tuo '+(n||'veicolo')+' è stata aggiornata.',
     segnNoGps:'Serve la posizione: accendi il GPS e aspetta l\'aggancio.',
+    segnLimTit:'Il limite qui è…', segnCurvaTit:'La curva qui è…', segnIndietro:'‹ Indietro',
+    segnStretta:'Più stretta di come la dici', segnLarga:'Più larga di come la dici', segnNonC:'Non c\'è una curva',
     segnFatto:'✓ Segnalato, grazie! · Tocca per annullare',
     segnAnnullata:'Segnalazione annullata.',
     voceSilenzio:'Non senti la voce? Controlla che il telefono non sia in silenzioso o in vibrazione.',
@@ -25883,6 +26415,8 @@ const T = {
     carCambia:'Change vehicle', carCambiaSub:'if this is not your vehicle',
     profAgg:n=>'Your '+(n||'vehicle')+' profile has been updated.',
     segnNoGps:'Position needed: turn the GPS on and wait for a fix.',
+    segnLimTit:'The limit here is…', segnCurvaTit:'The corner here is…', segnIndietro:'‹ Back',
+    segnStretta:'Tighter than you call it', segnLarga:'Wider than you call it', segnNonC:'There is no corner',
     segnFatto:'✓ Reported, thanks! · Tap to undo',
     segnAnnullata:'Report cancelled.',
     voceSilenzio:'Can\'t hear the voice? Make sure your phone is not on silent or vibrate.',
@@ -26069,6 +26603,8 @@ const T = {
     carCambia:'Changer de véhicule', carCambiaSub:'si ce n\'est pas ton véhicule',
     profAgg:n=>'La fiche de ton '+(n||'véhicule')+' a été mise à jour.',
     segnNoGps:'La position est nécessaire : active le GPS et attends le point.',
+    segnLimTit:'La limite ici est…', segnCurvaTit:'Le virage ici est…', segnIndietro:'‹ Retour',
+    segnStretta:'Plus serré que tu ne l\'annonces', segnLarga:'Plus large que tu ne l\'annonces', segnNonC:'Il n\'y a pas de virage',
     segnFatto:'✓ Signalé, merci ! · Touche pour annuler',
     segnAnnullata:'Signalement annulé.',
     voceSilenzio:'Tu n\'entends pas la voix ? Vérifie que le téléphone n\'est pas en silencieux ou en vibreur.',
@@ -27458,7 +27994,7 @@ function quotaCanonica(j){
   const lista = JUN.get(j);
   let migliore=null, miglioreLen=-1;
   if(lista) for(const id of lista){
-    const o=E[id], zso=quoteArcoRaw(o); if(!zso) continue;
+    const o=E.get(id), zso=quoteArcoRaw(o); if(!zso) continue;
     if(o.len>miglioreLen){ miglioreLen=o.len; migliore=zso[o.j0===j?0:o.np-1] }
   }
   _quotaCanCache.set(j, migliore);
@@ -27568,7 +28104,7 @@ function tracciati3d(c0,c1,r0,r1){
     if(ids) for(const id of ids){
       if(visti.has(id)) continue;
       visti.add(id);
-      const e=E[id], xy=e.xy;
+      const e=E.get(id), xy=e.xy;
       const m=(e.np>>1)*2, u=(e.np-1)*2;
       const Ym=-(xy[m]-CAM.cx)*CAM.s+(xy[m+1]-CAM.cy)*CAM.c;
       const Ya=-(xy[0]-CAM.cx)*CAM.s+(xy[1]-CAM.cy)*CAM.c;
@@ -27631,7 +28167,7 @@ function cellPaths(kk0){
   let grey=null;
   const grigia = () => (grey || (grey=new Path2D()));
   if(ids) for(const id of ids){
-    const e=E[id], xy=e.xy, runs=e.runs;
+    const e=E.get(id), xy=e.xy, runs=e.runs;
     const banda = e.rank>=RANGO.grigio ? 0 : e.rank>=RANGO.sfuma ? 2 : 1;
     let a=0;
     const fuori = foco && !foco.has(id);
@@ -27659,8 +28195,9 @@ function backbone(){
   const foco=focoRotta(), sn = foco ? S.nav.sn : 0;
   if(BACKBONE && BACKBONE_SN===sn) return BACKBONE;
   const paths=CLS.map(()=>new Path2D());
-  for(const e of E){
-    if(e.rank>RANGO.backbone) continue;
+  for(let ei=0, nEi=E.length; ei<nEi; ei++){
+    if(E.rankOf(ei)>RANGO.backbone) continue;
+    const e=E.fresh(ei);
     const xy=e.xy, runs=e.runs, fuori = foco && !foco.has(e.id); let a=0;
     for(let m=0;m<runs.length;m+=2){
       const b=runs[m], cl=fuori ? RETTO : runs[m+1], P=paths[cl];
@@ -28017,7 +28554,7 @@ function catenaVia(e0, visti, campo, maxRank){
     const vic=JUN.get(nodo); if(!vic) return null;
     for(const id of vic){
       if(visti.has(id)) continue;
-      const c=E[id];
+      const c=E.get(id);
       if(c[cp]===nome && c.rank<=rk) return c;
     }
     return null;
@@ -28051,7 +28588,7 @@ function piazzaRif(libero, occupa){
     const ids=GRID.get(ckey(cx,cy)); if(!ids) continue;
     for(const id of ids){
       if(visti.has(id)) continue;
-      const e=E[id];
+      const e=E.get(id);
       if(!e.rif || e.rank>RIFV.maxRank){ visti.add(id); continue }
       if((quanti.get(e.rif)||0)>=RIFV.perNome){ visti.add(id); continue }
       if(e._rw===undefined) e._rw=ctx.measureText(e.rif).width;
@@ -28106,7 +28643,7 @@ function piazzaVie(libero, occupa){
     const ids=GRID.get(ckey(cx,cy)); if(!ids) continue;
     for(const id of ids){
       if(visti.has(id)) continue;
-      const e=E[id];
+      const e=E.get(id);
       if(!e.via || e.rank>RANGOVIE){ visti.add(id); continue }
       if((quanti.get(e.via)||0)>=VIA.perNome){ visti.add(id); continue }
       if(e._vw===undefined) e._vw=ctx.measureText(e.via).width;
@@ -28716,7 +29253,7 @@ function matchRoad(x,y,hd){
   const cands=nearEdges(x,y,80);
   let best=null, allineati=0;
   for(const id of cands){
-    const e=E[id], pr=projectOn(e,x,y);
+    const e=E.get(id), pr=projectOn(e,x,y);
     if(pr.d>80) continue;
     let score=pr.d;
     let dir=1;
@@ -28756,7 +29293,7 @@ function nextEdge(e,dir){
   let best=null, bestAny=null;
   for(const id of list){
     if(id===e.id) continue;
-    const o=E[id];
+    const o=E.get(id);
     let odir, oh;
     if(o.j0===jn){ odir=1; oh=segHeading(o,0) }
     else if(o.j1===jn){ odir=-1; oh=segHeading(o,o.np-2)+Math.PI }
@@ -28810,7 +29347,7 @@ function avanzaArco(e, dir, i, t, metri){
     const jn = cd>0 ? cur.j1 : cur.j0, lista = JUN.get(jn);
     if(lista){
       let alt = 0;
-      for(const id of lista){ const o=E[id]; if(id!==cur.id && o.rank<RANGO.minore && percorribile(o,jn)) alt++; }
+      for(const id of lista){ const o=E.get(id); if(id!==cur.id && o.rank<RANGO.minore && percorribile(o,jn)) alt++; }
       if(alt>=2) bivio = true;
     }
     const nx=prossimoArco(cur,cd);
@@ -29580,7 +30117,7 @@ function incrocioSemplice(e, dir, jn){
   if(inPaese(e) || S.v < INCROCIO_VMIN) return false;
   const l = JUN.get(jn)||[]; if(l.length < 3) return false;
   let altri = 0;
-  for(const id of l){ const o=E[id]; if(!o || o.id===e.id) continue;
+  for(const id of l){ const o=E.get(id); if(!o || o.id===e.id) continue;
     if(ROTONDA.has(o.id)) return false;
     if(o.wid !== e.wid) altri++; }
   return altri > 0;
@@ -29591,7 +30128,7 @@ function precedenzaDedotta(e, dir, jn){
   const mia = e.rank|0; if(mia <= DEDOTTA_CLS) return false;
   let min = 9;
   for(const id of (JUN.get(jn)||[])){
-    const o = E[id]; if(!o || o.id === e.id || o.wid === e.wid) continue;
+    const o = E.get(id); if(!o || o.id === e.id || o.wid === e.wid) continue;
     if(ROTONDA.has(o.id)) return false;
     if((o.rank|0) < min) min = o.rank|0;
   }
@@ -30194,7 +30731,7 @@ function agganciaLinea(p){
       const x = xa + (xb-xa)*(k+0.5)/n, y = ya + (yb-ya)*(k+0.5)/n;
       let best = null;
       for(const id of nearEdges(x, y, 25)){
-        const e = E[id], pr = projectOn(e, x, y);
+        const e = E.get(id), pr = projectOn(e, x, y);
         if(pr.d > 15 || (best && pr.d >= best.d)) continue;
         const sh = segHeading(e, pr.i), dv = Math.abs(angDiff(hd, sh)), db = Math.abs(angDiff(hd, sh+Math.PI));
         if(Math.min(dv, db) > 0.5) continue;
@@ -30786,6 +31323,10 @@ document.getElementById('instPopX').onclick = () => {
   document.getElementById('instPop').hidden = true;
   avviaGpsSePronto();
 };
+function nMigl(n){
+  const p = String(Number(n)).split('.');
+  return p[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (p[1] ? ',' + p[1] : '');
+}
 async function gpsWhy(){
   let stato = 'non leggibile';
   try{ stato = (await navigator.permissions.query({name:'geolocation'})).state }catch(e){}
@@ -31395,7 +31936,10 @@ function rcEsitoAdesivo(testo){
     return s;
   }
   function fmtKm(m, lingua) { return fmtNum(m / 1000, m < 100000 ? 1 : 0, lingua) + ' km'; }
-  function fmtM(m) { return Math.round(m) + ' m'; }
+  function fmtM(m, lingua) {
+    var sep = lingua === 'en' ? ',' : lingua === 'fr' ? '\u00a0' : '.';
+    return String(Math.round(m)).replace(/\B(?=(\d{3})+(?!\d))/g, sep) + ' m';
+  }
   function fmtDurata(ms) {
     var min = Math.max(1, Math.round(ms / 60000));
     if (min < 60) return min + ' min';
@@ -31410,12 +31954,12 @@ function rcEsitoAdesivo(testo){
     var totRif = (g.velRifSotto || 0) + (g.velRifLinea || 0) + (g.velRifSopra || 0);
     if (g.m > 0) out.push({ k: 'dist', l: t.dist, v: fmtKm(g.m, lingua) });
     if (dur) out.push({ k: 'dur', l: t.dur, v: fmtDurata(dur) });
-    if (g.dislivello > 0) out.push({ k: 'disl', l: t.disl, v: fmtM(g.dislivello) });
+    if (g.dislivello > 0) out.push({ k: 'disl', l: t.disl, v: fmtM(g.dislivello, lingua) });
     if (g.cv) out.push({ k: 'torn', l: t.torn, v: String(g.cv[0] || 0) });
     if (g.cv) out.push({ k: 'curve', l: t.curve, v: String(totCurve) });
     if (totRif > 0) out.push({ k: 'inLinea', l: t.inLinea, v: Math.round((g.velRifLinea || 0) / totRif * 100) + '%' });
-    if (g.quotaMax != null) out.push({ k: 'qm', l: t.qm, v: fmtM(g.quotaMax) });
-    if (g.rMin > 0) out.push({ k: 'stretta', l: t.stretta, v: fmtM(g.rMin) });
+    if (g.quotaMax != null) out.push({ k: 'qm', l: t.qm, v: fmtM(g.quotaMax, lingua) });
+    if (g.rMin > 0) out.push({ k: 'stretta', l: t.stretta, v: fmtM(g.rMin, lingua) });
     if (g.marcia > 0) out.push({ k: 'marcia', l: t.marcia, v: t.marciaFmt(g.marcia) });
     if (dur && g.m > 0) out.push({ k: 'media', l: t.media, v: Math.round((g.m / 1000) / (dur / 3600000)) + ' km/h' });
     return out;
@@ -32019,7 +32563,10 @@ function rcFmtDurata(ms){
   var h = Math.floor(min/60), r = min%60;
   return h + 'h' + (r ? ' ' + r + 'min' : '');
 }
-function rcFmtM(m){ return Math.round(m) + ' m'; }
+function rcFmtM(m){
+  var sep = L==='en' ? ',' : L==='fr' ? '\u00a0' : '.';
+  return String(Math.round(m)).replace(/\B(?=(\d{3})+(?!\d))/g, sep) + ' m';
+}
 var RC_COL_CLASSI = ['#ff2e6e','#ff4438','#ff8a1e','#ffbe17','#ffe14f','#9fdf4e','#2fce7a'];
 function rcDecodificaTraccia(g){
   var pts = [], x=0, y=0;
@@ -32249,12 +32796,12 @@ function startDemo(){
     const ids=nearEdges(S.cx,S.cy,4000);
     let best=null;
     for(const id of ids){
-      const o=E[id]; if(o.len<300) continue;
+      const o=E.get(id); if(o.len<300) continue;
       const [x,y]=posAt(o,o.len/2);
       const sc=Math.hypot(x-S.cx,y-S.cy)+o.rank*600;
       if(!best||sc<best.sc) best={o,sc};
     }
-    e=best?best.o:E[0];
+    e=best?best.o:E.get(0);
   }
   setMode('demo'); S.said.clear(); S.scale=Math.max(S.scale,1.7); wakeOn();
   S.demo={e, dir:1, d:0, v:12};
@@ -32470,6 +33017,14 @@ function veloxLecito(f){
 function apriSegnala(){
   const fresca = ULTIMA_FIX && (Date.now() - ULTIMA_FIX.t) < 15000;
   SEGN_PUNTO = fresca ? Object.assign({}, ULTIMA_FIX) : null;
+  const sn = S.snap && S.snap.e && S.snap.d <= 15 ? S.snap.e : null;
+  if(SEGN_PUNTO){ SEGN_PUNTO.wid = sn && sn.wid ? sn.wid : null;
+                  const lm = sn ? edgeLimit(sn) : null;
+                  SEGN_PUNTO.limApp = lm && isFinite(lm.v) ? Math.round(lm.v) : null;
+                  SEGN_PUNTO.libero = !!(lm && lm.libero) }
+  document.getElementById('segnLimite').hidden = !(SEGN_PUNTO && SEGN_PUNTO.wid && !SEGN_PUNTO.libero);
+  document.getElementById('segnCurva').hidden = !(SEGN_PUNTO && SEGN_PUNTO.wid);
+  segnSubChiudi();
   const stato = document.getElementById('segnStato');
   stato.hidden = !!SEGN_PUNTO;
   stato.textContent = SEGN_PUNTO ? '' : tr().segnNoGps;
@@ -32496,7 +33051,7 @@ function oraConFuso(t){
          p(d.getMinutes())+':'+p(d.getSeconds())+(o<0?'-':'+')+
          p(Math.floor(Math.abs(o)/60))+':'+p(Math.abs(o)%60);
 }
-function segnala(cosa){
+function segnala(cosa, extra){
   const f = SEGN_PUNTO; if(!f) return;
   const riga = {
     v:1, tipo:'segnalazione', cosa: cosa,
@@ -32505,6 +33060,13 @@ function segnala(cosa){
     kmh: Math.round((f.kmh || 0)/5)*5, acc: Math.round(f.acc || 0),
     ora: oraConFuso(f.t), tester: TESTER || '?', build: APPVER, id: segnId()
   };
+  if(extra && (cosa === 'limite' || cosa === 'curva') && f.wid){
+    riga.via_osm = f.wid;
+    if(cosa === 'limite' && Number.isInteger(extra.valore) && extra.valore >= 10 && extra.valore <= 130 && extra.valore % 10 === 0){
+      riga.valore = extra.valore; riga.lim_app = f.limApp }
+    else if(cosa === 'curva' && ['piu_stretta', 'piu_larga', 'togli'].includes(extra.curva)) riga.curva = extra.curva;
+    else return;
+  } else if(cosa === 'limite' || cosa === 'curva') return;
   const coda = segnLeggi(); coda.push({id: riga.id, dopo: Date.now()+5000, r: riga}); segnScrivi(coda);
   closeSheets();
   try{ if(navigator.vibrate) navigator.vibrate(30) }catch(e){}
@@ -32535,7 +33097,28 @@ addEventListener('online', svuotaSegn);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) svuotaSegn() });
 document.getElementById('segnNord').onclick = () => { nordInAlto(); closeSheets() };
 document.querySelectorAll('#sheetSegna .segn-b').forEach(b =>
-  b.onclick = () => segnala(b.dataset.cosa));
+  b.onclick = () => (b.dataset.cosa === 'limite' || b.dataset.cosa === 'curva') ? segnSubApri(b.dataset.cosa) : segnala(b.dataset.cosa));
+function segnSubChiudi(){
+  document.getElementById('segnSub').hidden = true;
+  document.querySelector('#sheetSegna .segn-grid').hidden = false;
+}
+function segnSubApri(cosa){
+  const sub = document.getElementById('segnSub'), g = document.getElementById('segnSubG');
+  document.getElementById('segnSubT').textContent = cosa === 'limite' ? tr().segnLimTit : tr().segnCurvaTit;
+  g.innerHTML = '';
+  const scelte = cosa === 'limite'
+    ? [10,20,30,40,50,60,70,80,90,100,110,120,130].map(v => ({t: String(v), x: {valore: v}, p: true}))
+    : [{t: tr().segnStretta, x: {curva: 'piu_stretta'}}, {t: tr().segnLarga, x: {curva: 'piu_larga'}}, {t: tr().segnNonC, x: {curva: 'togli'}}];
+  for(const sc of scelte){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'segn-b piccolo' + (sc.p ? '' : ' testo'); b.textContent = sc.t;
+    b.onclick = () => segnala(cosa, sc.x);
+    g.appendChild(b);
+  }
+  const ind = document.getElementById('segnSubIndietro'); ind.textContent = tr().segnIndietro; ind.onclick = segnSubChiudi;
+  document.querySelector('#sheetSegna .segn-grid').hidden = true;
+  sub.hidden = false;
+}
 
 const sheets={set:document.getElementById('sheetSet'),car:document.getElementById('sheetCar'),
               legend:document.getElementById('sheetLegend'),
@@ -32566,7 +33149,7 @@ function mostraPerf(){
   const el=document.getElementById('infoPerf'); if(!el) return;
   const giro = ++perfGiro;
   const scrivi=()=>{ if(giro!==perfGiro || !sheets.info.classList.contains('show')) return;
-    el.textContent = tr().perf(fpsVisto||'—', E.length.toLocaleString('it-IT'));
+    el.textContent = tr().perf(fpsVisto||'—', nMigl(E.length));
     const v=document.getElementById('infoVer');
     if(v) v.textContent = tr().ver(APPVER, INSTALLATA);
     mostraRegistro();
@@ -32744,9 +33327,9 @@ function rigaRegione(r){
     const nmB=document.createElement('b');
     nmB.textContent=r.nm;
     const nmS=document.createElement('span');
-    nmS.textContent=MB(pesoTot(r))+' · '+r.km.toLocaleString('it-IT')+' km · '+
-      r.curve.toLocaleString('it-IT')+(L==='it'?' curve':L==='fr'?' virages':' corners')+
-      (r.vie?' · '+r.vie.toLocaleString('it-IT')+(L==='it'?' vie':L==='fr'?' rues':' streets'):'');
+    nmS.textContent=MB(pesoTot(r))+' · '+nMigl(r.km)+' km · '+
+      nMigl(r.curve)+(L==='it'?' curve':L==='fr'?' virages':' corners')+
+      (r.vie?' · '+nMigl(r.vie)+(L==='it'?' vie':L==='fr'?' rues':' streets'):'');
     nm.appendChild(nmB);
     nm.appendChild(nmS);
     row.appendChild(nm);
@@ -33066,7 +33649,7 @@ function montaInvito(){
     bt.onclick = () => {
       es.textContent = '';
       const testo = (inp.value || '').trim();
-      const grezzi = [], re = /[#&?]p=([^&\s#]+)/g;
+      const grezzi = [], re = /(?:^|[#&?])p=([^&\s#]+)/g;
       let mp;
       while((mp = re.exec(testo))){ try{ grezzi.push(decodeURIComponent(mp[1])) }catch(e){} }
       if(!grezzi.length){ const solo = testo.match(/^([12]\.[^\s&#]+)$/); if(solo) grezzi.push(solo[1]) }
@@ -33949,7 +34532,7 @@ let press=null;
 function nomePunto(x,y){
   let best=null;
   for(const id of nearEdges(x,y,300)){
-    const e=E[id]; if(!e.via) continue;
+    const e=E.get(id); if(!e.via) continue;
     const pr=projectOn(e,x,y);
     if(!best||pr.d<best.d) best={d:pr.d,n:e.via};
   }
@@ -34160,6 +34743,8 @@ async function boot(){
     RDIS = null;
     try{ RDIS = preparaDis(await leggiFile(disUrl(r), r.id), r) }
     catch(err){ console.warn('dissestate non caricate:', err.message) }
+    try{ preparaCor(await leggiFile(corUrl(r), r.id), r) }
+    catch(err){ console.warn('correzioni non caricate:', err.message) }
     RSTP = null;
     try{ RSTP = preparaStp(await leggiFile(stpUrl(r), r.id), r) }
     catch(err){ console.warn('stop non caricati:', err.message) }
@@ -34172,8 +34757,10 @@ async function boot(){
     catch(err){ console.warn('case non caricate:', err.message) }
     const map = new Int32Array(RAW.edges.length);
     const scritta = splashMsg.textContent; let pct = -1;
-    await buildEdges(r.id, map, f => { const q = Math.round(f*100);
-      if(q !== pct){ pct = q; splashMsg.textContent = scritta + ' ' + q + '%' } });
+    try{
+      await buildEdges(r.id, map, f => { const q = Math.round(f*100);
+        if(q !== pct){ pct = q; splashMsg.textContent = scritta + ' ' + q + '%' } });
+    }catch(err){ if(MOTORE_NUOVO){ motoreRicaduta(err); return } throw err }
     await buildGrey(); buildCams(map); buildRestr();
     for(const p of RAW.places){
       const pk = p[0]+'|'+Math.round(p[1]*100)+','+Math.round(p[2]*100);
@@ -34188,6 +34775,7 @@ async function boot(){
     RAW = null;
   }
 
+  if(MOTORE_NUOVO){ GRID.finish(); JUN.finish(); JKEY.clear(); nota('motore compatto acceso: '+E.length+' archi, '+Math.round(E.memBytes()/1048576)+' MB di colonne') }
   aggiornaVmax();
   await buildDossi();
   contaCuratiPersi();
@@ -34200,8 +34788,8 @@ async function boot(){
       : 'Update available for: '+nomi+'. This copy is missing motorways, slip roads and gradient. Open Maps, delete and download again.', 12000), 1500);
   }
   const kmN = att.reduce((a,r)=>a+r.km,0), ncN = att.reduce((a,r)=>a+r.curve,0);
-  const km=kmN.toLocaleString('it-IT'), nc=ncN.toLocaleString('it-IT'),
-        ne=E.length.toLocaleString('it-IT');
+  const km=nMigl(kmN), nc=nMigl(ncN),
+        ne=nMigl(E.length);
   const htmlSicuro = x => String(x==null?'':x).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const nomi = att.map(r=>r.nm), gen = htmlSicuro(att.map(r=>r.gen).sort().pop());
   const lista = n => n.length===1 ? '<b>'+htmlSicuro(n[0])+'</b>'
