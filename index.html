@@ -15,7 +15,7 @@ var STATO;
 (function(){
   'use strict';
   var ON = true;
-  var B = parseInt('359', 10);
+  var B = parseInt('360', 10);
   var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
   var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
   var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
@@ -124,7 +124,7 @@ var STATO;
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v359';
+  const VERSIONE = 'copilota-app-v360';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1524,7 +1524,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '359';
+const APPVER = '360';
 const REG_EXTRA = 'regions-libero.json';
 const REG_EXTRA_K = 'codriver-regions-libero-v1';
 let RAW = null;
@@ -2728,7 +2728,7 @@ const MOTORE_NUOVO = (() => { try{
   const m = /[?&]motore=(vecchio|nuovo)\b/.exec(location.search);
   const ric = +localStorage.getItem('cd_motore_ricaduta') || 0;
   if(m && Date.now() - ric > 60000) localStorage.setItem('cd_motore', m[1]);
-  return localStorage.getItem('cd_motore') === 'nuovo';
+  return localStorage.getItem('cd_motore') !== 'vecchio';
 }catch(e){ return false } })();
 const SENZA_CURVE = Object.freeze([]);
 class ArchiVecchi extends Array { get(i){ return this[i] } fresh(i){ return this[i] } rankOf(i){ return this[i].rank } }
@@ -2749,6 +2749,7 @@ function motoreRicaduta(err){
   try{
     nota('motore compatto: errore in caricamento ('+((err && err.message) || err)+'), torno al vecchio');
     localStorage.setItem('cd_motore', 'vecchio'); localStorage.setItem('cd_motore_ricaduta', String(Date.now()));
+    localStorage.removeItem(AVVIOK);
   }catch(e){}
   location.reload();
 }
@@ -26824,7 +26825,10 @@ if(autoDalLink || profiloDalLink) save();
                        'sidecar-scartato', 'ripresa-a-freddo', 'voce-ripresa',
                        'gps-negato', 'voce-sveglia-negata', 'link-file-diverso',
                        'schermo-negato', 'aggiornata',
-                       'salto-gamba', 'salto-verso'];
+                       'salto-gamba', 'salto-verso',
+                       'nota-scartata-sovrapposta', 'nota-in-coda',
+                       'interrotta-sessione-playback', 'interrotta-sessione-auto',
+                       'interrotta-sessione-transient', 'interrotta-sessione-nd'];
   var CODA = 'codriver-bb-coda-v1';
   var trasporto = null;
   var testerId = '?';
@@ -29739,7 +29743,11 @@ function guardiaVoce(){
       return;
     }
     if(st === 'closed' || !S.audio || document.hidden) return;
-    if(!VOCE_MUTA){ VOCE_MUTA = st; nota('voce muta: audio '+st+' dal sistema'); contaAnomalia('voce-interrotta') }
+    if(!VOCE_MUTA){
+      VOCE_MUTA = st; nota('voce muta: audio '+st+' dal sistema'); contaAnomalia('voce-interrotta');
+      let ts = 'nd'; try{ if('audioSession' in navigator && /^(playback|auto|transient)$/.test(navigator.audioSession.type)) ts = navigator.audioSession.type }catch(e){}
+      contaAnomalia('interrotta-sessione-'+ts);
+    }
     const p = c.resume();
     if(p && p.catch) p.catch(() => {
       nota('la sveglia della voce e\' stata rifiutata dal sistema (serve un tocco)');
@@ -29942,7 +29950,13 @@ function musicaSu(secondi){
   }, Math.max(0, duckFino - performance.now()));
 }
 
-function dilo(chiavi, urgente){
+const CODA_MAX_S = 1.5, CODA_MARGINE_S = 2.5;
+let SCARTO_ULT = '', SCARTO_T = 0;
+function tmaxCoda(distM){
+  const v = Math.max(S.v || 0, 1);
+  return Math.min(CODA_MAX_S, distM/v - CODA_MARGINE_S);
+}
+function dilo(chiavi, urgente, tmax){
   if(!S.audio) return 0;
   const buf=VOCE.buf[vk()], ix=VOCE.idx[vk()];
   if(!buf||!ix) return 0;
@@ -29963,7 +29977,16 @@ function dilo(chiavi, urgente){
       }catch(e){}
     }
   }
-  if(!urgente && VOCE.fino > VOCE.ctx.currentTime) return 0;
+  let inCoda = 0;
+  if(!urgente && VOCE.fino > VOCE.ctx.currentTime){
+    const attesaFrase = VOCE.fino - VOCE.ctx.currentTime;
+    if(tmax > 0 && attesaFrase <= tmax){ inCoda = attesaFrase; contaAnomalia('nota-in-coda') }
+    else{
+      const kk = chiavi.join('|'), ora = performance.now();
+      if(kk !== SCARTO_ULT || ora - SCARTO_T > 5000){ SCARTO_ULT = kk; SCARTO_T = ora; contaAnomalia('nota-scartata-sovrapposta') }
+      return 0;
+    }
+  }
   const attesa = musicaGiu();
   const t0 = Math.max(VOCE.ctx.currentTime + attesa, urgente?0:VOCE.fino||0) + 0.02;
   let t=t0; const nodi=[];
@@ -29986,7 +30009,7 @@ function dilo(chiavi, urgente){
   VOCE.sorgente=nodi; VOCE.fino=t;
   musicaSu(t - VOCE.ctx.currentTime);
   if(nodi.length){ window.SN.annuncio(); try{ if(window.RC) window.RC.annuncio(); }catch(e){} }
-  return t-t0;
+  return t-t0+inCoda;
 }
 VOCE.fino = 0;
 
@@ -30414,7 +30437,7 @@ function updateNote(){
   S.vc = (ANTIC_V2 && dicibile && !presto && !stopDetto) ? {av, el, ch, lead, t: now} : null;
   if(dicibile && (av.dist - S.v*ANTIC_TICK_S <= lead || presto) && !stopDetto){
     if(now-S.lastSaid>900){
-      const durN = dilo(ch, false);
+      const durN = dilo(ch, false, tmaxCoda(av.dist));
       if(durN > 0){
         el.forEach(x => { S.said.add(x.key); if(x.pezzi) x.pezzi.forEach(k => S.said.add(k)) });
         S.lastSaid=now; S.fineNota = now + durN*1000; S.rotaEl = el.map(x => x.key);
