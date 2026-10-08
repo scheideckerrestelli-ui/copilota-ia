@@ -15,18 +15,21 @@ var STATO;
 (function(){
   'use strict';
   var ON = true;
-  var B = parseInt('363', 10);
+  var B = parseInt('364', 10);
   var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
   var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
   var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
   var coda = {}, nChiavi = 0, nEventi = 0, timer = 0, smesso = false;
   var attivo = function(){ return ON && B > 0 && location.host === HOST };
+  var nativo = !!window.cdNativo;
+  var puoiLeggere = function(){ return attivo() || (nativo && ON && B > 0) };
   var valido = function(s){ return !!s && s.v === 1 && typeof s.min === 'number' && Object.prototype.toString.call(s.off) === '[object Array]' };
   var applica = function(s){
     st = {v: 1, min: s.min | 0, off: s.off.filter(function(n){ return typeof n === 'string' }).slice(0, 20), tele: s.tele === true};
+    if(window.cdVelox) window.cdVelox.tabella(s.paesi && typeof s.paesi === 'object' ? s.paesi : null);
   };
   window.STATO = {
-    off: function(n){ return attivo() && st.off.indexOf(n) >= 0 },
+    off: function(n){ return puoiLeggere() && st.off.indexOf(n) >= 0 },
       _stato: function(){ return {on: attivo(), st: st, fresco: fresco, coda: nChiavi} }
   };
   var registra = function(t, nome, riga, col){
@@ -71,19 +74,19 @@ var STATO;
     try{ navigator.serviceWorker.getRegistration().then(function(r){ return r ? r.update() : null }).then(avvisa, avvisa) }catch(x){ avvisa() }
   };
   var carica = function(){
-    if(!attivo() || !window.fetch || Date.now() - ultimo < OGNI_MS) return;
+    if(!puoiLeggere() || !window.fetch || Date.now() - ultimo < OGNI_MS) return;
     ultimo = Date.now();
     var o = {cache: 'no-store'}; if(window.AbortSignal && AbortSignal.timeout) o.signal = AbortSignal.timeout(5000);
     fetch(URL_STATO + '?b=' + B, o).then(function(r){ return r.ok ? r.json() : null }).then(function(s){
       if(!valido(s)) return;
       applica(s); fresco = true;
       try{ localStorage.setItem(CH, JSON.stringify(s)) }catch(x){}
-      controllaMin();
+      if(!nativo) controllaMin();
       if(!st.tele) manda(); else if(nChiavi && !timer) timer = setTimeout(manda, 2000);
       try{ dispatchEvent(new Event('stato')) }catch(x){}
     }).catch(function(){});
   };
-  if(attivo()){
+  if(puoiLeggere()){
     try{ var c = JSON.parse(localStorage.getItem(CH)); if(valido(c)) applica(c) }catch(x){}
     addEventListener('load', function(){ setTimeout(carica, 4000) });
     document.addEventListener('visibilitychange', function(){ if(document.hidden) manda(); else carica() });
@@ -124,7 +127,7 @@ var STATO;
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v363';
+  const VERSIONE = 'copilota-app-v364';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1113,6 +1116,7 @@ if ('serviceWorker' in navigator) {
     <span data-lang="it">Avvisi autovelox</span>
     <span data-lang="en">Speed camera warnings</span><span data-lang="fr">Alertes radars</span></label>
   <p style="margin-top:6px;font-size:11.5px" id="camDesc"></p>
+  <p style="margin-top:4px;font-size:11.5px" id="camPaesi" hidden></p>
   <div class="discGroup">
     <p class="disc" data-lang="it">In Germania è vietato anche se l'app la usa il passeggero: la multa (75 €, un punto) la prende comunque chi guida. In Francia niente posizioni esatte, solo zone larghe. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="it">Altro</span></span><span class="dpB" hidden><span data-lang="it">Meno</span></span></button></p>
     <p class="disc" data-lang="en">In Germany it's illegal even if a passenger uses the app: the fine (€75, one point) falls on the driver either way. In France no exact positions, only wide zones. <button class="discPiu" type="button" aria-expanded="false"><span class="dpA"><span data-lang="en">More</span></span><span class="dpB" hidden><span data-lang="en">Less</span></span></button></p>
@@ -1254,7 +1258,7 @@ if ('serviceWorker' in navigator) {
   <p class="segn-stato" id="segnStato" hidden></p>
   <div class="segn-grid">
     <button class="segn-b" type="button" data-cosa="autovelox" id="segnVelox" title="Autovelox fisso"><svg viewBox="0 0 24 24" aria-hidden="true"><rect class="ic-tag" x="2" y="6.5" width="13.5" height="10.5" rx="2.5"/><circle class="ic-buco" cx="8.8" cy="11.8" r="3.2"/><circle class="ic-tag" cx="8.8" cy="11.8" r="1.4"/><path class="ic-tag" d="M16.5 10l5.5-2.8v9.6L16.5 14z"/><path class="ic-linea" d="M3 20.5h18"/></svg><span class="solo-voce" data-lang="it">Autovelox fisso</span><span class="solo-voce" data-lang="en">Fixed speed camera</span><span class="solo-voce" data-lang="fr">Radar fixe</span></button>
-    <button class="segn-b" type="button" data-cosa="polizia" title="Polizia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5h8v7.5H6.5a2.5 2.5 0 0 1-2.5-2.5z" fill="#e04b4b"/><path d="M12 11.5h8v5a2.5 2.5 0 0 1-2.5 2.5H12z" fill="#4c8dff"/><path class="ic-buco" d="M11.2 11.5h1.6v7.5h-1.6z"/><path class="ic-linea" d="M2.5 21.5h19"/><path class="ic-linea" d="M6.5 4.5l2 2.6M17.5 4.5l-2 2.6M12 3v3"/></svg><span class="solo-voce" data-lang="it">Polizia</span><span class="solo-voce" data-lang="en">Police</span><span class="solo-voce" data-lang="fr">Police</span></button>
+    <button class="segn-b" type="button" data-cosa="polizia" id="segnPolizia" title="Polizia"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5h8v7.5H6.5a2.5 2.5 0 0 1-2.5-2.5z" fill="#e04b4b"/><path d="M12 11.5h8v5a2.5 2.5 0 0 1-2.5 2.5H12z" fill="#4c8dff"/><path class="ic-buco" d="M11.2 11.5h1.6v7.5h-1.6z"/><path class="ic-linea" d="M2.5 21.5h19"/><path class="ic-linea" d="M6.5 4.5l2 2.6M17.5 4.5l-2 2.6M12 3v3"/></svg><span class="solo-voce" data-lang="it">Polizia</span><span class="solo-voce" data-lang="en">Police</span><span class="solo-voce" data-lang="fr">Police</span></button>
     <button class="segn-b" type="button" data-cosa="dosso" title="Dosso"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-tag" d="M2.5 17.5c0-5.5 4.2-8.5 9.5-8.5s9.5 3 9.5 8.5z"/><path class="ic-buco" d="M8.6 10.2l1.8.6-2.4 6.7H6.2zM13.4 10.1l1.8.8-2.7 6.6h-2z"/><path class="ic-linea" d="M1.5 20.5h21"/></svg><span class="solo-voce" data-lang="it">Dosso</span><span class="solo-voce" data-lang="en">Speed bump</span><span class="solo-voce" data-lang="fr">Dos-d’âne</span></button>
     <button class="segn-b" type="button" data-cosa="dissestata" title="Strada dissestata"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="ic-tag" d="M3 21 8.1 4h7.8L21 21z"/><path class="ic-buco" d="M11.15 6h1.7l.3 2.5h-2.3zM10.75 10.7h2.5l.35 2.7h-3.2z"/><path class="ic-buco" d="M8.3 15.1c3-1 5.3.5 4.9 2.5-.4 2.1-4.1 3-5.8 1.6-1.3-1.1-1-3.3.9-4.1z"/></svg><span class="solo-voce" data-lang="it">Strada dissestata</span><span class="solo-voce" data-lang="en">Damaged road</span><span class="solo-voce" data-lang="fr">Route dégradée</span></button>
     <button class="segn-b" type="button" data-cosa="limite" id="segnLimite" hidden title="Limite sbagliato"><svg viewBox="0 0 24 24" aria-hidden="true"><circle class="ic-tag" cx="12" cy="12" r="10"/><circle class="ic-buco" cx="12" cy="12" r="6.6"/><rect class="ic-tag" x="8" y="11" width="8" height="2" rx="1"/></svg><span class="solo-voce" data-lang="it">Limite sbagliato</span><span class="solo-voce" data-lang="en">Wrong speed limit</span><span class="solo-voce" data-lang="fr">Limite erronée</span></button>
@@ -1524,13 +1528,14 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '363';
+const APPVER = '364';
 const REG_EXTRA = 'regions-libero.json';
 const REG_EXTRA_K = 'codriver-regions-libero-v1';
 let RAW = null;
 const RMETA = Object.create(null);
 const ROTONDA = new Set();
 const CLSARCO = new Map();
+const STERRATO = new Set();
 
 const REGISTRO = [];
 function nota(msg){
@@ -24859,7 +24864,7 @@ function correggiCurati(curves, xy, np, cum, sc, wid){
   let togli = null;
   for(const k of qui){
     const [px, py] = toXY(k[2], k[1]);
-    let best = -1, bd = CURATI_M;
+    let best = -1, bd = CURATI_M, bestE = -1, bdE = CURATI_M;
     for(let j = 0; j < curves.length; j++){
       const c = curves[j], d = (c.d0 + c.d1) / 2 / sc;
       let i = 1; while(i < np - 1 && cum[i] < d) i++;
@@ -24867,7 +24872,17 @@ function correggiCurati(curves, xy, np, cum, sc, wid){
       const x = xy[2*i-2] + (xy[2*i] - xy[2*i-2]) * t, y = xy[2*i-1] + (xy[2*i+1] - xy[2*i-1]) * t;
       const m = Math.hypot(x - px, y - py);
       if(m <= bd){ bd = m; best = j }
+      if(best < 0){
+        for(const dd of [c.d0 / sc, c.d1 / sc]){
+          let ii = 1; while(ii < np - 1 && cum[ii] < dd) ii++;
+          const tt = cum[ii] > cum[ii-1] ? Math.min(1, Math.max(0, (dd - cum[ii-1]) / (cum[ii] - cum[ii-1]))) : 0;
+          const xe = xy[2*ii-2] + (xy[2*ii] - xy[2*ii-2]) * tt, ye = xy[2*ii-1] + (xy[2*ii+1] - xy[2*ii-1]) * tt;
+          const me = Math.hypot(xe - px, ye - py);
+          if(me <= bdE){ bdE = me; bestE = j }
+        }
+      }
     }
+    if(best < 0) best = bestE;
     if(best < 0) continue;
     k.preso = true; CURATI_PRESI++;
     if(k[3] === 't') (togli || (togli = new Set())).add(best);
@@ -24913,6 +24928,7 @@ async function buildEdges(rid, map, avanza){
     const rotondaTag = arr.length>12 ? arr[12] : 0;
     const andamArr   = arr.length>13 ? arr[13] : null;
     const clsTag     = arr.length>14 ? arr[14] : 0;
+    const fondoTag   = arr.length>15 ? arr[15] : 0;
     map[k] = -1;
     if (wid!==undefined){
       const w = Math.abs(wid), intera = wid > 0;
@@ -24951,6 +24967,7 @@ async function buildEdges(rid, map, avanza){
     applicaCorLimiti(e);
     if(rotondaTag===1) ROTONDA.add(e.id);
     if(clsTag) CLSARCO.set(e.id, clsTag);
+    if(fondoTag === 1) STERRATO.add(e.id);
     map[k] = e.id;
     E.push(e);
     if (MOTORE_NUOVO) { JUN.ix.add(gj0, e.id); JUN.ix.add(gj1, e.id) }
@@ -25013,6 +25030,14 @@ async function buildGrey(){
 }
 const CAMS = [];
 const E2CAM = new Map();
+function veloxLivello(){
+  const V = window.cdVelox;
+  if(!V) return 'tutti';
+  if(!S.pos) return V.livello(null, null);
+  const ll = toLL(S.pos[0], S.pos[1]);
+  return V.livello(ll[1], ll[0]);
+}
+const ZONA_ANTICIPO_M = 1000;
 function buildCams(map){
   for (const [lon,lat,ms,ei,d] of (RCAMS || RAW.cams || [])){
     const ck = lon+','+lat;
@@ -26265,6 +26290,7 @@ const T = {
     legalOff:'Ignora il limite: solo quello che la curva permette.',
     camsOn:'Annuncia gli autovelox delle mappe attive.',
     camsOff:'Spenti: nessun avviso, nessun segnale a schermo.',
+    camPaesi:'In alcuni paesi gli avvisi dei controlli di velocità sono vietati: Co-Driver li spegne dove servono.',
     trafficoOn:'Con un percorso impostato annuncia code, lavori, strade chiuse e incidenti davanti a te. Ogni 4 minuti manda i punti del percorso al nostro sito, che li chiede a TomTom. Dati di traffico © TomTom.',
     trafficoOff:'Spento: per il traffico dal telefono non parte niente.',
     navGo:'VAI', navIn:'fra', navM:'metri', navNow:'ORA', navInto:'in', navMin:'MIN',
@@ -26453,6 +26479,7 @@ const T = {
     legalOff:'Ignores the limit: only what the corner allows.',
     camsOn:'Announces speed cameras from the active maps.',
     camsOff:'Off: no warning, nothing on screen.',
+    camPaesi:'In some countries speed-control warnings are banned: Co-Driver turns them off where needed.',
     trafficoOn:'With a route set, announces queues, roadworks, closed roads and accidents ahead of you. Every 4 minutes it sends the route points to our website, which asks TomTom. Traffic data © TomTom.',
     trafficoOff:'Off: nothing leaves the phone for traffic.',
     navGo:'GO', navIn:'in', navM:'meters', navNow:'NOW', navInto:'onto', navMin:'MIN',
@@ -26641,6 +26668,7 @@ const T = {
     legalOff:'Ignore la limite : seulement ce que permet le virage.',
     camsOn:'Annonce les radars des cartes actives.',
     camsOff:'Éteints : aucune alerte, rien à l\'écran.',
+    camPaesi:'Dans certains pays, les alertes de contrôle de vitesse sont interdites : Co-Driver les désactive là où il le faut.',
     trafficoOn:'Avec un itinéraire défini, annonce bouchons, travaux, routes fermées et accidents devant toi. Toutes les 4 minutes, elle envoie les points de l\'itinéraire à notre site, qui les demande à TomTom. Données de trafic © TomTom.',
     trafficoOff:'Éteint : rien ne part du téléphone pour le trafic.',
     navGo:'ALLER', navIn:'dans', navM:'mètres', navNow:'MAINTENANT', navInto:'sur', navMin:'MIN',
@@ -26845,7 +26873,8 @@ if(autoDalLink || profiloDalLink) save();
                        'nota-scartata-sovrapposta', 'nota-in-coda',
                        'interrotta-sessione-playback', 'interrotta-sessione-auto',
                        'interrotta-sessione-transient', 'interrotta-sessione-nd',
-                       'regione-riscaricata-sha', 'regione-riscaricata-ko'];
+                       'regione-riscaricata-sha', 'regione-riscaricata-ko',
+                       'invio-cf-ko'];
   var CODA = 'codriver-bb-coda-v1';
   var trasporto = null;
   var testerId = '?';
@@ -27577,7 +27606,26 @@ if(testerDalLink){
 }
 
 const SN_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSd9VTUrFgtgGYqR_Sl4f2FblTzXQuzcLzHGgtFy-Peo6AzNvg/formResponse';
+const SN_CANALI = ['foglio', 'doppio', 'cloudflare'];
+const SN_CANALE = SN_CANALI.indexOf(window.CD_SN_CANALE) >= 0 ? window.CD_SN_CANALE : 'foglio';
+const SN_URL_CF = 'https://codriver.pages.dev/rapporto';
+function spedisciCloudflare(tester, json){
+  if(window.STATO && STATO.off('rapporti-cf')) return Promise.resolve(false);
+  const d = new URLSearchParams(); d.set('tester', tester || '?'); d.set('rapporto', json);
+  return fetch(SN_URL_CF, {method:'POST', body:d, keepalive:true, credentials:'omit', cache:'no-store'})
+    .then(r => { if(!r.ok) segnaStantia('invio-cf-ko'); return r.ok })
+    .catch(() => { if(navigator.onLine) segnaStantia('invio-cf-ko'); return false });
+}
 function spedisciRapporto(tester, json){
+  if(window.STATO && STATO.off('rapporti')) return false;
+  if(SN_CANALE === 'cloudflare') return spedisciCloudflare(tester, json);
+  if(SN_CANALE === 'doppio'){
+    const cf = spedisciCloudflare(tester, json), fg = spedisciFoglio(tester, json);
+    return Promise.all([cf, Promise.resolve(fg)]).then(r => r[0] || r[1]);
+  }
+  return spedisciFoglio(tester, json);
+}
+function spedisciFoglio(tester, json){
   if(window.STATO && STATO.off('rapporti')) return false;
   try{
     const d = new URLSearchParams();
@@ -28904,7 +28952,7 @@ const fuoriVista = (x,y) => x<VISTA[0]-VISTA_MARGINE || x>VISTA[2]+VISTA_MARGINE
 function disegnaSopra(){
   ctx.setTransform(DPR,0,0,DPR,0,0);
   if(S.nav) disegnaFrecce();
-  if(S.scale>0.14){
+  if(S.scale>0.14 && veloxLivello()==='tutti'){
     const r=S.scale>0.8?11:8;
     for(const c of CAMS){
       if(fuoriVista(c.x,c.y)) continue;
@@ -30271,14 +30319,20 @@ function updateNote(){
   const a=S.ahead[0];
   const cam0=S.aheadCams&&S.aheadCams[0];
   const versoNoto = S.hd != null;
-  if(cam0 && versoNoto){
-    const leadCam=Math.max(250, S.v*15);
+  const livVelox = cam0 ? veloxLivello() : 'nessuno';
+  if(cam0 && versoNoto && livVelox !== 'nessuno'){
+    const zona = livVelox === 'zone';
+    const leadCam = zona ? ZONA_ANTICIPO_M : Math.max(250, S.v*15);
     if(cam0.dist<=leadCam && !S.said.has(cam0.key)){
       S.said.add(cam0.key);
+      if(zona){
+        if(VOCE.idx[vk()] && VOCE.idx[vk()]['a.zona']) dilo(['a.zona'], true);
+      }else{
       const ch=['a.autovelox'];
       const lim=cam0.cam.ms;
       if(lim && VOCE.idx[vk()] && VOCE.idx[vk()]['a.lim.'+lim]) ch.push('a.limite','a.lim.'+lim);
       dilo(ch, true);
+      }
     }
   }
   if(S.rotatorie === true && S.aheadRot && !S.nav && !S.gpsBuco && versoNoto && !S.said.has(S.aheadRot.key)){
@@ -33070,7 +33124,9 @@ function apriSegnala(){
   const stato = document.getElementById('segnStato');
   stato.hidden = !!SEGN_PUNTO;
   stato.textContent = SEGN_PUNTO ? '' : tr().segnNoGps;
-  document.getElementById('segnVelox').hidden = !veloxLecito(SEGN_PUNTO);
+  const livSegn = veloxLivello();
+  document.getElementById('segnVelox').hidden = !veloxLecito(SEGN_PUNTO) || livSegn !== 'tutti';
+  document.getElementById('segnPolizia').hidden = livSegn !== 'tutti';
   const viste = [...document.querySelectorAll('#sheetSegna .segn-b')].filter(b => !b.hidden).length;
   document.querySelector('.segn-grid').classList.toggle('dispari', viste % 2 === 1);
   document.querySelectorAll('#sheetSegna .segn-b').forEach(b => b.disabled = !SEGN_PUNTO);
@@ -33095,6 +33151,7 @@ function oraConFuso(t){
 }
 function segnala(cosa, extra){
   const f = SEGN_PUNTO; if(!f) return;
+  if((cosa === 'autovelox' || cosa === 'polizia') && veloxLivello() !== 'tutti') return;
   const riga = {
     v:1, tipo:'segnalazione', cosa: cosa,
     lat:+f.lat.toFixed(5), lon:+f.lon.toFixed(5),
@@ -33817,6 +33874,7 @@ function renderCar(){
   legalDesc.textContent=tr()[S.legal?'legalOn':'legalOff'];
   camChk.checked=S.cams;
   camDesc.textContent=tr()[S.cams?'camsOn':'camsOff'];
+  const cpEl=document.getElementById('camPaesi'); if(cpEl){ cpEl.hidden=!window.cdVelox; cpEl.textContent=tr().camPaesi }
   incrociChk.checked = S.incroci !== false;
   incrociDesc.textContent = tr()[S.incroci !== false ? 'incrociOn' : 'incrociOff'];
   rotatorieChk.checked = S.rotatorie === true;
