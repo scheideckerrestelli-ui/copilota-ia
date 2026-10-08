@@ -15,7 +15,7 @@ var STATO;
 (function(){
   'use strict';
   var ON = true;
-  var B = parseInt('362', 10);
+  var B = parseInt('363', 10);
   var HOST = 'codriver.pages.dev', URL_STATO = 'https://' + HOST + '/stato.json', URL_TELE = 'https://' + HOST + '/telemetria';
   var CH = 'codriver-stato', MAX_CHIAVI = 20, MAX_EVENTI = 200, OGNI_MS = 30 * 60 * 1000;
   var st = {v: 1, min: 0, off: [], tele: false}, fresco = false, ultimo = 0;
@@ -124,7 +124,7 @@ var STATO;
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <script>
 if ('serviceWorker' in navigator) {
-  const VERSIONE = 'copilota-app-v362';
+  const VERSIONE = 'copilota-app-v363';
   navigator.serviceWorker.onmessage = ev => {
     const d = ev.data || {};
     if (d.tipo !== 'versione-nuova') return;
@@ -1524,7 +1524,7 @@ if ('serviceWorker' in navigator) {
 
 <script>
 'use strict';
-const APPVER = '362';
+const APPVER = '363';
 const REG_EXTRA = 'regions-libero.json';
 const REG_EXTRA_K = 'codriver-regions-libero-v1';
 let RAW = null;
@@ -1573,10 +1573,54 @@ async function readStream(res, onProgress){
   onProgress(got);
   return buf;
 }
+const STANTIA_PROVATA = new Set();
+const STANTIA_ESITI = 'copilota-regione-esiti';
+function segnaStantia(tipo){ try{ const a = (localStorage.getItem(STANTIA_ESITI)||'').split(',').filter(Boolean); a.push(tipo); localStorage.setItem(STANTIA_ESITI, a.slice(-20).join(',')) }catch(e){} }
+const STANTIA_RIPROVA_MS = 6*3600*1000;
+async function riscaricaSeStantia(r, url, bufVecchio, onProgress){
+  const chiave = 'rr-'+r.id+'-'+r.v;
+  if(STANTIA_PROVATA.has(r.id)) return null;
+  STANTIA_PROVATA.add(r.id);
+  try{ const t = Number(localStorage.getItem(chiave)||0); if(t && Date.now()-t < STANTIA_RIPROVA_MS) return null }catch(e){}
+  if(typeof navigator !== 'undefined' && navigator.onLine === false) return null;
+  const c = await caches.open(cacheName(r.id));
+  const ripristina = async () => {
+    try{ if(!(await c.match(url))) await c.put(url, new Response(bufVecchio, {headers:{'Content-Type':'application/json'}})) }catch(e){}
+    try{ for(const k of await c.keys()) if(k.url.indexOf('&cb=') >= 0) await c.delete(k) }catch(e){}
+    try{ localStorage.setItem(chiave, String(Date.now())) }catch(e){}
+  };
+  let nuovo = null;
+  try{
+    const res = await fetch(url+'&cb='+Date.now(), {cache:'reload'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    nuovo = await readStream(res, onProgress);
+  }catch(e){ nota('riscarico di '+r.nm+' non riuscito: '+e.message) }
+  if(!nuovo || nuovo.length !== r.bytes){
+    segnaStantia('regione-riscaricata-ko');
+    await ripristina();
+    return null;
+  }
+  try{
+    for(const k of await c.keys()) await c.delete(k);
+    await c.put(url, new Response(nuovo, {headers:{'Content-Type':'application/json'}}));
+    for(const s of SIDECAR){
+      const u = scUrl(r, s); if(!u) continue;
+      try{
+        const b = await readStream(await fetch(u, {cache:'reload'}), ()=>{});
+        const j = JSON.parse(new TextDecoder().decode(b));
+        if(j && s.ok(j) && !(j.meta && j.meta.sha && j.meta.sha !== r.v)) await c.put(u, new Response(b, {headers:{'Content-Type':'application/json'}}));
+      }catch(e){ console.warn('sidecar non riscaricato:', u, e.message) }
+    }
+    for(const k of await c.keys()) if(k.url.indexOf('&cb=') >= 0) await c.delete(k);
+  }catch(e){ nota('sostituzione di '+r.nm+' non riuscita: '+e.message); await ripristina(); return null }
+  try{ localStorage.removeItem(chiave) }catch(e){}
+  segnaStantia('regione-riscaricata-sha');
+  return nuovo;
+}
 async function loadRegion(r, onProgress){
   const url = dataUrl(r);
-  let res = null;
-  try{ res = await caches.match(url) }catch(e){ nota('cache non leggibile: '+e.message) }
+  let res = null, esatta = false;
+  try{ res = await caches.match(url); esatta = !!res }catch(e){ nota('cache non leggibile: '+e.message) }
   if(!res){
     try{
       const c = await caches.open(cacheName(r.id));
@@ -1586,7 +1630,11 @@ async function loadRegion(r, onProgress){
     }catch(e){}
   }
   if(!res) res = await fetch(url);
-  const buf = await readStream(res, onProgress);
+  let buf = await readStream(res, onProgress);
+  if(esatta && r.bytes && buf.length !== r.bytes){
+    const nuovo = await riscaricaSeStantia(r, url, buf, onProgress);
+    if(nuovo) buf = nuovo;
+  }
   return JSON.parse(new TextDecoder().decode(buf));
 }
 const geoUrl = r => scUrl(r, SIDECAR[0]);
@@ -26796,7 +26844,8 @@ if(autoDalLink || profiloDalLink) save();
                        'salto-gamba', 'salto-verso',
                        'nota-scartata-sovrapposta', 'nota-in-coda',
                        'interrotta-sessione-playback', 'interrotta-sessione-auto',
-                       'interrotta-sessione-transient', 'interrotta-sessione-nd'];
+                       'interrotta-sessione-transient', 'interrotta-sessione-nd',
+                       'regione-riscaricata-sha', 'regione-riscaricata-ko'];
   var CODA = 'codriver-bb-coda-v1';
   var trasporto = null;
   var testerId = '?';
@@ -27574,6 +27623,8 @@ function snAvvia(){
   }catch(e){}
   try{ if(localStorage.getItem(LINK_FILE_DIVERSO)){
     localStorage.removeItem(LINK_FILE_DIVERSO); window.SN.anomalia('link-file-diverso') } }catch(e){}
+  try{ const e = localStorage.getItem(STANTIA_ESITI); if(e){
+    localStorage.removeItem(STANTIA_ESITI); e.split(',').forEach(t => window.SN.anomalia(t)) } }catch(e){}
   window.SN.voce(!!S.audio);
 }
 addEventListener('pageshow', () => {
